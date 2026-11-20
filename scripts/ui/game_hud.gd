@@ -69,6 +69,7 @@ var hotbar_panel: Panel
 var hotbar_slots: Array[Panel] = []
 var hotbar_labels: Array[Label] = []
 var hotbar_counts: Array[Label] = []
+var hotbar_icons: Array[TextureRect] = []
 var mana_bar: Panel
 var mana_fill: Panel
 var mana_fill_style: StyleBoxFlat
@@ -78,6 +79,7 @@ var notification_label: Label
 var notification_time := 0.0
 var notification_queue: Array[String] = []
 var boss_panel: Panel
+var boss_bg_panel: Panel
 var boss_name_label: Label
 var boss_health_fill: Panel
 var boss_health_style: StyleBoxFlat
@@ -464,17 +466,17 @@ func _build_death() -> void:
 	title.size = Vector2(412, 44)
 	panel.add_child(title)
 
-	var subtitle := _label("THE DARK FOUND YOU", 10, TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER)
+	var subtitle := _label("RETURN TO THE WORLD SPAWN", 10, TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER)
 	subtitle.position = Vector2(24, 78)
 	subtitle.size = Vector2(412, 16)
 	panel.add_child(subtitle)
 
-	var note := _label("Your light failed. The world keeps what it takes.", 9, Color(0.55, 0.42, 0.40), HORIZONTAL_ALIGNMENT_CENTER)
+	var note := _label("Respawning at your world spawn. Your items stay with you.", 9, Color(0.55, 0.62, 0.52), HORIZONTAL_ALIGNMENT_CENTER)
 	note.position = Vector2(24, 104)
 	note.size = Vector2(412, 16)
 	panel.add_child(note)
 
-	var button := _button("RESPAWN AT CAMP")
+	var button := _button("RESPAWN")
 	button.position = Vector2(130, 148)
 	button.size = Vector2(200, 32)
 	button.pressed.connect(_on_respawn_pressed)
@@ -575,7 +577,7 @@ func _build_pause() -> void:
 	title.size = Vector2(300, 34)
 	panel.add_child(title)
 
-	var subtitle := _label("LUMENFALL  ·  ASHEN FLATS", 9, TEXT_DIM)
+	var subtitle := _label("3D TERRARIA  ·  SANDBOX", 9, TEXT_DIM)
 	subtitle.position = Vector2(25, 48)
 	subtitle.size = Vector2(300, 12)
 	panel.add_child(subtitle)
@@ -585,8 +587,8 @@ func _build_pause() -> void:
 	header.size = Vector2(200, 12)
 	panel.add_child(header)
 
-	var left_controls := ["WASD      Move / Drive", "SHIFT     Sprint / Drift", "SPACE     Jump", "LMB       Fire", "WHEEL     Cycle cartridge / Projector", "F         Flashlight"]
-	var right_controls := ["1–4       Select cartridge", "WHEEL     Build depth (drag)", "E         Build / Drive / Exit", "F3        Debug readout", "K / J     Save / Load", "ESC       Pause"]
+	var left_controls := ["WASD      Move", "SHIFT     Sprint", "SPACE     Jump", "LMB       Mine / Attack", "RMB       Place block", "F         Torch / light"]
+	var right_controls := ["1–9, 0   Hotbar slots", "I         Inventory", "C         Crafting", "E         Interact / Talk", "V         Camera mode", "K / J     Save / Load"]
 	for index in range(left_controls.size()):
 		var left := _label(left_controls[index], 10, TEXT_DIM)
 		left.position = Vector2(24, 92 + index * 18)
@@ -994,7 +996,10 @@ func _on_quit_pressed() -> void:
 ## The HUD was originally authored for an 854x480 viewport. Reposition the key
 ## elements for the real 1280x720 root viewport and retire the Lumencaster UI.
 func _layout_for_viewport() -> void:
-	var vp: Vector2 = get_viewport().size
+	# The HUD is authored against the project's 1280x720 render viewport. Using
+	# get_viewport().size here returned the 1920x1080 window override, which put
+	# the hotbar and vitals off-screen. The stretch mode scales this layout.
+	var vp := Vector2(1280.0, 720.0)
 	var cx: float = vp.x * 0.5
 
 	# Retire every legacy gun/cartridge/reserve element. Gameplay no longer
@@ -1083,14 +1088,21 @@ func _build_hotbar() -> void:
 		slot.add_theme_stylebox_override("panel", _style(Color(0.06, 0.09, 0.10, 0.95), Color(0.22, 0.40, 0.38, 0.7), 1, 2))
 		hotbar_panel.add_child(slot)
 		hotbar_slots.append(slot)
-		var lbl := _label("", 9, TEXT_PALE, HORIZONTAL_ALIGNMENT_CENTER)
-		lbl.position = Vector2(2, 4)
-		lbl.size = Vector2(32, 16)
+		var icon := TextureRect.new()
+		icon.position = Vector2(10, 1)
+		icon.size = Vector2(16, 16)
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(icon)
+		hotbar_icons.append(icon)
+		var lbl := _label("", 7, TEXT_PALE, HORIZONTAL_ALIGNMENT_CENTER)
+		lbl.position = Vector2(0, 17)
+		lbl.size = Vector2(36, 8)
 		slot.add_child(lbl)
 		hotbar_labels.append(lbl)
 		var cnt := _label("", 8, TEXT_DIM, HORIZONTAL_ALIGNMENT_RIGHT)
-		cnt.position = Vector2(2, 20)
-		cnt.size = Vector2(32, 10)
+		cnt.position = Vector2(2, 22)
+		cnt.size = Vector2(32, 9)
 		slot.add_child(cnt)
 		hotbar_counts.append(cnt)
 
@@ -1107,18 +1119,24 @@ func _refresh_hotbar(_arg: Variant = null) -> void:
 		var stack: Dictionary = inv.get_slot("hotbar", i)
 		var id := StringName(stack.get("id", &""))
 		var amount := int(stack.get("amount", 0))
+		var icon: TextureRect = hotbar_icons[i] if i < hotbar_icons.size() else null
 		if id == &"" or amount <= 0:
 			lbl.text = ""
 			cnt.text = ""
+			if icon != null:
+				icon.texture = null
 			slot_panel.modulate.a = 0.55
 		else:
 			var def := ItemDatabase.get_item(id)
 			var name := String(id)
 			if def != null and def.display_name != "":
 				name = def.display_name
-			lbl.text = name.substr(0, 4).to_upper()
-			cnt.text = "x%d" % amount if amount > 1 else ""
+			lbl.text = ""
+			if icon != null:
+				icon.texture = ItemIcons.icon_for(id)
+			cnt.text = "%d" % amount if amount > 1 else ""
 			slot_panel.modulate.a = 1.0
+			slot_panel.tooltip_text = name
 		# Selected highlight
 		var selected := int(inv.selected) == i
 		var style := slot_panel.get_theme_stylebox("panel") as StyleBoxFlat
@@ -1264,8 +1282,9 @@ func _build_boss() -> void:
 	boss_name_label.size = Vector2(334, 16)
 	add_child(boss_name_label)
 	var bar_bg := _style(Color(0.02, 0.02, 0.03, 0.95), Color(0.4, 0.12, 0.10, 0.8), 1, 2)
-	var bg_panel := _panel(Rect2(260, 36, 334, 12), bar_bg)
-	bg_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	boss_bg_panel = _panel(Rect2(260, 36, 334, 12), bar_bg)
+	boss_bg_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	boss_bg_panel.visible = false
 	boss_health_style = _style(Color(0.88, 0.24, 0.18, 0.95), Color(1.0, 0.5, 0.4, 0.8), 1, 1)
 	boss_health_fill = Panel.new()
 	boss_health_fill.position = Vector2(261, 37)
@@ -1289,10 +1308,12 @@ func _update_boss() -> void:
 					break
 	if boss_target == null or not is_instance_valid(boss_target):
 		boss_panel.visible = false
+		boss_bg_panel.visible = false
 		boss_name_label.visible = false
 		boss_health_fill.visible = false
 		return
 	boss_panel.visible = true
+	boss_bg_panel.visible = true
 	boss_name_label.visible = true
 	boss_health_fill.visible = true
 	var nm := "BOSS"
@@ -1371,15 +1392,21 @@ func _build_inventory_panel() -> void:
 		p.mouse_filter = Control.MOUSE_FILTER_STOP
 		p.gui_input.connect(func(ev): _on_inv_slot_input("main", i, ev, p))
 		inventory_panel.add_child(p)
-		var plbl := _label("", 9, TEXT_PALE, HORIZONTAL_ALIGNMENT_CENTER)
-		plbl.position = Vector2(2, 6)
-		plbl.size = Vector2(36, 16)
+		var picon := TextureRect.new()
+		picon.position = Vector2(9, 2)
+		picon.size = Vector2(22, 22)
+		picon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		picon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		p.add_child(picon)
+		var plbl := _label("", 8, TEXT_PALE, HORIZONTAL_ALIGNMENT_CENTER)
+		plbl.position = Vector2(2, 24)
+		plbl.size = Vector2(36, 10)
 		p.add_child(plbl)
 		var pcnt := _label("", 8, TEXT_DIM, HORIZONTAL_ALIGNMENT_RIGHT)
-		pcnt.position = Vector2(2, 24)
+		pcnt.position = Vector2(2, 28)
 		pcnt.size = Vector2(36, 10)
 		p.add_child(pcnt)
-		inv_slot_panels.append({"panel": p, "label": plbl, "count": pcnt, "area": "main", "index": i})
+		inv_slot_panels.append({"panel": p, "label": plbl, "count": pcnt, "icon": picon, "area": "main", "index": i})
 	var hb_y := grid_y + (InventoryModel.MAIN_SIZE / grid_cols + 1) * 44
 	var hb_title := _label("HOTBAR", 9, TEXT_DIM)
 	hb_title.position = Vector2(grid_x, hb_y - 12)
@@ -1393,15 +1420,21 @@ func _build_inventory_panel() -> void:
 		p.mouse_filter = Control.MOUSE_FILTER_STOP
 		p.gui_input.connect(func(ev): _on_inv_slot_input("hotbar", i, ev, p))
 		inventory_panel.add_child(p)
-		var plbl := _label("", 9, TEXT_PALE, HORIZONTAL_ALIGNMENT_CENTER)
-		plbl.position = Vector2(2, 6)
-		plbl.size = Vector2(36, 16)
+		var picon := TextureRect.new()
+		picon.position = Vector2(9, 2)
+		picon.size = Vector2(22, 22)
+		picon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		picon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		p.add_child(picon)
+		var plbl := _label("", 8, TEXT_PALE, HORIZONTAL_ALIGNMENT_CENTER)
+		plbl.position = Vector2(2, 24)
+		plbl.size = Vector2(36, 10)
 		p.add_child(plbl)
 		var pcnt := _label("", 8, TEXT_DIM, HORIZONTAL_ALIGNMENT_RIGHT)
-		pcnt.position = Vector2(2, 24)
+		pcnt.position = Vector2(2, 28)
 		pcnt.size = Vector2(36, 10)
 		p.add_child(pcnt)
-		inv_slot_panels.append({"panel": p, "label": plbl, "count": pcnt, "area": "hotbar", "index": i})
+		inv_slot_panels.append({"panel": p, "label": plbl, "count": pcnt, "icon": picon, "area": "hotbar", "index": i})
 	var hint := _label("Click two slots to move/swap. I to close.", 8, TEXT_DIM)
 	hint.position = Vector2(12, 378)
 	hint.size = Vector2(616, 12)
@@ -1466,18 +1499,24 @@ func _refresh_inventory_panel(_arg: Variant = null) -> void:
 		var lbl: Label = entry["label"]
 		var cnt: Label = entry["count"]
 		var p: Panel = entry["panel"]
+		var icon: TextureRect = entry.get("icon")
 		if id == &"" or amount <= 0:
 			lbl.text = ""
 			cnt.text = ""
+			if icon != null:
+				icon.texture = null
 			p.modulate.a = 0.5
 		else:
 			var def := ItemDatabase.get_item(id)
 			var name := String(id)
 			if def != null and def.display_name != "":
 				name = def.display_name
-			lbl.text = name.substr(0, 6)
-			cnt.text = "x%d" % amount if amount > 1 else ""
+			lbl.text = ""
+			if icon != null:
+				icon.texture = ItemIcons.icon_for(id)
+			cnt.text = "%d" % amount if amount > 1 else ""
 			p.modulate.a = 1.0
+			p.tooltip_text = name
 		var is_sel := (area == "hotbar" and int(inv.selected) == idx)
 		var style := p.get_theme_stylebox("panel") as StyleBoxFlat
 		if style != null:

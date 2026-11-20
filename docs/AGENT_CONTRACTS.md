@@ -25,7 +25,7 @@ WorldLayers.UNDERGROUND_DEPTH  # 64
 WorldLayers.DEEP_DEPTH         # 108
 WorldLayers.CAVERN_DEPTH       # 150
 
-layer_at(y, surface_y) -> int      # enum Layer: SURFACE/UPPER/UNDERGROUND/DEEP/CAVERN/ABYSS/SKY
+layer_at(y, surface_y) -> int      # enum Layer: SURFACE/UPPER/UNDERGROUND/DEEP/CAVERN/ABYSS/UNDERWORLD/SKY
 zone_at(y, surface_y) -> int       # 0 surface, 1 shallow, 2 deep, 3 abyss
 depth_ratio(y, surface_y) -> float
 depth_below_surface(y, surface_y) -> int

@@ -42,6 +42,9 @@ const BLOCK_DROP_ALIASES: Dictionary = {
 	&"blood_ore": &"gold_ore",
 	&"radiant_crystal_ore": &"lumen_crystal",
 	&"pearl_ore": &"silver_ore",
+	&"ash": &"dirt",
+	&"obsidian": &"stone",
+	&"hellstone": &"stone",
 }
 
 static var _items: Dictionary = {}

@@ -1,5 +1,30 @@
 # DEVLOG
 
+## 2026-11-21 — Terrain textures, third-person default, real Underworld
+
+### Done
+
+- Added `TerrainAtlas`: deterministic original pixel-art atlas (256×256, 16 px tiles, top/side/bottom tiles per block) with material patterns for soil, grass, stone families, sand, snow/ice, mud, bark, leaves, fungi, evil/hallow stone, ash/magma/obsidian, ores, liquids, crystal and plants.
+- Rewrote `ChunkMesher` to emit `ARRAY_TEX_UV` for every vertex and pick the correct top/side/bottom tile per face; chunk installation and the world material now carry and sample the atlas with nearest filtering. Fixtures and liquids are textured too.
+- Made third person the default camera (V toggles first person).
+- Added generated item icons for the hotbar and inventory (blocks reuse atlas tiles; tools/weapons/armour/consumables get distinct glyphs).
+- Implemented the Underworld as a generated region: `Layer.UNDERWORLD` at depth ≥168, `ash` rock, a lava sea with obsidian crust, `hellstone` veins and its own underground biome/id/enemy tag. Block ids appended, save indices unchanged.
+- Removed horror-era UI strings (death screen, pause subtitle, controls) and refreshed menu controls for the Terraria loop.
+- Added `debug/terrain_texture_check.gd` and `debug/underworld_check.gd`; updated the `world_gen_check` layer probe for the new band.
+
+### Verified
+
+- New checks PASS. Regression PASS: core_biomes, world_gen, world_boot, biome_visuals, gameplay_integration, survival, npc, menu_click, adventure_content, mesher_fixture.
+- Measured Underworld sample over 80 deep chunks: ash 7,583, lava 206,703, obsidian 18,876, hellstone 399; generation byte-identical on repeat; >90% of the sub-floor is lava.
+
+### Visually inspected
+
+- Windowed captures inspected: `debug/evidence/phase1_menu.png`, `phase1_world.png`, `phase1_underworld.png`. Menu and textured Forest (third-person explorer, trees, hotbar icons, health/mana, no stray HUD bar) look correct. The Underworld capture shows the layer label and `Lava` target but still reads as a hazy flat plane; it is not a usable advertisement of the region.
+- Deep-layer atmosphere now uses ember fog, caps sky fill at 0.06, disables the sun and hides the surface horizon rings below depth 168. Those changes did not visibly improve the capture, so the plane's cause (fog, camera enclosure, or an unlit haze surface) is still unresolved.
+- Capture lesson: run window captures with `--fixed-fps 60`. An uncapped window burns frames faster than the streaming workers and the world looks stalled at ~120 chunks.
+- Remaining visual limits: the Underworld capture is an ash/lava close-up, not a wide lava-sea vista; desert/snow/jungle/corruption/crimson/hallow and boss/NPC views were not separately captured. First-person mode and the inventory/crafting panel visuals were not captured.
+
+
 ## 2026-11-16 — M0 isolated light and dither spike
 
 ### Done
@@ -1451,3 +1476,26 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 ### Files changed this session
 - `scripts/ui/main_menu.gd`, `scripts/ui/game_hud.gd`, `build/3DTerraria.exe`
   (new), `build/LumenDeepworld.tmp` (removed), desktop shortcut, shared docs.
+
+## Terrain material pass + reference harvest (this session)
+
+### Done
+- `TerrainAtlas`: added 11 tiles (grass side fringes, biome grass sides, snow
+  side, wet sand, jungle/evil/hallow leaves, deep mud, crystal ore); remapped
+  grass, leaves, ocean sand and Mire silt; fixed tiles authored above 1.0 that
+  RGB8 clamped to flat white (snow, glow).
+- `ChunkMesher`: per-cell luminance range widened (0.88–1.12) plus deterministic
+  per-channel hue jitter so large surfaces read as individual blocks.
+- `debug/terrain_atlas_check.gd`: new headless check for atlas determinism,
+  per-face materials, biome variants, ore/stone distinction and in-cell UVs.
+- Audited SkyUOI/Terraria3D (read-only clone, not vendored); recorded adopted,
+  adapted and rejected systems in `INTEGRATION_NOTES.md`.
+
+### Verified
+- `terrain_atlas_check` PASS (39 tiles), `gameplay_integration_check` PASS,
+  `survival_check` PASS, `biome_visuals_check` PASS.
+- Headless only; no in-engine screenshot capture.
+
+### Notes
+- Reference repo is an early prototype (one terrain tile, unfinished mod loader),
+  not the mature asset source the brief assumed. No assets copied.

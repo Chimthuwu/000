@@ -5,6 +5,21 @@
 ported and adapted into the canonical tree. Neither directory was deleted; no
 destructive Git operations or remote pushes were performed.
 
+## PHASE 1 IDENTITY / RENDERING / UNDERWORLD (Agent 1, this session)
+
+- Terrain now uses a generated pixel-art texture atlas with real UVs
+  (`scripts/world/terrain_atlas.gd`, `chunk_mesher.gd`, `chunk.gd`,
+  `shaders/light_dither.gdshader`). Top/side/bottom tiles per block, nearest
+  filtering, and palette-driven material hue. No external textures/dependencies.
+- Third person is the default camera; V toggles first person.
+- Hotbar/inventory item icons are generated (`scripts/ui/item_icons.gd`).
+- The Underworld is a real generated region under the caverns: ash rock, lava
+  sea, obsidian crust, hellstone veins, own layer/underground biome/enemy tag.
+  New block ids `ash`, `obsidian`, `hellstone` are appended (save indices stable).
+- New checks `terrain_texture_check`, `underworld_check` PASS; regression suite
+  (core biomes, world gen/boot, visuals, gameplay, survival, NPC, menu,
+  adventure, fixture mesher) PASS. Windowed captures (menu, textured Forest with third-person avatar and item icons, Underworld ash/lava) were inspected; other biome vistas and the inventory/crafting screens were not reclaimed as visual evidence.
+
 ## PROJECT IDENTITY (direction correction — read first)
 
 This is a **full 3D Terraria-style sandbox**, not an Undercroft dungeon crawler.

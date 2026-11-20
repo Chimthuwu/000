@@ -291,7 +291,7 @@ func _build_controls_panel() -> Control:
 	var lbl := Label.new()
 	lbl.position = Vector2(20, 20)
 	lbl.size = Vector2(720, 440)
-	lbl.text = "CONTROLS\n\nWASD - Move\nMouse - Look\nSpace - Jump\nShift - Sprint\nLMB - Fire / Mine\nRMB - Place / Build\nWheel - Cycle cartridge / build depth\n1-9,0 - Hotbar slots\nE - Interact / Build material cycle\nF - Flashlight\nV - Camera mode\nK/J - Save/Load\n~ - Dev console\nESC - Pause\n\nGamepad support is not yet wired."
+	lbl.text = "CONTROLS\n\nWASD - Move\nMouse - Look\nSpace - Jump\nShift - Sprint\nLMB - Mine / Attack\nRMB - Place block\nWheel - Hotbar selection\n1-9,0 - Hotbar slots\nI - Inventory\nC - Crafting\nE - Interact / Talk\nF - Torch / light\nV - Camera mode (third person default)\nK/J - Save/Load\n~ - Dev console\nESC - Pause"
 	lbl.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	panel.add_child(lbl)

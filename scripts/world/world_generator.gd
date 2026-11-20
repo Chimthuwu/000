@@ -93,6 +93,8 @@ static func generate_chunk(chunk: Vector3i, world_seed: int, block_ids: Dictiona
 	var water_id := int(block_ids.get(&"water", -1))
 	var lava_id := int(block_ids.get(&"lava", -1))
 	var torch_id := int(block_ids.get(&"torch", -1))
+	var ash_id := int(block_ids.get(&"ash", stone_id))
+	var obsidian_id := int(block_ids.get(&"obsidian", stone_id))
 
 	var heights := _height_cache(origin)
 	# A chunk entirely above the local surface cannot contain a cave, so its
@@ -188,6 +190,20 @@ static func generate_chunk(chunk: Vector3i, world_seed: int, block_ids: Dictiona
 				else:
 					var depth := surface_y - world_y
 					block_id = stone_id
+					# The Underworld is a real generated region, not a renamed abyss:
+					# a lava sea fills the floor, obsidian crusts its edges and the
+					# rock above it is ash. It is reachable by digging any deep shaft.
+					if depth >= WorldLayers.UNDERWORLD_DEPTH:
+						var underworld_roll := _cell_hash(world_x, world_y, world_z, world_seed ^ 0x4E11)
+						if world_y <= 19 and lava_id >= 0:
+							block_id = lava_id if underworld_roll > 0.08 else obsidian_id
+							output[_local_index(x, y, z)] = block_id
+							continue
+						if world_y <= 30 and underworld_roll < 0.55:
+							block_id = obsidian_id if underworld_roll < 0.10 else air_id
+							output[_local_index(x, y, z)] = block_id
+							continue
+						block_id = ash_id
 					var carved := WorldCaves.is_cave_cached(cave_cache, world_x, world_y, world_z, surface_y)
 					if not carved and WorldCaves.is_biome_chamber(world_x, world_y, world_z, surface_y, biome):
 						carved = true

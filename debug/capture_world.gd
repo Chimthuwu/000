@@ -15,10 +15,14 @@ func _initialize() -> void:
 	var world = scene.get_node_or_null("VoxelWorld")
 	var player = scene.get_node_or_null("Player")
 	var frames := 0
-	while (world == null or player == null or not bool(world.is_generated) or not bool(player.spawned)) and frames < 900:
+	var deadline := Time.get_ticks_msec() + 60000
+	while (world == null or player == null or not bool(world.is_generated) or not bool(player.spawned)) and Time.get_ticks_msec() < deadline:
 		await process_frame
 		frames += 1
-	for _settle in range(45):
+	# Wait in wall-clock time: an uncapped window can burn hundreds of frames
+	# before the streaming workers finish.
+	var settle_end := Time.get_ticks_msec() + 2500
+	while Time.get_ticks_msec() < settle_end:
 		await process_frame
 	await RenderingServer.frame_post_draw
 	var image := root.get_texture().get_image()

@@ -607,7 +607,9 @@ func _park() -> void:
 		position = Vector3(float(fallback_x) + 0.5, float(world.get_surface_height(fallback_x, fallback_z) + 1), float(fallback_z) + 0.5)
 	parked_ready = true
 	if caster != null:
-		caster.show_context_hint("DUNE BUGGY WAITING EAST OF CAMP\nWALK CLOSE AND PRESS E", 4.5)
+		# The buggy is optional scenery in the sandbox; it must not advertise
+		# itself as a core traversal mechanic. The E prompt still works nearby.
+		pass
 
 
 func _can_park_at(x: int, z: int) -> bool:

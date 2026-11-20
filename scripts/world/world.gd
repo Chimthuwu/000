@@ -126,6 +126,9 @@ const BLOCK_RESOURCE_PATHS := [
 	"res://data/blocks/blood_ore.tres",
 	"res://data/blocks/radiant_crystal_ore.tres",
 	"res://data/blocks/pearl_ore.tres",
+	"res://data/blocks/ash.tres",
+	"res://data/blocks/obsidian.tres",
+	"res://data/blocks/hellstone.tres",
 ]
 const Generator = preload("res://scripts/world/world_generator.gd")
 const VegetationScript = preload("res://scripts/world/vegetation.gd")
@@ -134,6 +137,7 @@ const Mesher = preload("res://scripts/world/chunk_mesher.gd")
 const LightPropagator = preload("res://scripts/light/light_propagator.gd")
 const HorizonRidgesScript = preload("res://scripts/world/horizon_ridges.gd")
 const WaterScript = preload("res://scripts/world/water_surface.gd")
+const TerrainAtlasScript = preload("res://scripts/world/terrain_atlas.gd")
 
 @export var world_seed := 139732
 
@@ -151,6 +155,8 @@ var sun_light: DirectionalLight3D
 var block_defs: Array[BlockLightDef] = []
 var block_ids: Dictionary = {}
 var palette := PackedColorArray()
+# block id -> Vector3i(top tile, side tile, bottom tile) in TerrainAtlas.
+var terrain_tiles: Array = []
 # 1 = blocks movement, 0 = liquids (walk/fall through). Keeping this as a
 # packed byte lookup keeps the physics hot path allocation-free.
 var solid_flags := PackedByteArray()
@@ -196,6 +202,9 @@ var generation_focus_stamp := -100.0
 # Smoothed biome atmosphere (read by DayNightCycle when writing the fog).
 var biome_fog_scale := 1.0
 var biome_fog_tint := Color(1.0, 1.0, 1.0)
+# True while the camera is below the Underworld threshold. The deep layer must
+# not inherit daylight sky fill, sun or the surface biome's green fog.
+var deep_layer := false
 
 var generation_queue: Array[Vector3i] = []
 var generation_set: Dictionary = {}
@@ -300,7 +309,8 @@ func _load_block_palette() -> void:
 	world_material.set_shader_parameter("ambient_sky_level", ambient_sky_level)
 	world_material.set_shader_parameter("sun_strength", 0.0)
 	world_material.set_shader_parameter("detail_texture", _create_detail_texture())
-	world_material.set_shader_parameter("detail_strength", 0.8)
+	world_material.set_shader_parameter("detail_strength", 0.35)
+	world_material.set_shader_parameter("atlas_texture", TerrainAtlasScript.texture())
 	for path in BLOCK_RESOURCE_PATHS:
 		var definition := load(path) as BlockLightDef
 		if definition == null:
@@ -317,6 +327,7 @@ func _load_block_palette() -> void:
 		solid_flags.append(1 if definition.is_solid_block else 0)
 		if definition.block_id == &"air":
 			air_id = block_index
+	terrain_tiles = TerrainAtlasScript.block_tile_table(block_defs)
 	fixture_ids.clear()
 	for fixture in [&"torch", &"pale_bloom", &"mycelium", &"lumen_crystal", &"beacon", &"water", &"lava"]:
 		if block_ids.has(fixture):
@@ -998,7 +1009,7 @@ func _fill_mesh_workers() -> void:
 
 
 func _mesh_chunk_task(coords: Vector3i, revision: int, block_snapshot: PackedByteArray, light_snapshot: PackedByteArray, sky_snapshot: PackedByteArray, light_sources: Array) -> void:
-	var mesh_data := Mesher.build(block_snapshot, light_snapshot, sky_snapshot, palette, air_id, fixture_ids, emissive_ids, light_sources)
+	var mesh_data := Mesher.build(block_snapshot, light_snapshot, sky_snapshot, palette, air_id, fixture_ids, emissive_ids, light_sources, terrain_tiles)
 	worker_mutex.lock()
 	mesh_results[coords] = {"revision": revision, "mesh": mesh_data}
 	worker_mutex.unlock()
@@ -1044,7 +1055,7 @@ func _apply_mesh_result(coords: Vector3i, result: Dictionary) -> void:
 		return
 	var chunk = record["node"]
 	var vertices: PackedVector3Array = result["vertices"]
-	chunk.install_geometry(vertices, result["normals"], result["colors"], result["uv2"])
+	chunk.install_geometry(vertices, result["normals"], result["colors"], result["uv2"], result.get("uvs", PackedVector2Array()))
 	if not bool(record["mesh_installed"]):
 		record["mesh_installed"] = true
 		meshed_chunk_count += 1
@@ -1307,6 +1318,16 @@ func _update_biome_atmosphere(delta: float) -> void:
 		target_tint.r += weights[index] * tint.r
 		target_tint.g += weights[index] * tint.g
 		target_tint.b += weights[index] * tint.b
+	var surface_y := get_surface_height(floori(position.x), floori(position.z))
+	deep_layer = WorldLayers.is_underworld(floori(position.y), surface_y)
+	# The surface horizon rings and haze annulus must never show underground:
+	# they are the beige flat plane that otherwise fills an Underworld view.
+	if horizon_ridges != null:
+		horizon_ridges.visible = not deep_layer
+	if deep_layer:
+		# Ember haze, not the surface biome's green atmosphere.
+		target_scale = 2.2
+		target_tint = Color(0.62, 0.26, 0.18)
 	var blend := 1.0 - exp(-delta * 1.2)
 	biome_fog_scale = lerpf(biome_fog_scale, target_scale, blend)
 	biome_fog_tint = biome_fog_tint.lerp(target_tint, blend)
@@ -1316,6 +1337,9 @@ func set_sun(direction: Vector3, color: Color, strength: float) -> void:
 		return
 	var sun_direction := direction.normalized()
 	var sun_strength := clampf(strength, 0.0, 1.0)
+	# The Underworld is lit by lava, hellstone and torches, never by the sun.
+	if deep_layer:
+		sun_strength = 0.0
 	world_material.set_shader_parameter("sun_direction", sun_direction)
 	world_material.set_shader_parameter("sun_color", Vector3(color.r, color.g, color.b))
 	world_material.set_shader_parameter("sun_strength", sun_strength)
@@ -1330,6 +1354,8 @@ func set_sun(direction: Vector3, color: Color, strength: float) -> void:
 
 func set_ambient_sky_level(level: float) -> void:
 	ambient_sky_level = clampf(level, 0.0, 1.0)
+	if deep_layer:
+		ambient_sky_level = minf(ambient_sky_level, 0.06)
 	if world_material != null:
 		world_material.set_shader_parameter("ambient_sky_level", ambient_sky_level)
 	if vegetation != null:

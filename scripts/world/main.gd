@@ -86,7 +86,7 @@ func _update_environmental_clues(delta: float) -> void:
 		return
 	last_clue_site = site_key
 	if hud != null and not site_key.is_empty():
-		hud.show_world_hint("ABANDONED CAMP — a cold torch and scattered ore. Something ate the rest.", 5.0)
+		hud.show_world_hint("ABANDONED CAMP — a cold torch and scattered ore.", 5.0)
 
 
 # The Hallow is reserved for a future end-of-pre-hardmode Underworld event.
@@ -103,7 +103,7 @@ func _refresh_hallow() -> void:
 
 func _on_unsettling_event(_position: Vector3) -> void:
 	if hud != null:
-		hud.show_world_hint("SOMETHING MOVES BEYOND THE LIGHT", 4.0)
+		hud.show_world_hint("THE CAVERNS SHIFT IN THE DARK", 4.0)
 
 
 func _on_player_died() -> void:

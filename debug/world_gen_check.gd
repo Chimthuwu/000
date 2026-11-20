@@ -55,7 +55,8 @@ func _check_layers() -> void:
 		WorldLayers.Layer.UNDERGROUND: WorldLayers.layer_at(surface - 30, surface),
 		WorldLayers.Layer.DEEP: WorldLayers.layer_at(surface - 80, surface),
 		WorldLayers.Layer.CAVERN: WorldLayers.layer_at(surface - 120, surface),
-		WorldLayers.Layer.ABYSS: WorldLayers.layer_at(surface - 170, surface),
+		WorldLayers.Layer.ABYSS: WorldLayers.layer_at(surface - 155, surface),
+		WorldLayers.Layer.UNDERWORLD: WorldLayers.layer_at(surface - 170, surface),
 		WorldLayers.Layer.SKY: WorldLayers.layer_at(surface + 3, surface),
 	}
 	var ok := true

@@ -18,7 +18,11 @@ uniform vec3 flashlight_color = vec3(1.0, 0.89, 0.72);
 uniform vec3 static_light_color = vec3(1.0);
 uniform sampler2D detail_texture : source_color, filter_nearest, repeat_enable;
 uniform float detail_strength : hint_range(0.0, 1.0) = 0.65;
+// Pixel-art terrain atlas. Tiles are greyscale detail; the vertex colour
+// carries the material palette, so one atlas serves every biome variant.
+uniform sampler2D atlas_texture : source_color, filter_nearest, repeat_disable;
 
+varying vec2 atlas_uv;
 varying vec3 fragment_world_position;
 varying vec3 fragment_world_normal;
 varying vec3 base_color_detail;
@@ -76,6 +80,7 @@ float dynamic_flashlight_level() {
 }
 
 void vertex() {
+	atlas_uv = UV;
 	fragment_world_position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	fragment_world_normal = normalize(MODEL_NORMAL_MATRIX * NORMAL);
 	static_light_value = clamp(COLOR.a, 0.0, 1.0);
@@ -124,7 +129,11 @@ void fragment() {
 	vec3 detail_y = texture(detail_texture, fragment_world_position.xz).rgb;
 	vec3 detail_z = texture(detail_texture, fragment_world_position.xy).rgb;
 	vec3 block_detail = detail_x * detail_weights.x + detail_y * detail_weights.y + detail_z * detail_weights.z;
-	vec3 surface_color = base_color_detail * mix(vec3(1.0), block_detail, detail_strength);
+	vec3 tile_detail = texture(atlas_texture, atlas_uv).rgb;
+	// Lift the tile response so texture grain reads as surface detail instead
+	// of darkening every material; highlights still come from the sun pass.
+	tile_detail = tile_detail * 1.15 + 0.07;
+	vec3 surface_color = base_color_detail * tile_detail * mix(vec3(1.0), block_detail, detail_strength);
 
 	EMISSION = surface_color * graded_light * fill_tint;
 	ALBEDO = surface_color;

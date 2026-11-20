@@ -11,7 +11,7 @@ class_name WorldBiomes
 # result through VoxelWorld.get_underground_biome(cell) for spawn metadata,
 # ambience and discovery hints.
 
-enum Underground { NORMAL = 0, FUNGAL = 1, VOLCANIC = 2, CRYSTAL = 3, FROZEN = 4, ANCIENT = 5, JUNGLE = 6, CORRUPTION = 7, CRIMSON = 8, HALLOW = 9, OCEAN = 10 }
+enum Underground { NORMAL = 0, FUNGAL = 1, VOLCANIC = 2, CRYSTAL = 3, FROZEN = 4, ANCIENT = 5, JUNGLE = 6, CORRUPTION = 7, CRIMSON = 8, HALLOW = 9, OCEAN = 10, UNDERWORLD = 11 }
 
 static var _seed := -1
 static var _noise: Dictionary = {}
@@ -48,6 +48,8 @@ static func _ensure() -> void:
 static func underground_biome_at(x: int, y: int, z: int, surface_y: int, surface_biome: int) -> int:
 	_ensure()
 	var depth := surface_y - y
+	if depth >= WorldLayers.UNDERWORLD_DEPTH:
+		return Underground.UNDERWORLD
 	if depth < 6:
 		return Underground.NORMAL
 	# Core surface identities own their shallow underground. This is what makes
@@ -121,6 +123,8 @@ static func stone_name(underground_biome: int, depth: int) -> StringName:
 			return &"pearlstone"
 		Underground.OCEAN:
 			return &"reefstone" if depth < 80 else &"cavern_stone"
+		Underground.UNDERWORLD:
+			return &"ash"
 	if depth < WorldLayers.UPPER_DEPTH:
 		return &"stone"
 	if depth < WorldLayers.DEEP_DEPTH:
@@ -153,6 +157,8 @@ static func enemy_tag(underground_biome: int) -> StringName:
 			return &"hallow"
 		Underground.OCEAN:
 			return &"ocean"
+		Underground.UNDERWORLD:
+			return &"underworld"
 		_:
 			return &"underground"
 
@@ -174,6 +180,8 @@ static func ambient_light(underground_biome: int) -> float:
 			return 0.08
 		Underground.OCEAN:
 			return 0.10
+		Underground.UNDERWORLD:
+			return 0.28
 		_:
 			return 0.0
 
@@ -200,5 +208,7 @@ static func biome_name(underground_biome: int) -> String:
 			return "Hallow Caverns"
 		Underground.OCEAN:
 			return "Ocean Floor"
+		Underground.UNDERWORLD:
+			return "The Underworld"
 		_:
 			return "Deep Rock"

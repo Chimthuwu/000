@@ -19,7 +19,7 @@ func configure(coords: Vector3i, origin: Vector3, material: Material) -> void:
 	# for every 16^3 chunk was the largest main-thread cost in streaming.
 
 
-func install_geometry(vertices: PackedVector3Array, normals: PackedVector3Array, colors: PackedColorArray, uv2: PackedVector2Array) -> void:
+func install_geometry(vertices: PackedVector3Array, normals: PackedVector3Array, colors: PackedColorArray, uv2: PackedVector2Array, uvs: PackedVector2Array = PackedVector2Array()) -> void:
 	if vertices.is_empty():
 		mesh_instance.mesh = null
 		return
@@ -29,6 +29,8 @@ func install_geometry(vertices: PackedVector3Array, normals: PackedVector3Array,
 	arrays[Mesh.ARRAY_NORMAL] = normals
 	arrays[Mesh.ARRAY_COLOR] = colors
 	arrays[Mesh.ARRAY_TEX_UV2] = uv2
+	if not uvs.is_empty():
+		arrays[Mesh.ARRAY_TEX_UV] = uvs
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	mesh_instance.mesh = mesh

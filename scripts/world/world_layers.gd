@@ -13,7 +13,8 @@ class_name WorldLayers
 #   24..63              Underground
 #   64..107             Deep underground (deepstone, richer ore)
 #   108..149            Cavern depths (cavern stone, lava, big caverns)
-#   150+                Abyss (ancient crystal realm, rarest resources)
+#   150..167            Abyss (ancient crystal realm, rarest resources)
+#   168+                Underworld (ash, lava seas, obsidian, hellstone)
 #
 # The world slab is 256 blocks tall and the surface sits near y=192, giving ~190
 # blocks of genuine descent plus ~64 blocks of sky headroom for future sky
@@ -29,8 +30,13 @@ const UPPER_DEPTH := 24
 const UNDERGROUND_DEPTH := 64
 const DEEP_DEPTH := 108
 const CAVERN_DEPTH := 150
+const UNDERWORLD_DEPTH := 168
 
-enum Layer { SURFACE = 0, UPPER_UNDERGROUND = 1, UNDERGROUND = 2, DEEP = 3, CAVERN = 4, ABYSS = 5, SKY = 6 }
+enum Layer { SURFACE = 0, UPPER_UNDERGROUND = 1, UNDERGROUND = 2, DEEP = 3, CAVERN = 4, ABYSS = 5, SKY = 6, UNDERWORLD = 7 }
+
+
+static func is_underworld(y: int, surface_y: int) -> bool:
+	return surface_y - y >= UNDERWORLD_DEPTH
 
 
 static func depth_below_surface(y: int, surface_y: int) -> int:
@@ -51,7 +57,9 @@ static func layer_at(y: int, surface_y: int) -> int:
 		return Layer.DEEP
 	if depth < CAVERN_DEPTH:
 		return Layer.CAVERN
-	return Layer.ABYSS
+	if depth < UNDERWORLD_DEPTH:
+		return Layer.ABYSS
+	return Layer.UNDERWORLD
 
 
 static func layer_name(layer: int) -> String:
@@ -68,6 +76,8 @@ static func layer_name(layer: int) -> String:
 			return "Cavern Depths"
 		Layer.ABYSS:
 			return "The Abyss"
+		Layer.UNDERWORLD:
+			return "The Underworld"
 		_:
 			return "Sky"
 
@@ -82,7 +92,9 @@ static func zone_at(y: int, surface_y: int) -> int:
 		return 1
 	if depth < CAVERN_DEPTH:
 		return 2
-	return 3
+	if depth < UNDERWORLD_DEPTH:
+		return 3
+	return 4
 
 
 # Normalised 0..1 progress into the underground, useful for fog/ambience.

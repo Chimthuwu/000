@@ -148,6 +148,8 @@ static func ore_at(x: int, y: int, z: int, surface_y: int, biome: int, undergrou
 			pool.append([&"radiant_crystal_ore", 8, 180, 2.2, 0.50])
 		WorldBiomes.Underground.OCEAN:
 			pool.append([&"pearl_ore", 4, 110, 2.2, 0.50])
+		WorldBiomes.Underground.UNDERWORLD:
+			pool.append([&"hellstone", 168, 260, 3.4, 0.46])
 	if depth >= WorldLayers.DEEP_DEPTH:
 		for entry: Array in VOLCANIC_ORES:
 			if float(entry[3]) > 0.0:

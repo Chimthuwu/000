@@ -56,7 +56,8 @@ var status_message := ""
 var status_time := 0.0
 var mining_target := Vector3i(-1, -1, -1)
 var mining_progress := 0.0
-var camera_mode := 0  # 0 = first person, 1 = third person
+var camera_mode := 1  # 0 = first person, 1 = third person (default)
+var avatar: Node3D
 var _fall_start_y := 0.0
 var _interact_cooldown := 0.0
 var _discovery_check_time := 0.0
@@ -105,6 +106,7 @@ func _ready() -> void:
 	if viewmodel != null:
 		viewmodel.visible = false
 		viewmodel.set_process_mode(Node.PROCESS_MODE_DISABLED)
+	_build_avatar()
 
 	# Starter kit: real tools/weapons, granted once so reloads never duplicate.
 	if not progression.has_flag(&"starter_kit_granted"):
@@ -305,8 +307,39 @@ func aim_direction() -> Vector3:
 	return -camera.global_basis.z.normalized()
 
 
+func _build_avatar() -> void:
+	# A small blocky explorer so third person actually shows the player.
+	avatar = Node3D.new()
+	avatar.name = "Avatar"
+	add_child(avatar)
+	_avatar_box(Vector3(0.52, 0.58, 0.30), Vector3(0.0, 1.06, 0.0), Color(0.20, 0.42, 0.62))
+	_avatar_box(Vector3(0.34, 0.32, 0.32), Vector3(0.0, 1.54, 0.0), Color(0.86, 0.68, 0.52))
+	_avatar_box(Vector3(0.12, 0.10, 0.12), Vector3(0.0, 1.74, 0.0), Color(0.34, 0.22, 0.14))
+	_avatar_box(Vector3(0.16, 0.46, 0.18), Vector3(-0.34, 1.06, 0.0), Color(0.16, 0.34, 0.52))
+	_avatar_box(Vector3(0.16, 0.46, 0.18), Vector3(0.34, 1.06, 0.0), Color(0.16, 0.34, 0.52))
+	_avatar_box(Vector3(0.20, 0.54, 0.22), Vector3(-0.14, 0.34, 0.0), Color(0.28, 0.24, 0.30))
+	_avatar_box(Vector3(0.20, 0.54, 0.22), Vector3(0.14, 0.34, 0.0), Color(0.28, 0.24, 0.30))
+	avatar.visible = camera_mode == 1
+
+
+func _avatar_box(size: Vector3, at: Vector3, color: Color) -> void:
+	var mesh := BoxMesh.new()
+	mesh.size = size
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.roughness = 0.95
+	mesh.material = material
+	var part := MeshInstance3D.new()
+	part.mesh = mesh
+	part.position = at
+	part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	avatar.add_child(part)
+
+
 func _toggle_camera_mode() -> void:
 	camera_mode = 1 - camera_mode
+	if avatar != null:
+		avatar.visible = camera_mode == 1
 	if camera_mode == 0:
 		camera.position = Vector3(0.0, 1.62, 0.0)
 	camera_mode_changed.emit(camera_mode)
@@ -319,14 +352,16 @@ func _update_camera(delta: float) -> void:
 		return
 	var head := global_position + Vector3.UP * 1.62
 	var back := camera.global_basis.z.normalized()
-	var desired := head + back * 4.2 + Vector3.UP * 0.45
-	var steps := 14
+	var desired := head + back * 3.4 + Vector3.UP * 0.80
+	var steps := 16
+	var safe := head
 	for index in range(1, steps + 1):
 		var probe := head.lerp(desired, float(index) / float(steps))
 		var cell := Vector3i(floori(probe.x), floori(probe.y), floori(probe.z))
 		if gateway.inside(cell) and gateway.is_solid(cell):
-			desired = head.lerp(probe, 0.82)
+			desired = safe
 			break
+		safe = probe
 	camera.global_position = camera.global_position.lerp(desired, clampf(delta * 12.0, 0.0, 1.0))
 
 

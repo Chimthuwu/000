@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="BlockLightDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/light/block_light_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+block_id = &"ash"
+attenuation = 1
+albedo = Color(0.34, 0.29, 0.27, 1)
+display_name = "Ash"
+hardness = 0.8
+mining_tier = 0
