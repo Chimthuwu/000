@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"hushwood_seed_core"
+display_name = "Hushwood Seed Core"
+description = "A living seed that silences sound. A boss's gift, and a world-changer."
+category = 6
+stack_limit = 16
+rarity = 4
+value = 500
+is_ingredient = false

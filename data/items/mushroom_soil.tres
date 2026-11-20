@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"mushroom_soil"
+display_name = "Mushroom Soil"
+description = "Rich Glowgrove earth, faintly luminous after dark."
+category = 0
+stack_limit = 999
+value = 2
+place_block = &"mushroom_soil"

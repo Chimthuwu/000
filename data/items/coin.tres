@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"coin"
+display_name = "Coin"
+description = "A small, portable token. Merchants accept it without questions."
+category = 7
+stack_limit = 9999
+rarity = 0
+value = 1
+is_ingredient = false

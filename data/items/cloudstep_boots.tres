@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"cloudstep_boots"
+display_name = "Cloudstep Boots"
+description = "Light boots that make the world feel a little shorter."
+category = 7
+stack_limit = 1
+rarity = 2
+value = 180
+equipment_slot = "accessory"
+move_speed_bonus = 0.35
+is_ingredient = false

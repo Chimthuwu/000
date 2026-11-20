@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"iron_axe"
+display_name = "Iron Axe"
+description = "A broad, heavy blade for the oldest groves."
+category = 1
+stack_limit = 1
+rarity = 2
+value = 120
+is_tool = true
+tool_type = "axe"
+tool_tier = 3
+mining_power = 4.0
+mining_speed = 4.6
+effective_blocks = [&"dead_wood", &"pale_wood"]
+durability = 2500
+is_ingredient = false

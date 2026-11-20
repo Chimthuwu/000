@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"copper_axe"
+display_name = "Copper Axe"
+description = "A sharper edge that makes short work of pale wood."
+category = 1
+stack_limit = 1
+rarity = 1
+value = 45
+is_tool = true
+tool_type = "axe"
+tool_tier = 2
+mining_power = 2.5
+mining_speed = 3.4
+effective_blocks = [&"dead_wood", &"pale_wood"]
+durability = 1200
+is_ingredient = false

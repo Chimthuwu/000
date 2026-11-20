@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="CraftingRecipe" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/crafting_recipe.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+recipe_id = &"craft_life_charm"
+display_name = "Life Charm"
+station = "workbench"
+ingredients = {&"gold_bar": 6, &"healing_salve": 4}
+outputs = {&"life_charm": 1}

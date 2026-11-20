@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="BlockLightDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/light/block_light_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+block_id = &"amber_ore"
+attenuation = 1
+albedo = Color(0.85, 0.62, 0.18, 1)
+emitted_light = 2
+display_name = "Amber Ore"
+hardness = 2.4
+mining_tier = 1

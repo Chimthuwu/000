@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="CraftingRecipe" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/crafting_recipe.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+recipe_id = &"craft_wooden_pickaxe"
+display_name = "Wooden Pickaxe"
+station = "workbench"
+ingredients = {&"wood": 3, &"stone": 2}
+outputs = {&"wooden_pickaxe": 1}

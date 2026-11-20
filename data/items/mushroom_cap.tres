@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"mushroom_cap"
+display_name = "Mushroom Cap"
+description = "A broad cap that glows softly. Glowgrover's favourite building material."
+category = 0
+stack_limit = 999
+value = 4
+place_block = &"mushroom_cap"

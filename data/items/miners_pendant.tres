@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"miners_pendant"
+display_name = "Miner's Pendant"
+description = "A crystal charm that makes every swing bite faster."
+category = 7
+stack_limit = 1
+rarity = 2
+value = 200
+equipment_slot = "accessory"
+mining_speed_bonus = 0.75
+is_ingredient = false

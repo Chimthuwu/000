@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/combat/attack_def.gd" id="2"]
+
+[sub_resource type="Resource" id="Resource_attack"]
+script = ExtResource("2")
+attack_id = &"swing_wood"
+kind = "melee"
+damage = 12.0
+cooldown = 0.55
+range = 2.6
+arc_degrees = 110.0
+knockback = 4.0
+accent_color = Color(0.96, 0.78, 0.48, 1)
+
+[resource]
+script = ExtResource("1")
+item_id = &"wooden_sword"
+display_name = "Wooden Sword"
+description = "A sharpened plank. Better than bare hands, barely."
+category = 2
+stack_limit = 1
+rarity = 0
+value = 14
+is_weapon = true
+attack = SubResource("Resource_attack")
+is_ingredient = false

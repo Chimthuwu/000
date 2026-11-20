@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"mushroom_stem"
+display_name = "Mushroom Stem"
+description = "Pale structural stalk from a giant Glowgrove cap."
+category = 0
+stack_limit = 999
+value = 3
+place_block = &"mushroom_stem"

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"life_charm"
+display_name = "Life Charm"
+description = "A living stone that adds twenty points of vitality and a little armour."
+category = 7
+stack_limit = 1
+rarity = 3
+value = 320
+equipment_slot = "accessory"
+defense_bonus = 1
+max_health_bonus = 20.0
+is_ingredient = false

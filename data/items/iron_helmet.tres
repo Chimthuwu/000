@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"iron_helmet"
+display_name = "Iron Helmet"
+description = "A full iron helm. The dark has to work harder now."
+category = 3
+stack_limit = 1
+rarity = 2
+value = 110
+equipment_slot = "head"
+armor = 4
+is_ingredient = false

@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"gold_pickaxe"
+display_name = "Gold Pickaxe"
+description = "The deepest tool. Nothing in the slab resists its edge."
+category = 1
+stack_limit = 1
+rarity = 3
+value = 600
+is_tool = true
+tool_type = "pickaxe"
+tool_tier = 5
+mining_power = 8.0
+mining_speed = 7.2
+effective_blocks = [&"gold_ore", &"cavern_stone", &"deepstone", &"lumen_crystal"]
+durability = 6000
+is_ingredient = false

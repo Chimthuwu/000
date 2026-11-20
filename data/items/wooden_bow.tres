@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/combat/attack_def.gd" id="2"]
+
+[sub_resource type="Resource" id="Resource_attack"]
+script = ExtResource("2")
+attack_id = &"arrow"
+kind = "ranged"
+damage = 15.0
+cooldown = 0.7
+range = 20.0
+knockback = 2.5
+projectile_speed = 30.0
+projectile_gravity = 6.0
+projectile_lifetime = 2.5
+accent_color = Color(0.92, 0.82, 0.56, 1)
+
+[resource]
+script = ExtResource("1")
+item_id = &"wooden_bow"
+display_name = "Wooden Bow"
+description = "A simple bow. Arcs under gravity, so lead your targets."
+category = 2
+stack_limit = 1
+rarity = 1
+value = 60
+is_weapon = true
+attack = SubResource("Resource_attack")
+is_ingredient = false

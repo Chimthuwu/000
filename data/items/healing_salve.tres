@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"healing_salve"
+display_name = "Healing Salve"
+description = "A bitter poultice that knits wounds in seconds."
+category = 4
+stack_limit = 30
+rarity = 1
+value = 12
+is_consumable = true
+heal_amount = 35.0

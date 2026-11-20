@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"iron_leggings"
+display_name = "Iron Leggings"
+description = "Locked iron greaves that turn a kick into a bump."
+category = 3
+stack_limit = 1
+rarity = 2
+value = 125
+equipment_slot = "legs"
+armor = 4
+is_ingredient = false

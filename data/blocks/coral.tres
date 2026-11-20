@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="BlockLightDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/light/block_light_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+block_id = &"coral"
+attenuation = 2
+albedo = Color(0.86, 0.36, 0.48, 1)
+emitted_light = 3
+display_name = "Coral"
+hardness = 0.4
+mining_tier = 0

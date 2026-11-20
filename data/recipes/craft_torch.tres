@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="CraftingRecipe" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/crafting_recipe.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+recipe_id = &"craft_torch"
+display_name = "Torch"
+station = "none"
+ingredients = {&"wood": 1, &"coal": 1}
+outputs = {&"torch": 4}

@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="BlockLightDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/light/block_light_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+block_id = &"magma_stone"
+attenuation = 1
+albedo = Color(0.30, 0.12, 0.10, 1)
+display_name = "Magma Stone"
+hardness = 3.5
+mining_tier = 2

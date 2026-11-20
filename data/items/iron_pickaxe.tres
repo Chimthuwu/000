@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"iron_pickaxe"
+display_name = "Iron Pickaxe"
+description = "Heavy and dependable. Opens the deep layers of the world."
+category = 1
+stack_limit = 1
+rarity = 2
+value = 120
+is_tool = true
+tool_type = "pickaxe"
+tool_tier = 3
+mining_power = 4.0
+mining_speed = 4.6
+effective_blocks = [&"iron_ore", &"lumen_crystal", &"frost_ice", &"stone"]
+durability = 2500
+is_ingredient = false

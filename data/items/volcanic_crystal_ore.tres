@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"volcanic_crystal_ore"
+display_name = "Volcanic Crystal Ore"
+description = "A crystal that keeps its own fire. Only the deepest tools can cut it."
+category = 0
+stack_limit = 999
+rarity = 4
+value = 70

@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"silver_pickaxe"
+display_name = "Silver Pickaxe"
+description = "A keen silver head. Breaks gold ore that iron cannot touch."
+category = 1
+stack_limit = 1
+rarity = 2
+value = 260
+is_tool = true
+tool_type = "pickaxe"
+tool_tier = 4
+mining_power = 6.0
+mining_speed = 5.8
+effective_blocks = [&"gold_ore", &"silver_ore", &"lumen_crystal", &"deepstone"]
+durability = 4000
+is_ingredient = false

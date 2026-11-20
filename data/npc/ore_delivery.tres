@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="QuestDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/npc/quest_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+quest_id = &"ore_delivery"
+display_name = "Ore for the Watch"
+required_items = {&"copper_ore": 6}
+rewards = {&"coin": 60, &"healing_salve": 2}
+unlock_flag = &"watch_friend"
+dialogue_id = &"watch_ore_delivery"

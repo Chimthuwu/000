@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"copper_pickaxe"
+display_name = "Copper Pickaxe"
+description = "A real mining tool. Fast enough to bite into iron ore."
+category = 1
+stack_limit = 1
+rarity = 1
+value = 45
+is_tool = true
+tool_type = "pickaxe"
+tool_tier = 2
+mining_power = 2.5
+mining_speed = 3.4
+effective_blocks = [&"iron_ore", &"frost_ice", &"stone"]
+durability = 1200
+is_ingredient = false

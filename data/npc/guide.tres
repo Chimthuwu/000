@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="NpcProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/npc/npc_profile.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+npc_id = &"guide"
+display_name = "Guide"
+role = "guide"
+housing_flag = &"npc_resident_guide"
+dialogue_id = &"guide_intro"

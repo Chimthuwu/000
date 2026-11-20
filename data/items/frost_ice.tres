@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"frost_ice"
+display_name = "Frost Ice"
+description = "Glass-clear ice from the northern spires. Cold to the touch."
+category = 0
+stack_limit = 999
+rarity = 1
+value = 6
+place_block = &"frost_ice"

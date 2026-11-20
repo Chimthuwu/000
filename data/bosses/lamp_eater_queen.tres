@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="BossDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/progression/boss_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/items/loot_table.gd" id="2"]
+
+[sub_resource type="Resource" id="Resource_loot"]
+script = ExtResource("2")
+table_id = &"queen_loot"
+entries = [{"item": &"hushwood_seed_core", "min": 1, "max": 1, "chance": 1.0}, {"item": &"lumen_crystal", "min": 3, "max": 6, "chance": 1.0}]
+
+[resource]
+script = ExtResource("1")
+boss_id = &"lamp_eater_queen"
+display_name = "Lamp Eater Queen"
+required_flags = [&"unlocked_queen_encounter"]
+unlock_flags = [&"hushwood_seed_granted", &"unlocked_magic"]
+loot_table = SubResource("Resource_loot")
+arena_condition = "lit_arena_beacons>=4"

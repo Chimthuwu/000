@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="BlockLightDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/light/block_light_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+block_id = &"volcanic_crystal_ore"
+attenuation = 1
+albedo = Color(1, 0.44, 0.16, 1)
+emitted_light = 6
+display_name = "Volcanic Crystal"
+hardness = 6.0
+mining_tier = 5

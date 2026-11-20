@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"coal"
+display_name = "Coal"
+description = "Black fuel. Burns hot and long in a furnace."
+category = 0
+stack_limit = 999
+rarity = 0
+value = 3

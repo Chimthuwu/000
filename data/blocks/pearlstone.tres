@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="BlockLightDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/light/block_light_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+block_id = &"pearlstone"
+attenuation = 1
+albedo = Color(0.80, 0.74, 0.88, 1)
+display_name = "Pearlstone"
+hardness = 2.2
+mining_tier = 1

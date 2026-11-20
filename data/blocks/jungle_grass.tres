@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="BlockLightDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/light/block_light_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+block_id = &"jungle_grass"
+attenuation = 1
+albedo = Color(0.20, 0.52, 0.24, 1)
+display_name = "Jungle Grass"
+hardness = 0.7
+mining_tier = 0
