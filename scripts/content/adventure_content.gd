@@ -4,7 +4,7 @@ class_name AdventureContent
 # Agent 4 — World Design / Adventure Architect. CANONICAL PORT.
 #
 # Deterministic content stamping for the authored adventure region
-# "The Undercroft". Adapted to the canonical Deepworld engine:
+# "The Undercroft". Adapted to the canonical Terraria 3D engine:
 #   * WorldLayers.WORLD_Y (256), not a hardcoded 64.
 #   * Room Y is DEPTH-RELATIVE: levels are derived from the minimum local
 #     surface across the region so rooms stay buried under any terrain.

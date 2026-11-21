@@ -50,9 +50,9 @@ const FACE_CORNER_SIGNS := [
 	[Vector2i(-1, -1), Vector2i(-1, 1), Vector2i(1, 1), Vector2i(1, -1)]
 ]
 const AO_SHADE := [1.0, 0.82, 0.66, 0.46]
-# Coloured light cast: torches warm, lumen crystals cool.
+# Coloured light cast: torches warm, radiant crystals cool.
 # UV2.x gates sky fill, UV2.y scales the sun. Canopy columns get no sky fill
-# and a heavily cut sun term, which is what keeps the Hushwoods dark at noon.
+# and a heavily cut sun term, which is what keeps the Jungle dark at noon.
 const HUSH_SUN_SHADE := 0.22
 const LIGHT_TINT_RADIUS := 12.0
 const WARM_LIGHT_TINT := Color(1.0, 0.66, 0.34)
@@ -66,7 +66,7 @@ static func _sky_uv(sky_value: int) -> Vector2:
 		# Deep canopy: no sky fill and only a sliver of direct sun.
 		return Vector2(0.0, HUSH_SUN_SHADE)
 	if sky_value == 3:
-		# Overcast: diffuse fill, muted direct sun (Frostfall and The Mire).
+		# Overcast: diffuse fill, muted direct sun (Snow and Forest).
 		return Vector2(0.70, 0.50)
 	return Vector2(1.0, 1.0)
 
@@ -105,7 +105,7 @@ static func build(snapshot: PackedByteArray, light_snapshot: PackedByteArray, sk
 				var cell := Vector3i(x, y, z)
 				var hash_value := (x * 73856093) ^ (y * 19349663) ^ (z * 83492791)
 				var tone := float(hash_value & 0xFF) / 255.0
-				var variation := 0.88 + tone * 0.24
+				var variation := 0.94 + tone * 0.12
 				# Deterministic per-cell hue jitter so a large flat surface reads as
 				# individual pixel-art blocks instead of one tinted plane.
 				var hue_jitter := Color(
@@ -248,6 +248,103 @@ static func _append_fixture(vertices: PackedVector3Array, normals: PackedVector3
 		_append_crystal(vertices, normals, colors, uv2, uvs, origin, block_color, light_alpha, sky_value, tone, run_height, fixture_tile)
 	elif fixture == &"mycelium":
 		_append_cross(vertices, normals, colors, uv2, uvs, origin, 0.32, 0.18 + tone * 0.12, block_color, light_alpha, sky_value, tone, fixture_tile)
+	elif fixture == &"wood_platform":
+		# Deck flush with the top of the cell, so a platform is exactly a
+		# surface you can stand on, with two brackets underneath for the
+		# Terraria plank silhouette.
+		var rail := block_color.darkened(0.30)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.5, 0.93, 0.5), Vector3(0.99, 0.14, 0.99), block_color, light_alpha, sky_value, 40)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.5, 0.79, 0.09), Vector3(0.99, 0.18, 0.12), rail, light_alpha, sky_value, 39)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.5, 0.79, 0.91), Vector3(0.99, 0.18, 0.12), rail, light_alpha, sky_value, 39)
+	elif fixture == &"glass":
+		# A clear pane: only the frame is drawn, so you genuinely look through
+		# the window while the block still blocks movement.
+		var frame := Color(0.86, 0.94, 0.98, 1.0)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.5, 0.05, 0.5), Vector3(0.99, 0.10, 0.99), frame, light_alpha, sky_value, 41)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.5, 0.95, 0.5), Vector3(0.99, 0.10, 0.99), frame, light_alpha, sky_value, 41)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.05, 0.5, 0.5), Vector3(0.10, 0.90, 0.99), frame, light_alpha, sky_value, 41)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.95, 0.5, 0.5), Vector3(0.10, 0.90, 0.99), frame, light_alpha, sky_value, 41)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.5, 0.5, 0.5), Vector3(0.99, 0.05, 0.99), frame, light_alpha, sky_value, 41)
+	elif fixture == &"workbench":
+		var leg := block_color.darkened(0.28)
+		var iron := Color(0.44, 0.46, 0.50, 1.0)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.5, 0.86, 0.5), Vector3(0.98, 0.12, 0.98), block_color, light_alpha, sky_value, 42)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.09, 0.44, 0.09), Vector3(0.10, 0.80, 0.10), leg, light_alpha, sky_value, 39)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.91, 0.44, 0.09), Vector3(0.10, 0.80, 0.10), leg, light_alpha, sky_value, 39)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.09, 0.44, 0.91), Vector3(0.10, 0.80, 0.10), leg, light_alpha, sky_value, 39)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.91, 0.44, 0.91), Vector3(0.10, 0.80, 0.10), leg, light_alpha, sky_value, 39)
+		# A vice clamped to the bench and a hammer lying on it.
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.17, 0.96, 0.5), Vector3(0.20, 0.12, 0.28), iron, light_alpha, sky_value, 47)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.62, 0.96, 0.45), Vector3(0.26, 0.06, 0.10), iron, light_alpha, sky_value, 47)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.74, 0.95, 0.45), Vector3(0.05, 0.05, 0.05), leg, light_alpha, sky_value, 39)
+	elif fixture == &"furnace":
+		var brick := block_color
+		var mouth := Color(1.0, 0.58, 0.18, 1.0)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.5, 0.44, 0.5), Vector3(0.92, 0.86, 0.92), brick, light_alpha, sky_value, 43)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.5, 0.90, 0.5), Vector3(0.74, 0.10, 0.74), brick.darkened(0.25), light_alpha, sky_value, 43)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.5, 0.30, 0.05), Vector3(0.54, 0.40, 0.10), mouth, light_alpha, sky_value, 27)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.5, 0.49, 0.05), Vector3(0.58, 0.10, 0.12), brick.darkened(0.40), light_alpha, sky_value, 0)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.5, 0.08, 0.5), Vector3(0.98, 0.12, 0.98), brick.darkened(0.35), light_alpha, sky_value, 43)
+	elif fixture == &"anvil":
+		var dark_iron := Color(0.30, 0.32, 0.36, 1.0)
+		var steel := Color(0.52, 0.55, 0.60, 1.0)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.5, 0.07, 0.5), Vector3(0.46, 0.14, 0.34), dark_iron, light_alpha, sky_value, 47)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.5, 0.24, 0.5), Vector3(0.28, 0.22, 0.24), dark_iron, light_alpha, sky_value, 47)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.54, 0.42, 0.5), Vector3(0.66, 0.18, 0.34), steel, light_alpha, sky_value, 47)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.16, 0.42, 0.5), Vector3(0.26, 0.12, 0.18), steel, light_alpha, sky_value, 47)
+	elif fixture == &"chest":
+		var band := Color(0.30, 0.31, 0.35, 1.0)
+		var lock := Color(0.92, 0.76, 0.34, 1.0)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.5, 0.34, 0.5), Vector3(0.86, 0.64, 0.64), block_color, light_alpha, sky_value, 44)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.5, 0.70, 0.5), Vector3(0.90, 0.14, 0.68), block_color.lightened(0.08), light_alpha, sky_value, 44)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.24, 0.48, 0.5), Vector3(0.08, 0.66, 0.68), band, light_alpha, sky_value, 26)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.76, 0.48, 0.5), Vector3(0.08, 0.66, 0.68), band, light_alpha, sky_value, 26)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.5, 0.58, 0.16), Vector3(0.14, 0.18, 0.10), lock, light_alpha, sky_value, 26)
+	elif fixture == &"chair":
+		# Terraria chair: four legs, a seat at hip height and a slatted back.
+		var timber := block_color
+		var leg_wood := block_color.darkened(0.30)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.5, 0.47, 0.5), Vector3(0.52, 0.09, 0.52), timber, light_alpha, sky_value, 48)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.5, 0.76, 0.14), Vector3(0.52, 0.50, 0.09), timber, light_alpha, sky_value, 48)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.5, 0.90, 0.14), Vector3(0.40, 0.08, 0.12), leg_wood, light_alpha, sky_value, 48)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.24, 0.22, 0.24), Vector3(0.08, 0.44, 0.08), leg_wood, light_alpha, sky_value, 48)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.76, 0.22, 0.24), Vector3(0.08, 0.44, 0.08), leg_wood, light_alpha, sky_value, 48)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.24, 0.22, 0.76), Vector3(0.08, 0.44, 0.08), leg_wood, light_alpha, sky_value, 48)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.76, 0.22, 0.76), Vector3(0.08, 0.44, 0.08), leg_wood, light_alpha, sky_value, 48)
+	elif fixture == &"stairs_n" or fixture == &"stairs_e" or fixture == &"stairs_s" or fixture == &"stairs_w":
+		# Minecraft-style stairs: a full bottom slab plus a half slab on the
+		# high side. The facing is the direction the steps climb.
+		var step_tile: int = block_tile.x
+		var stair_color := block_color
+		var step_shadow := block_color.darkened(0.18)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.5, 0.25, 0.5), Vector3(0.99, 0.5, 0.99), stair_color, light_alpha, sky_value, step_tile)
+		var high := Vector3(0.5, 0.75, 0.5)
+		var size := Vector3(0.99, 0.5, 0.5)
+		if fixture == &"stairs_n":
+			high.z = 0.25
+		elif fixture == &"stairs_s":
+			high.z = 0.75
+		elif fixture == &"stairs_e":
+			high.x = 0.75
+			size.x = 0.5
+		elif fixture == &"stairs_w":
+			high.x = 0.25
+			size.x = 0.5
+		_append_box(vertices, normals, colors, uv2, uvs, origin + high, size, step_shadow, light_alpha, sky_value, step_tile)
+	elif fixture == &"wood_door":
+		var trim := block_color.darkened(0.40)
+		var knob := Color(0.90, 0.74, 0.32, 1.0)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.5, 0.5, 0.03), Vector3(0.99, 1.0, 0.06), trim, light_alpha, sky_value, 45)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.5, 0.5, 0.10), Vector3(0.92, 0.98, 0.10), block_color, light_alpha, sky_value, 45)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.82, 0.48, 0.17), Vector3(0.09, 0.09, 0.06), knob, light_alpha, sky_value, 26)
+	elif fixture == &"wood_door_open":
+		# Swung into the cell: a thin panel hinged along the -X edge, leaving
+		# the doorway clear.
+		var trim_open := block_color.darkened(0.40)
+		var knob_open := Color(0.90, 0.74, 0.32, 1.0)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.03, 0.5, 0.5), Vector3(0.06, 1.0, 0.99), trim_open, light_alpha, sky_value, 46)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.10, 0.5, 0.5), Vector3(0.10, 0.98, 0.92), block_color, light_alpha, sky_value, 46)
+		_append_box(vertices, normals, colors, uv2, uvs, origin + Vector3(0.17, 0.48, 0.84), Vector3(0.06, 0.09, 0.09), knob_open, light_alpha, sky_value, 26)
 	else:
 		_append_cross(vertices, normals, colors, uv2, uvs, origin, 0.26, 0.50 + tone * 0.32, block_color, light_alpha, sky_value, tone, fixture_tile)
 

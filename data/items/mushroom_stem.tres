@@ -6,7 +6,7 @@
 script = ExtResource("1")
 item_id = &"mushroom_stem"
 display_name = "Mushroom Stem"
-description = "Pale structural stalk from a giant Glowgrove cap."
+description = "Pale structural stalk from a giant Mushroom cap."
 category = 0
 stack_limit = 999
 value = 3

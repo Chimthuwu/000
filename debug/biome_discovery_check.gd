@@ -3,7 +3,7 @@ extends SceneTree
 # Agent 4 Phase 4 validation: biome discoveries are deterministic, chunk-safe,
 # biome-complete, placed away from spawn/other structures, and appear in the
 # live canonical world. Run:
-#   Godot --headless --path lumen_deepworld --script res://debug/biome_discovery_check.gd
+#   Godot --headless --path Terraria3D --script res://debug/biome_discovery_check.gd
 
 var main: Node
 var failures := 0

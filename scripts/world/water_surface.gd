@@ -6,7 +6,7 @@ class_name ToxicWater
 #
 # The region scan evaluates biome noise for up to 192x192 cells; doing that on
 # the main thread produced 100-250ms hitches whenever the streaming centre
-# crossed the Mire. The scan now runs on a worker and only the small vertex
+# crossed the Forest. The scan now runs on a worker and only the small vertex
 # buffer is installed here.
 
 const WATER_LEVEL := BiomeManager.WATER_LEVEL

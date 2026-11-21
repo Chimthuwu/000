@@ -2,7 +2,7 @@ extends Node
 class_name DayNightCycle
 
 const CONFIG: DayNightConfig = preload("res://data/world/day_night_config.tres")
-const DAY_HORIZON_COLOR := Color(0.80, 0.74, 0.62, 1)
+const DAY_HORIZON_COLOR := Color(0.68, 0.84, 0.98, 1)
 const NIGHT_HORIZON_COLOR := Color(0.06, 0.08, 0.14, 1)
 const SUN_COLOR_DAY := Color(1.0, 0.88, 0.68, 1)
 const SUN_COLOR_LOW := Color(1.0, 0.56, 0.32, 1)
@@ -72,16 +72,16 @@ func _update_phase() -> void:
 	if is_instance_valid(environment):
 		environment.background_color = top_color
 		# Biome atmosphere: VoxelWorld smooths a fog scale/tint from the
-		# continuous biome weights (thick green in the Mire, pale haze in
-		# Frostfall, dim in the Hushwoods), so borders feather like the height.
+		# continuous biome weights (thick green in the Forest, pale haze in
+		# Snow, dim in the Jungle), so borders feather like the height.
 		var fog_scale := 1.0
 		var fog_tint := Color(1.0, 1.0, 1.0)
 		if is_instance_valid(world):
 			fog_scale = world.biome_fog_scale
 			fog_tint = world.biome_fog_tint
-		environment.fog_light_color = horizon_color.lerp(DAY_HORIZON_COLOR, 0.25 * daylight).lerp(fog_tint, 0.35)
-		environment.fog_light_energy = lerpf(0.26, 0.62, daylight)
-		environment.fog_density = lerpf(0.0030, 0.0016, daylight) * fog_scale
+		environment.fog_light_color = horizon_color.lerp(Color(0.66, 0.82, 0.96), 0.55 * daylight).lerp(fog_tint, 0.22)
+		environment.fog_light_energy = lerpf(0.18, 0.34, daylight)
+		environment.fog_density = lerpf(0.0022, 0.0009, daylight) * fog_scale
 		environment.ambient_light_color = top_color
 		# The world and vegetation shaders emit their own sky fill, so engine
 		# ambient would double-light them; the directional light only adds sun.

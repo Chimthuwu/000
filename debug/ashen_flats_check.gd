@@ -1,6 +1,6 @@
 extends SceneTree
 
-# Headless audit of the Ashen Flats redesign against the streaming engine:
+# Headless audit of the Forest redesign against the streaming engine:
 # canyon depth/coverage, gravel floors, rock cliffs, landmark spires, sparse
 # vegetation and the locked Ashen spawn basin.
 
@@ -76,8 +76,8 @@ func _run() -> void:
 	_check(vegetation.get_node_or_null("AshGrass") != null, "sparse ash tuft layer still exists")
 	_check(vegetation.tree_count <= 80, "dead trees are landmarks rather than clutter", "trees=%d" % vegetation.tree_count)
 	_check(vegetation.grass_count <= 700, "ground cover is sparse", "tufts=%d" % vegetation.grass_count)
-	_check(ashen_columns == SAMPLE * SAMPLE, "spawn region is locked to Ashen Flats", "columns=%d" % ashen_columns)
-	_check(canyon_columns >= 800, "Ashen Flats has broad canyon floors", "columns=%d" % canyon_columns)
+	_check(ashen_columns == SAMPLE * SAMPLE, "spawn region is locked to Forest", "columns=%d" % ashen_columns)
+	_check(canyon_columns >= 800, "Forest has broad canyon floors", "columns=%d" % canyon_columns)
 	_check(deep_columns >= 400, "canyons cut deeply into the flats", "depth<=16 columns=%d" % deep_columns)
 	_check(cliff_columns >= 90, "rocky cliff walls exist", "slope>=3 columns=%d" % cliff_columns)
 	_check(gravel_blocks >= 700, "canyon floors expose gravel", "blocks=%d" % gravel_blocks)
@@ -137,5 +137,5 @@ func _run() -> void:
 	if failures > 0:
 		quit(1)
 		return
-	print("ASHEN FLATS CHECK PASS: canyon terrain, rock detail and sparse cover verified")
+	print("FOREST CHECK PASS: canyon terrain, rock detail and sparse cover verified")
 	quit(0)

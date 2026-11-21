@@ -2,7 +2,7 @@ extends SceneTree
 
 # Windowed visual check for the generated Underworld: boots the world, drops the
 # player to a solid ash ledge near the lava sea and captures the viewport.
-#   Godot --path lumen_deepworld --script res://debug/capture_underworld.gd
+#   Godot --path Terraria3D --script res://debug/capture_underworld.gd
 
 const BiomeManager_UNDERWORLD_OFFSET := 178
 

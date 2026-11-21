@@ -9,7 +9,8 @@ class_name WorldSky
 #
 # The architecture intentionally mirrors WorldStructures: Agent 4 can later put
 # suspended ruins or sky resources on the returned site list without touching
-# streaming, meshing or persistence.
+# streaming, meshing or persistence. Tops use the same ashen-soil surface as
+# forest terrain; the underside is dirt, stone and tapered deepstone.
 
 const CELL := 80
 const CHANCE := 0.42
@@ -18,9 +19,11 @@ const MIN_RISE := 24
 const MAX_RISE := 52
 
 static func stamp_chunk(output: PackedByteArray, origin: Vector3i, world_seed: int, block_ids: Dictionary, air_id: int, stone_id: int) -> void:
-	var soil_id := int(block_ids.get(&"ashen_soil", stone_id))
+	var soil_id := int(block_ids.get(&"dirt", stone_id))
+	var grass_id := int(block_ids.get(&"ashen_soil", block_ids.get(&"jungle_grass", soil_id)))
+	var deepstone_id := int(block_ids.get(&"deepstone", stone_id))
+	var vine_id := int(block_ids.get(&"jungle_leaves", block_ids.get(&"dead_wood", -1)))
 	var crystal_id := int(block_ids.get(&"lumen_crystal", -1))
-	var wood_id := int(block_ids.get(&"dead_wood", -1))
 	var min_gx := floori(float(origin.x - REACH) / float(CELL))
 	var max_gx := floori(float(origin.x + 15 + REACH) / float(CELL))
 	var min_gz := floori(float(origin.z - REACH) / float(CELL))
@@ -41,37 +44,56 @@ static func stamp_chunk(output: PackedByteArray, origin: Vector3i, world_seed: i
 			if base_y + radius_y + 8 >= WorldLayers.WORLD_Y:
 				continue
 			# Cheap reject: this chunk cannot contain any of the island.
-			if origin.y + 15 < base_y - radius_y or origin.y > base_y + radius_y + 8:
+			var island_depth := int(round(float(radius_y) * 1.9))
+			if origin.y + 15 < base_y - island_depth or origin.y > base_y + radius_y + 8:
 				continue
-			_stamp_island(output, origin, rng, cx, base_y, cz, radius_x, radius_y, radius_z, stone_id, soil_id, crystal_id, wood_id)
+			_stamp_island(output, origin, rng, cx, base_y, cz, radius_x, radius_y, radius_z, stone_id, soil_id, grass_id, deepstone_id, crystal_id, vine_id)
 
 
-static func _stamp_island(output: PackedByteArray, origin: Vector3i, rng: RandomNumberGenerator, cx: int, cy: int, cz: int, rx: int, ry: int, rz: int, stone_id: int, soil_id: int, crystal_id: int, wood_id: int) -> void:
+static func _stamp_island(output: PackedByteArray, origin: Vector3i, rng: RandomNumberGenerator, cx: int, cy: int, cz: int, rx: int, ry: int, rz: int, stone_id: int, soil_id: int, grass_id: int, deepstone_id: int, crystal_id: int, vine_id: int) -> void:
 	var rx2 := float(rx * rx)
-	var ry2 := float(ry * ry)
 	var rz2 := float(rz * rz)
-	for dy in range(-ry, ry + 1):
-		for dz in range(-rz, rz + 1):
-			for dx in range(-rx, rx + 1):
-				var nx := float(dx * dx) / rx2
-				var ny := float(dy * dy) / ry2
-				var nz := float(dz * dz) / rz2
-				if nx + ny + nz > 1.0:
-					continue
+	# Terraria-style floating terrain: a rounded grassy cap over a tapered,
+	# layered dirt/stone underside. The old symmetrical ellipsoid read as a
+	# flat disc from below.
+	for dz in range(-rz, rz + 1):
+		for dx in range(-rx, rx + 1):
+			var nx := float(dx * dx) / rx2
+			var nz := float(dz * dz) / rz2
+			var radial := nx + nz
+			if radial > 1.0:
+				continue
+			var top_offset := int(round(float(ry) * sqrt(maxf(0.0, 1.0 - radial))))
+			var bottom_offset := int(round(float(ry) * 1.9 * pow(maxf(0.0, 1.0 - radial), 0.7)))
+			for dy in range(-bottom_offset, top_offset + 1):
 				var cell := Vector3i(cx + dx, cy + dy, cz + dz)
+				var from_top := top_offset - dy
 				var block := stone_id
-				# A soil cap on the upper shell; the underside stays bare rock.
-				if dy >= ry - 1 and rng.randf() < 0.85:
-					block = soil_id
+				if from_top <= 1:
+					block = grass_id
+				elif from_top <= 3:
+					block = soil_id if rng.randf() < 0.55 else stone_id
+				elif dy <= -bottom_offset + 2:
+					block = deepstone_id
 				_put(output, origin, cell, block)
-	# Hanging roots / vines from the underside.
-	if wood_id >= 0:
-		for strand in range(4):
+	# A few tapered stone stalactites break up the underside silhouette.
+	for stalactite in range(3):
+		var angle := TAU * float(stalactite) / 3.0 + rng.randf_range(-0.4, 0.4)
+		var sx := cx + roundi(cos(angle) * float(rx) * 0.55)
+		var sz := cz + roundi(sin(angle) * float(rz) * 0.55)
+		var start_y := cy - int(round(float(ry) * 1.1))
+		for step in range(rng.randi_range(1, 4)):
+			_put(output, origin, Vector3i(sx, start_y - step, sz), deepstone_id)
+	# Sparse hanging vines, not thick root columns; two short strands keep the
+	# silhouette a floating island rather than a mushroom.
+	if vine_id >= 0:
+		for strand in range(2):
 			var vx := cx + rng.randi_range(-rx + 2, rx - 2)
 			var vz := cz + rng.randi_range(-rz + 2, rz - 2)
-			var length := rng.randi_range(2, 5)
+			var length := rng.randi_range(1, 3)
+			var start_y := cy - int(round(float(ry) * 1.9))
 			for step in range(length):
-				_put(output, origin, Vector3i(vx, cy - ry - step, vz), wood_id)
+				_put(output, origin, Vector3i(vx, start_y - step, vz), vine_id)
 	# A crystal beacon marks some islands as worth reaching.
 	if crystal_id >= 0 and rng.randf() < 0.45:
 		var spire_x := cx + rng.randi_range(-2, 2)

@@ -2,7 +2,7 @@ extends SceneTree
 
 # Proves the Underworld is a generated world region, not a renamed layer:
 # ashen rock, a lava sea, obsidian crust, hellstone and a distinct layer id.
-#   Godot --headless --path lumen_deepworld --script res://debug/underworld_check.gd
+#   Godot --headless --path Terraria3D --script res://debug/underworld_check.gd
 
 const SEED := 139732
 

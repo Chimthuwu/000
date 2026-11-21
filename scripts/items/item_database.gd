@@ -45,6 +45,8 @@ const BLOCK_DROP_ALIASES: Dictionary = {
 	&"ash": &"dirt",
 	&"obsidian": &"stone",
 	&"hellstone": &"stone",
+	# An open door is a block *state*; breaking it still yields the door.
+	&"wood_door_open": &"wood_door",
 }
 
 static var _items: Dictionary = {}

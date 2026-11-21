@@ -84,7 +84,11 @@ void vertex() {
 	fragment_world_position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	fragment_world_normal = normalize(MODEL_NORMAL_MATRIX * NORMAL);
 	static_light_value = clamp(COLOR.a, 0.0, 1.0);
-	sky_light_value = clamp(UV2.x * ambient_sky_level, 0.0, 1.0);
+	// Square-root falloff on sky visibility: a surface only lightly shaded by a
+	// tree canopy keeps most of the daylight (Terraria reads bright under
+	// leaves), while a face with no sky access at all stays black, so caves
+	// keep their darkness and the light economy is unchanged.
+	sky_light_value = clamp(sqrt(clamp(UV2.x, 0.0, 1.0)) * ambient_sky_level, 0.0, 1.0);
 	canopy_shade = UV2.y > 0.001 ? UV2.y : 1.0;
 
 	// World-space surface detail is evaluated per vertex so the shadowed sun

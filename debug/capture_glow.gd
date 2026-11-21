@@ -56,12 +56,12 @@ func _run() -> void:
 		camera.look_at(Vector3(crystal) + Vector3(0.5, 1.0, 0.5), Vector3.UP)
 		await _capture("res://debug/evidence/probe_crystal.png")
 
-	var caster: Lumencaster = main.get_node("Player/Lumencaster") as Lumencaster
+	var caster: ArcaneCaster = main.get_node("Player/ArcaneCaster") as ArcaneCaster
 	caster._select_cartridge(2)
 	camera.global_position = Vector3(torch_cell) + Vector3(1.6, 0.8, 2.4)
 	camera.look_at(Vector3(torch_cell) + Vector3(0.5, 0.5, 0.5), Vector3.UP)
 	caster._fire_selected_cartridge()
-	var viewmodel: LumencasterViewmodel = main.get_node("Player/Camera3D/Viewmodel") as LumencasterViewmodel
+	var viewmodel: ArcaneCasterViewmodel = main.get_node("Player/Camera3D/Viewmodel") as ArcaneCasterViewmodel
 	viewmodel.flash_time = 0.5
 	await _capture("res://debug/evidence/probe_flash.png")
 

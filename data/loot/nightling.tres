@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="LootTable" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/loot_table.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+table_id = &"nightling"
+entries = [{"item": &"coal", "min": 1, "max": 2, "chance": 0.65}, {"item": &"stone", "min": 1, "max": 1, "chance": 1.0}, {"item": &"coin", "min": 1, "max": 3, "chance": 1.0}]

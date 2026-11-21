@@ -36,8 +36,8 @@ Bands are **depth-relative**: always pass the local `surface_y`.
 
 ## Surface biomes (`BiomeManager`)
 
-Six biomes, ids stable: `0` Ashen Flats, `1` Hushwoods, `2` Frostfall,
-`3` The Mire, `4` The Scorchlands (desert), `5` Glowgrove (mushroom).
+Six biomes, ids stable: `0` Forest, `1` Jungle, `2` Snow,
+`3` Forest, `4` The Desert (desert), `5` Mushroom (mushroom).
 
 ```gdscript
 BiomeManager.BIOME_COUNT # 6
@@ -199,7 +199,7 @@ never sets it.
 | `CraftingRecipe` / `RecipeDatabase` / `CraftingSystem` | `can_craft`, `craft`, `available`, `reason`. Recipes in `data/recipes/*.tres`; stations `none/workbench/furnace/anvil`; flag unlocks via ProgressionSystem. |
 | `ProgressionSystem` | `set_flag`, `has_flag`, `discover`, `has_discovered`, `add_stat`, `serialize`, `deserialize`. |
 | `AttackDef` / `GameProjectile` / `WeaponController` | `kind` = melee/ranged/magic/thrown; melee uses a forward arc, others spawn a `GameProjectile` with gravity/pierce/mana cost. |
-| `GloomEnemy` | `apply_damage(amount, knockback, from, source)`, signal `died(enemy, position)`, `loot_table`, `difficulty_scale`. |
+| `NightEnemy` | `apply_damage(amount, knockback, from, source)`, signal `died(enemy, position)`, `loot_table`, `difficulty_scale`. |
 | `BossDef` / `BossDirector` | data in `data/bosses/*.tres`; `spawn_encounter(room_id)`, `spawn_boss(room_id)`, defeat flags, reward duplication guard. |
 | `NpcService` (`scripts/npc/npc_service.gd`) | `buy`, `sell`, `can_buy`, `complete_quest`, `available_quest`. Uses Agent 3's `NpcBase` fields; no duplicate NPC node. |
 | Player save | `serialize_gameplay_state()` / `deserialize_gameplay_state()` nested at `metadata.m4.gameplay`; includes inventory, equipment, hotbar, progression, boss state, stats. |
@@ -244,21 +244,21 @@ content-level authority for biome IDENTITY. It does not own generation.
 - Nine core surface identities: `forest`, `desert`, `jungle`, `corruption`,
   `crimson`, `hallow`, `snow`, `ocean`, `mushroom`.
 - Legacy engine names are variants only: `ashen_flats`/`mire` -> `forest`,
-  `hushwoods` -> `jungle`, `frostfall` -> `snow`, `scorchlands` -> `desert`,
-  `glowgrove` -> `mushroom`. They must not displace the core names in UI or docs.
+  `jungle` -> `jungle`, `snow` -> `snow`, `desert` -> `desert`,
+  `mushroom` -> `mushroom`. They must not displace the core names in UI or docs.
 - `TerrariaWorldContent.audit() -> Dictionary` reports `core_biomes`,
   `implemented`, `missing_in_engine`, `layers`, `evil_mode`, `hallow_flag`.
 - Generation hook (implemented in `BiomeManager`):
   `set_evil_mode("corruption" | "crimson" | "both")` / `evil_mode()`;
   `set_hallow_enabled(bool)` / `hallow_enabled()`. The seed-derived default is
-  exclusive. `main.gd` enables Hallow from the `hushwood_seed_granted` or
+  exclusive. `main.gd` enables Hallow from the `jungle_seed_granted` or
   `hollow_warden_defeated` progression flag; enabling affects newly streamed
   chunks only.
 - Five vertical layer content contracts: `surface`, `underground`, `caverns`,
   `underworld`, `sky` (Agent 1's `WorldLayers` / `WorldSky` supply the bands).
 - `UNDERCROFT_OPTIONAL = true`: the dungeon is one discoverable location, never
   the game's identity or a prerequisite for core progression.
-- Engine ids: 0 Ashen Flats (forest variant), 1 Hushwoods (jungle variant),
+- Engine ids: 0 Forest (forest variant), 1 Jungle (jungle variant),
   2 Snow, 3 Forest, 4 Desert, 5 Mushroom, 6 Jungle, 7 The Corruption,
   8 The Crimson, 9 The Hallow, 10 Ocean. Verified by
   `debug/terraria_world_content_check.gd` (`missing_in_engine = []`) and

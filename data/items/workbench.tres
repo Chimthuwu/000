@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"workbench"
+display_name = "Work Bench"
+description = "The first real station. Stand near it to unlock tools and furniture."
+category = 5
+stack_limit = 999
+rarity = 0
+value = 6
+place_block = &"workbench"

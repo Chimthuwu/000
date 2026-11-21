@@ -5,7 +5,7 @@ extends SceneTree
 #  - every block definition gets a top/side/bottom tile
 #  - the mesher emits one UV per vertex inside the correct atlas tile
 #  - the world shader actually samples the atlas
-#   Godot --headless --path lumen_deepworld --script res://debug/terrain_texture_check.gd
+#   Godot --headless --path Terraria3D --script res://debug/terrain_texture_check.gd
 
 var failures := 0
 
@@ -80,8 +80,8 @@ func _check_block_table() -> void:
 	var table := TerrainAtlas.block_tile_table(defs)
 	_check(table.size() == defs.size(), "every block has a tile entry", "%d/%d" % [table.size(), defs.size()])
 	var grass_tile := TerrainAtlas.tiles_for_block(&"dirt")
-	_check(grass_tile.x == TerrainAtlas.Tile.GRASS_TOP and grass_tile.y == TerrainAtlas.Tile.DIRT,
-		"dirt uses grass top and dirt side", str(grass_tile))
+	_check(grass_tile.x == TerrainAtlas.Tile.GRASS_TOP and grass_tile.y == TerrainAtlas.Tile.GRASS_SIDE,
+		"dirt uses grass top and grass side", str(grass_tile))
 	var stone_tile := TerrainAtlas.tiles_for_block(&"stone")
 	_check(stone_tile.x == stone_tile.y and stone_tile.y == stone_tile.z, "stone uses one stone tile", str(stone_tile))
 	var hellstone := TerrainAtlas.tiles_for_block(&"hellstone")
@@ -116,12 +116,9 @@ func _check_mesher_uvs() -> void:
 	var uvs: PackedVector2Array = result["uvs"]
 	_check(vertices.size() == 36, "one exposed cube emits six faces", "vertices=%d" % vertices.size())
 	_check(uvs.size() == vertices.size(), "one UV per vertex", "%d/%d" % [uvs.size(), vertices.size()])
-	var side_tile := TerrainAtlas.tiles_for_block(&"dirt").y
-	var top_tile := TerrainAtlas.tiles_for_block(&"dirt").x
-	var side_min := float(side_tile) / 16.0
-	var side_max := float(side_tile + 1) / 16.0
-	var top_min := float(top_tile) / 16.0
-	var top_max := float(top_tile + 1) / 16.0
+	var side_rect := _normalized_tile_rect(TerrainAtlas.tiles_for_block(&"dirt").y)
+	var top_rect := _normalized_tile_rect(TerrainAtlas.tiles_for_block(&"dirt").x)
+	var bottom_rect := _normalized_tile_rect(TerrainAtlas.tiles_for_block(&"dirt").z)
 	var inside := true
 	var top_found := false
 	for i in range(uvs.size()):
@@ -129,13 +126,21 @@ func _check_mesher_uvs() -> void:
 		var vertex := vertices[i]
 		if normals[i].y > 0.9:
 			top_found = true
-			if uv.x < top_min or uv.x > top_max or uv.y < 0.0 or uv.y > top_max + 0.01:
+			if not top_rect.grow(0.001).has_point(uv):
+				inside = false
+		elif normals[i].y < -0.9:
+			if not bottom_rect.grow(0.001).has_point(uv):
 				inside = false
 		else:
-			if uv.x < side_min or uv.x > side_max:
+			if not side_rect.grow(0.001).has_point(uv):
 				inside = false
 	_check(inside, "UVs stay inside their material tile")
 	_check(top_found, "top face uses the top tile")
+
+
+func _normalized_tile_rect(tile: int) -> Rect2:
+	var rect := TerrainAtlas.tile_rect(tile)
+	return Rect2(rect.position / float(TerrainAtlas.ATLAS_PIXELS), rect.size / float(TerrainAtlas.ATLAS_PIXELS))
 
 
 func _check_shader() -> void:

@@ -3,7 +3,7 @@ extends SceneTree
 # Vertical streaming check: teleports the player far below and far above the
 # spawn surface, then waits for the vertical window to deliver a lit, meshed
 # chunk and a solid floor under the target cell.
-#   Godot --headless --path lumen_deepworld --script res://debug/vertical_travel_check.gd
+#   Godot --headless --path Terraria3D --script res://debug/vertical_travel_check.gd
 
 func _initialize() -> void:
 	var packed: PackedScene = load("res://scenes/world/main.tscn")

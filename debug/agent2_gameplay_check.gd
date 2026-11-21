@@ -110,7 +110,13 @@ func _run() -> void:
 	_check(craft.craft(torch_recipe), "craft succeeds")
 	_check(inv2.count(&"torch") == torches_before + 4 and inv2.count(&"wood") == 3, "craft consumes ingredients and yields output")
 	var pick_recipe := RecipeDatabase.get_recipe(&"craft_wooden_pickaxe")
-	_check(craft.can_craft(pick_recipe), "workbench baseline available for test")
+	# Stations are physical now: the recipe is refused until one is placed nearby.
+	_check(not craft.station_available("workbench"), "workbench recipes refused with no station in reach")
+	var spawn: Vector3i = world.get("spawn_origin")
+	var station_cell := Vector3i(spawn.x + 1, int(world.call("spawn_height")) + 1, spawn.z)
+	world.set_block(station_cell, int(world.block_ids[&"workbench"]))
+	_check(world.has_station(&"workbench"), "placed workbench registers as a station")
+	_check(craft.can_craft(pick_recipe), "placed workbench unlocks its recipes")
 	var staff_recipe := RecipeDatabase.get_recipe(&"craft_apprentice_staff")
 	_check(not craft.can_craft(staff_recipe) and craft.reason(staff_recipe) == "LOCKED", "flag-gated recipe is locked")
 	prog.set_flag(&"unlocked_magic")
@@ -155,7 +161,7 @@ func _run() -> void:
 		if StringName(player.inventory.get_slot("hotbar", index)["id"]) == &"wooden_sword":
 			sword_slot = index
 	player.inventory.select(sword_slot)
-	var enemy: GloomEnemy = preload("res://scripts/enemies/gloomling.gd").new()
+	var enemy: NightEnemy = preload("res://scripts/enemies/nightling.gd").new()
 	main.add_child(enemy)
 	enemy.position = player.position + Vector3(0.0, 0.0, -1.6)
 	enemy.health = 60.0

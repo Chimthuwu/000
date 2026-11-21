@@ -40,13 +40,13 @@ func _run() -> void:
 	main.cycle.restore_time(700.0)
 	main.player.set_physics_process(false)
 
-	main.enemy_director.debug_spawn_gloomlings(3)
+	main.enemy_director.debug_spawn_nightlings(3)
 	for frame in range(30):
 		await process_frame
-	var gloomling := _hold_nearest(0)
-	if gloomling != null:
-		await _frame(gloomling, 2.2, "res://debug/evidence/enemy_gloomling.png")
-		await _frame(gloomling, 1.4, "res://debug/evidence/enemy_gloomling_close.png")
+	var nightling := _hold_nearest(0)
+	if nightling != null:
+		await _frame(nightling, 2.2, "res://debug/evidence/enemy_nightling.png")
+		await _frame(nightling, 1.4, "res://debug/evidence/enemy_nightling_close.png")
 
 	main.enemy_director.debug_spawn_lamp_eater()
 	for frame in range(30):
@@ -58,8 +58,8 @@ func _run() -> void:
 
 	# Group shot with the flashlight picking them out of the dark.
 	var camera: Camera3D = main.player.get_node("Camera3D")
-	if gloomling != null:
-		camera.global_position = gloomling.global_position + Vector3(4.5, 1.8, 4.5)
-		camera.look_at(gloomling.global_position + Vector3(0, 0.3, 0), Vector3.UP)
+	if nightling != null:
+		camera.global_position = nightling.global_position + Vector3(4.5, 1.8, 4.5)
+		camera.look_at(nightling.global_position + Vector3(0, 0.3, 0), Vector3.UP)
 		await _capture("res://debug/evidence/enemy_group_night.png")
 	quit(0)

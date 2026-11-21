@@ -28,7 +28,7 @@ func _run() -> void:
 		quit(1)
 		return
 
-	# The Ashen Flats are deliberately rugged, so carve a flat 51-column
+	# The Forest are deliberately rugged, so carve a flat 51-column
 	# corridor at spawn. This test measures traversal and streaming frame cost,
 	# not whether a canyon wall happens to sit in the walking line.
 	var lane_z := 64

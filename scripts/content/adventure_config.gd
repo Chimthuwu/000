@@ -4,7 +4,7 @@ class_name AdventureConfig
 # Agent 4 — World Design / Adventure Architect.
 #
 # Data contract for the authored initial adventure region "The Undercroft".
-# PORTED to the canonical Lumen: Deepworld project and adapted to its vertical
+# PORTED to the canonical Terraria 3D project and adapted to its vertical
 # model: WORLD_Y = 256, SURFACE_LIFT = 168, depth-relative WorldLayers bands.
 # Room Y is therefore expressed as DEPTH BELOW THE REGION'S MINIMUM SURFACE,
 # never as an absolute Y, so the region stays buried under mountains and
@@ -75,7 +75,7 @@ class_name AdventureConfig
 	"boss_name": "The Hollow Warden",
 	"beacon_count": 4,
 	"intro_hint": "Four cold beacons ring a dais. The air here is suffocating.",
-	"reward": "hushwood_seed_core",
+	"reward": "jungle_seed_core",
 }
 
 ## World events, data only until the runtime event bus exists.
@@ -91,7 +91,7 @@ class_name AdventureConfig
 	},
 	{
 		"id": "gallery_whispers",
-		"trigger": "gloom_above",
+		"trigger": "night_above",
 		"room": "shattered_gallery",
 		"threshold": 0.65,
 		"duration": 20.0,

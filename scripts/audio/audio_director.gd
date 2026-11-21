@@ -3,7 +3,7 @@ class_name AudioDirector
 
 # Procedural, asset-free threat audio. Cues are generated once at startup as
 # short AudioStreamWAV buffers and routed through the World bus, so terrain can
-# muffle them with the existing lowpass plan. Loudness tracks Gloom and actual
+# muffle them with the existing lowpass plan. Loudness tracks Night and actual
 # enemy proximity instead of playing a constant horror loop.
 
 const MIX_RATE := 11025
@@ -16,7 +16,7 @@ var skitters: Array[AudioStreamPlayer] = []
 var skitter_index := 0
 var skitter_cooldown := 0.0
 var enemy_scan_cooldown := 0.0
-var cached_gloomlings: Array = []
+var cached_nightlings: Array = []
 var cached_lamp_eaters: Array = []
 
 
@@ -61,8 +61,8 @@ func _process(delta: float) -> void:
 	if not world.is_generated or not player.spawned:
 		return
 	var cell := Vector3i(floori(player.position.x), floori(player.position.y + 0.5), floori(player.position.z))
-	var gloom := world.get_gloom_level(cell)
-	var target := 0.02 + 0.30 * gloom
+	var night := world.get_night_level(cell)
+	var target := 0.02 + 0.30 * night
 	if player.dead:
 		target += 0.10
 	drone.volume_db = linear_to_db(clampf(target, 0.0001, 1.0))
@@ -70,12 +70,12 @@ func _process(delta: float) -> void:
 	enemy_scan_cooldown -= delta
 	if enemy_scan_cooldown <= 0.0:
 		enemy_scan_cooldown = 0.4
-		cached_gloomlings = get_tree().get_nodes_in_group("enemies").filter(func(node): return node is Gloomling and is_instance_valid(node))
+		cached_nightlings = get_tree().get_nodes_in_group("enemies").filter(func(node): return node is Nightling and is_instance_valid(node))
 		cached_lamp_eaters = get_tree().get_nodes_in_group("enemies").filter(func(node): return node is LampEater and is_instance_valid(node))
 
 	skitter_cooldown -= delta
 	var nearest_skitter := INF
-	for enemy in cached_gloomlings:
+	for enemy in cached_nightlings:
 		if not is_instance_valid(enemy):
 			continue
 		var d := player.position.distance_to(enemy.global_position)

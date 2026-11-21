@@ -1,9 +1,11 @@
-# MULTI-AGENT STATUS — Lumen: Deepworld (canonical 3D Terraria)
+# MULTI-AGENT STATUS — Terraria 3D (canonical 3D Terraria)
 
-**CANONICAL PROJECT: `Z:\GITHUB\_GAMES\Terraria3D\lumen_deepworld`.**
-`Z:\GITHUB\_GAMES\Terraria3D` is the earlier workspace; Agent 4's content was
-ported and adapted into the canonical tree. Neither directory was deleted; no
-destructive Git operations or remote pushes were performed.
+**CANONICAL PROJECT: `Z:\GITHUB\_GAMES\Terraria3D-Game`** (moved here on
+2026-11-21 so it is no longer a nested repository inside the Lumenfall tree).
+`Z:\GITHUB\_GAMES\Terraria3D` is the earlier Lumenfall workspace and a separate
+Git repository; Agent 4's content was ported and adapted into the canonical
+tree. Neither directory was deleted; no destructive Git operations or remote
+pushes were performed.
 
 ## PHASE 1 IDENTITY / RENDERING / UNDERWORLD (Agent 1, this session)
 
@@ -32,15 +34,15 @@ location among many, and must never be prioritised above the core systems.
 Required core surface identities: Overworld/Forest, Desert, Jungle, Corruption,
 Crimson, The Hallow, Snow, Ocean, Mushroom. Corruption and Crimson are mutually
 exclusive by default; The Hallow is introduced by world progression, never at
-world start. Legacy names (Ashen, Hushwoods, Frostfall, Mire, Scorchlands,
-Glowgrove) are **variants/sub-biomes only** and must not replace those identities.
+world start. Legacy names (Ashen, Jungle, Snow, Mire, Desert,
+Mushroom) are **variants/sub-biomes only** and must not replace those identities.
 
 ## Direction status (updated)
 
 `scripts/content/terraria_world_content.gd` defines the nine core biomes, the
 legacy-name mapping, five vertical layer contracts, the evil-biome exclusivity
 option and the Hallow introduction flag. The live engine now implements all
-nine core identities: `["Ashen Flats", "Hushwoods", "Snow", "Forest", "Desert",
+nine core identities: `["Forest", "Jungle", "Snow", "Forest", "Desert",
 "Mushroom", "Jungle", "The Corruption", "The Crimson", "The Hallow", "Ocean"]`.
 `debug/terraria_world_content_check.gd` PASSES with `missing_in_engine = []`, and
 `debug/core_biomes_check.gd` PASSES against real generated chunks.
@@ -63,7 +65,7 @@ nine core identities: `["Ashen Flats", "Hushwoods", "Snow", "Forest", "Desert",
   nearest-first/retried mesh dispatch. Generation measured 45.58 ms/chunk
   (Phase 2 record: 64.86 ms).
 - Eleven surface regions: Forest, Desert, Snow, Mushroom, Jungle, Corruption,
-  Crimson, Hallow, Ocean plus the Ashen Flats and Hushwoods variants. Evil
+  Crimson, Hallow, Ocean plus the Forest and Jungle variants. Evil
   worlds are exclusive by seed (`set_evil_mode` supports `both`); Hallow is
   gated by the Warden progression flag. Underground biome classification and
   `WorldStructures`/`AdventureContent` stamping are unchanged.
@@ -159,7 +161,7 @@ Underworld flag. `debug/agent2_discovery_check.gd` PASS (20 checks).
 
 - **Agent 1 (done):** all nine core biomes are generated with signature
   surfaces, evil exclusivity and the Hallow gate; displayed names are core
-  identities, with Ashen Flats and Hushwoods kept as regional variants.
+  identities, with Forest and Jungle kept as regional variants.
   Remaining: biome-specific structures (temple, chasm shrine, flesh altar,
   hallow grove, shipwreck) and biome enemy/loot tables.
 - **Agent 2:** expose `ProgressionSystem.has_flag("hollow_warden_defeated")` as
@@ -221,7 +223,7 @@ center provider; Agent 3 discovery hints; human windowed playtest.
 
 ## CRITICAL FIX — spawning player could not move (this session)
 
-User report: launched `build/LumenDeepworld.exe`, saw the canonical menu/world,
+User report: launched `build/ArcaneTerraria 3D.exe`, saw the canonical menu/world,
 but could barely move. Diagnosed with a headless input probe: the spawn cell
 contained `air` (id 9) but `VoxelWorld.is_solid()` returned true, so
 `Player._sweep_axis()` stopped horizontal motion at ~0.18 blocks. Root cause:
@@ -232,20 +234,20 @@ defaults that field to `true`. Water/lava already set it correctly.
 Verified: W movement now advances 5 blocks/second continuously; all previously
 passing checks still pass. `streaming_check` still fails on stale chunk-y=1
 expectations (pre-existing, unrelated). Exported executable rebuilt:
-`lumen_deepworld/build/LumenDeepworld.exe` (2026-11-21 00:01) now contains the
+`Terraria3D/build/ArcaneTerraria 3D.exe` (2026-11-21 00:01) now contains the
 fix and all Phase 4 content. The old build (23:08) was stale.
 
 ## Branding + HUD cleanup (user feedback)
 
 - Desktop shortcut: `C:\Users\Serge\Desktop\3D Terraria.lnk` → latest build.
 - Menu title changed to `3D TERRARIA` and credits relabelled; the internal
-  `config/name = "Lumen: Deepworld"` was deliberately left unchanged to avoid
+  `config/name = "Terraria 3D"` was deliberately left unchanged to avoid
   moving the `user://` save/settings directory.
-- HUD: legacy Lumenfall captions (`LUMEN`, `VITALS`, health value) were added
+- HUD: legacy Terraria 3D captions (`MANA`, `VITALS`, health value) were added
   directly to the CanvasLayer and survived hiding the old panels, and a stale
   `PROJECTOR MODE` hint was shown. Named those captions, hid them in
   `_layout_for_viewport()`, and cleared the legacy caster hint at HUD `_ready`.
-- The running game locked `build/LumenDeepworld.exe`, so a NEW standalone build
+- The running game locked `build/ArcaneTerraria 3D.exe`, so a NEW standalone build
   `build/3DTerraria.exe` was exported (00:26) and the shortcut repointed to it.
   Close the old game and launch the shortcut. Checks PASS: `menu_click_check`,
   `gameplay_integration_check`, `npc_check`, `world_boot_check`,

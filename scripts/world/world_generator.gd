@@ -122,7 +122,7 @@ static func generate_chunk(chunk: Vector3i, world_seed: int, block_ids: Dictiona
 			var sub_depth := 3
 			match biome:
 				BiomeManager.HUSH:
-					# Hushwoods floor is dark mycelium over rotted soil, not the
+					# Jungle floor is dark mycelium over rotted soil, not the
 					# Ashen ground it used to fall back to.
 					top_id = mycelium_id
 					sub_id = rotted_id
@@ -246,7 +246,7 @@ static func generate_chunk(chunk: Vector3i, world_seed: int, block_ids: Dictiona
 	# WorldStructures template, so it is stamped directly with the canonical
 	# air/stone ids. Disable via AdventureConfig.enable_undercroft.
 	AdventureContent.stamp_chunk(output, origin, world_seed, block_ids, air_id, stone_id)
-	# Hushwoods trees, Frostfall ice spires and Mire roots are now low-poly
+	# Jungle trees, Snow ice spires and Mire roots are now low-poly
 	# MultiMesh props (WorldVegetation); no voxel tree/spire columns are stamped.
 
 	if modifications.size() == CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE:
@@ -312,7 +312,7 @@ static func _set_cell(output: PackedByteArray, origin: Vector3i, cell: Vector3i,
 	output[_local_index(local_x, local_y, local_z)] = block_id
 
 
-# --- Dead tree sites (Ashen Flats) -------------------------------------------
+# --- Dead tree sites (Forest) -------------------------------------------
 
 static func collect_tree_sites_region(world_seed: int, min_x: int, min_z: int, max_x: int, max_z: int) -> Array:
 	BiomeManager.configure(world_seed)
@@ -385,7 +385,7 @@ static func _stamp_tree_stumps(output: PackedByteArray, origin: Vector3i, world_
 		_set_cell(output, origin, Vector3i(int(site["x"]), int(site["y"]), int(site["z"])), wood_id)
 
 
-# --- Lumen crystal clusters --------------------------------------------------
+# --- Arcane crystal clusters --------------------------------------------------
 
 static func _stamp_crystal_clusters(output: PackedByteArray, origin: Vector3i, world_seed: int, crystal_id: int) -> void:
 	var min_gx := floori(float(origin.x - 10) / float(CRYSTAL_CELL))
@@ -549,7 +549,7 @@ static func _stamp_derelict_camps(output: PackedByteArray, origin: Vector3i, wor
 				_place_prop_cell(output, origin, base_x, base_z + 1, 1, crystal_id, air_id)
 
 
-# --- Hushwoods pale trees ----------------------------------------------------
+# --- Jungle pale trees ----------------------------------------------------
 
 static func _stamp_hush_trees(output: PackedByteArray, origin: Vector3i, world_seed: int, block_ids: Dictionary) -> void:
 	var wood_id := int(block_ids.get(&"pale_wood", block_ids.get(&"dead_wood", -1)))
@@ -666,7 +666,7 @@ static func _stamp_landmark_spires(output: PackedByteArray, origin: Vector3i, wo
 			_place_prop_cell(output, origin, rubble_x, rubble_z, 1, stone_id, air_id)
 
 
-# --- Frostfall ice spires ----------------------------------------------------
+# --- Snow ice spires ----------------------------------------------------
 
 static func _stamp_frost_spires(output: PackedByteArray, origin: Vector3i, world_seed: int, ice_id: int, stone_id: int) -> void:
 	var min_gx := floori(float(origin.x - FROST_SPIRE_REACH) / float(FROST_SPIRE_CELL))
@@ -799,7 +799,7 @@ static func collect_mire_root_sites_region(world_seed: int, min_x: int, min_z: i
 	return sites
 
 
-# --- Surface biome features (Scorchlands cacti, Glowgrove mushrooms) --------
+# --- Surface biome features (Desert cacti, Mushroom mushrooms) --------
 # A deterministic grid keeps every feature reproducible from world coordinates,
 # so a cactus or cap that straddles a chunk border is stamped by both chunks.
 const BIOME_PROP_CELL := 14

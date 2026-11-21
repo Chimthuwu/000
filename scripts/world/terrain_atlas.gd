@@ -13,7 +13,7 @@ class_name TerrainAtlas
 const TILE_SIZE := 16
 const COLUMNS := 16
 const ATLAS_PIXELS := TILE_SIZE * COLUMNS
-const TILE_COUNT := 39
+const TILE_COUNT := 49
 const TILE_INSET := 0.5
 
 enum Tile {
@@ -59,6 +59,19 @@ enum Tile {
 	LEAF_HALLOW = 36,
 	DEEP_MUD = 37,
 	ORE_CRYSTAL = 38,
+	# Building set. These are the tiles the crafted furniture and construction
+	# blocks use, so a player-built workbench or brick wall reads as its own
+	# crafted material rather than a recoloured rock.
+	PLANK = 39,
+	PLATFORM = 40,
+	GLASS = 41,
+	WORKBENCH = 42,
+	FURNACE = 43,
+	CHEST = 44,
+	DOOR = 45,
+	DOOR_OPEN = 46,
+	ANVIL = 47,
+	CHAIR = 48,
 }
 
 # block id -> Vector3i(top tile, side tile, bottom tile)
@@ -111,6 +124,25 @@ static var BLOCK_TILES := {
 	&"pale_bloom": Vector3i(Tile.GLOW, Tile.GLOW, Tile.GLOW),
 	&"beacon": Vector3i(Tile.METAL, Tile.METAL, Tile.METAL),
 	&"test_wall": Vector3i(Tile.BRICK, Tile.BRICK, Tile.BRICK),
+	# --- Building set ---
+	&"wood_platform": Vector3i(Tile.PLATFORM, Tile.PLATFORM, Tile.PLATFORM),
+	&"wood_door": Vector3i(Tile.DOOR, Tile.DOOR, Tile.DOOR),
+	&"wood_door_open": Vector3i(Tile.DOOR_OPEN, Tile.DOOR_OPEN, Tile.DOOR_OPEN),
+	&"stone_brick": Vector3i(Tile.BRICK, Tile.BRICK, Tile.BRICK),
+	&"glass": Vector3i(Tile.GLASS, Tile.GLASS, Tile.GLASS),
+	&"workbench": Vector3i(Tile.WORKBENCH, Tile.WORKBENCH, Tile.WORKBENCH),
+	&"furnace": Vector3i(Tile.FURNACE, Tile.FURNACE, Tile.FURNACE),
+	&"anvil": Vector3i(Tile.ANVIL, Tile.ANVIL, Tile.ANVIL),
+	&"chest": Vector3i(Tile.CHEST, Tile.CHEST, Tile.CHEST),
+	&"chair": Vector3i(Tile.CHAIR, Tile.CHAIR, Tile.CHAIR),
+	&"wood_stairs_n": Vector3i(Tile.PLANK, Tile.PLANK, Tile.PLANK),
+	&"wood_stairs_e": Vector3i(Tile.PLANK, Tile.PLANK, Tile.PLANK),
+	&"wood_stairs_s": Vector3i(Tile.PLANK, Tile.PLANK, Tile.PLANK),
+	&"wood_stairs_w": Vector3i(Tile.PLANK, Tile.PLANK, Tile.PLANK),
+	&"stone_stairs_n": Vector3i(Tile.BRICK, Tile.BRICK, Tile.BRICK),
+	&"stone_stairs_e": Vector3i(Tile.BRICK, Tile.BRICK, Tile.BRICK),
+	&"stone_stairs_s": Vector3i(Tile.BRICK, Tile.BRICK, Tile.BRICK),
+	&"stone_stairs_w": Vector3i(Tile.BRICK, Tile.BRICK, Tile.BRICK),
 	&"lumen_crystal": Vector3i(Tile.CRYSTAL, Tile.CRYSTAL, Tile.CRYSTAL),
 	&"water": Vector3i(Tile.LIQUID, Tile.LIQUID, Tile.LIQUID),
 	&"lava": Vector3i(Tile.LIQUID, Tile.LIQUID, Tile.LIQUID),
@@ -355,6 +387,88 @@ static func _paint_tile(image: Image, tile: int) -> void:
 					value = 0.58 + rng.randf() * 0.06
 					if (x * 5 + y * 3) % 13 < 3:
 						value = 1.12
+				Tile.PLANK:
+					# Four horizontal boards with a dark seam and nail heads.
+					value = 0.86 + absf(sin(float(x) * 0.9)) * 0.08 + rng.randf() * 0.04
+					if y % 4 == 0:
+						value = 0.60
+					elif y % 4 == 3 and (x + (y / 4) * 5) % 7 == 0:
+						value = 0.56
+				Tile.PLATFORM:
+					# Plank deck: bright top lip, dark underside rail.
+					value = 0.90 + absf(sin(float(x) * 1.1)) * 0.08
+					if y < 2:
+						value = 1.02
+					elif y > 12:
+						value = 0.54
+					elif y == 6 or y == 7:
+						value = 0.74
+					elif (x + y) % 9 == 0:
+						value = 0.62
+				Tile.GLASS:
+					# Pale pane with a brighter bevel and a few sparkle pixels.
+					value = 0.94 + rng.randf() * 0.05
+					if x == 0 or y == 0 or x == 15 or y == 15:
+						value = 1.10
+					elif x == 1 or y == 1:
+						value = 1.04
+					elif rng.randf() < 0.05:
+						value = 1.22
+					elif (x + y) % 11 == 0:
+						value = 0.80
+				Tile.WORKBENCH:
+					value = 0.88 + absf(sin(float(x) * 1.2)) * 0.08
+					if y < 3:
+						value = 1.02
+					elif y == 4 or y == 5:
+						value = 0.62
+					elif y > 10 and (x < 4 or x > 11):
+						value = 0.70
+				Tile.FURNACE:
+					# Firebrick courses; the mesher adds the lit mouth separately.
+					value = 0.74 + rng.randf() * 0.08
+					if y % 5 == 0 or (x + (y / 5) * 3) % 6 == 0:
+						value = 0.50
+					elif rng.randf() < 0.06:
+						value = 0.92
+				Tile.CHEST:
+					value = 0.86 + absf(sin(float(x) * 1.4)) * 0.08
+					if y >= 4 and y <= 6:
+						value = 0.52
+					elif x == 2 or x == 13:
+						value = 0.58
+					elif y < 4 and x % 5 == 0:
+						value = 0.66
+				Tile.DOOR:
+					# Vertical boards with a pair of raised panels.
+					value = 0.88 + absf(sin(float(y) * 1.3)) * 0.06
+					if x % 4 == 0:
+						value = 0.62
+					elif y > 3 and y < 12 and x > 4 and x < 11:
+						value = 0.98 if (x == 5 or x == 10 or y == 4 or y == 11) else 0.88
+					elif y >= 6 and y <= 9 and (x == 3 or x == 12):
+						value = 0.48
+				Tile.DOOR_OPEN:
+					value = 0.88 + absf(sin(float(x) * 1.3)) * 0.06
+					if y % 4 == 0:
+						value = 0.62
+					elif x > 3 and x < 12 and y > 3 and y < 12:
+						value = 0.96 if (x == 4 or x == 11 or y == 4 or y == 11) else 0.86
+				Tile.CHAIR:
+					# Upholstered seat band with vertical back slats.
+					value = 0.86 + absf(sin(float(y) * 1.5)) * 0.06
+					if y > 4 and y < 10:
+						value = 0.70
+					elif y >= 10:
+						value = 0.96 if x % 4 == 0 else 0.84
+				Tile.ANVIL:
+					# Dark iron with a bright hammered top edge.
+					value = 0.60 + rng.randf() * 0.08
+					if y < 4:
+						value = 0.96
+					elif (x + y * 2) % 7 == 0:
+						value = 0.80
+			value = _material_detail(tile, x, y, value, rng)
 			value = clampf(value, 0.0, 1.45)
 			image.set_pixel(ox + x, oy + y, Color(value, value, value))
 	# A one-pixel darker border on solid tiles gives crisp block seams without
@@ -365,6 +479,100 @@ static func _paint_tile(image: Image, tile: int) -> void:
 			_scale_pixel(image, ox + i, oy + TILE_SIZE - 1, 0.93)
 			_scale_pixel(image, ox, oy + i, 0.95)
 			_scale_pixel(image, ox + TILE_SIZE - 1, oy + i, 0.95)
+
+
+static func _material_detail(tile: int, x: int, y: int, value: float, rng: RandomNumberGenerator) -> float:
+	match tile:
+		Tile.GRASS_TOP:
+			var clump := 0.5 + 0.5 * sin(float(x) * 1.65 + float(y) * 0.55)
+			value = 0.66 + clump * 0.24 + rng.randf() * 0.07
+			if y < 9 and x % 4 == 0:
+				value += 0.18
+			if y > 9 and x % 3 == 1:
+				value -= 0.10
+			if (x * 7 + y * 11) % 41 == 0:
+				value = 1.24
+			if (x * 5 + y * 3) % 29 == 0:
+				value = 0.40
+			# Grass is visibly softer and darker than rock; this keeps the
+			# material read distinct even after palette tinting.
+			value *= 0.84
+		Tile.DIRT:
+			var clod := float((x / 4) * 3 + (y / 3) * 5)
+			value = 0.62 + fposmod(sin(clod * 1.7) * 0.5 + 0.5, 1.0) * 0.26 + rng.randf() * 0.06
+			if x % 5 == 1 or y % 7 == 2:
+				value *= 0.66
+			if (x + y * 3) % 23 == 0:
+				value = 0.98
+			if (x * 3 + y * 5) % 31 == 0:
+				value = 0.40
+		Tile.STONE, Tile.DEEPSTONE, Tile.CAVERN:
+			var mortar := minf(absf(fmod(float(x) + float(y) * 0.55, 6.0) - 3.0), absf(fmod(float(y) + float(x) * 0.30, 5.0) - 2.5))
+			value = 0.70 + clampf(mortar * 0.095, 0.0, 0.28) + rng.randf() * 0.05
+			if (x * 3 + y * 7) % 19 == 0:
+				value *= 0.56
+			if (x * 5 + y * 2) % 29 == 0:
+				value += 0.22
+			value *= 1.08
+		Tile.SAND, Tile.WET_SAND:
+			var ripple := sin(float(y) * 0.95 + sin(float(x) * 0.28) * 2.2)
+			value = 0.88 + ripple * 0.07 + rng.randf() * 0.035
+			if (x * 3 + y) % 17 == 0:
+				value = 0.72
+		Tile.SANDSTONE:
+			value = 0.78 + sin(float(y) * 0.85 + float(x) * 0.12) * 0.05 + rng.randf() * 0.03
+			if y % 5 == 0:
+				value *= 0.78
+		Tile.SNOW:
+			var drift := sin(float(x) * 0.35 + sin(float(y) * 0.25) * 2.0)
+			value = 0.90 + drift * 0.035 + rng.randf() * 0.035
+			if (x * 3 + y * 5) % 37 == 0:
+				value = 1.0
+		Tile.ICE:
+			value = 0.82 + absf(sin(float(x) * 0.55 + float(y) * 0.44)) * 0.12 + rng.randf() * 0.04
+			if (x + y) % 9 == 0:
+				value += 0.16
+		Tile.BARK:
+			value = 0.58 + absf(sin(float(x) * 1.22 + sin(float(y) * 0.2))) * 0.24 + rng.randf() * 0.04
+			if x % 5 == 0:
+				value *= 0.70
+			if (x * 5 + y * 3) % 31 == 0:
+				value = 0.38
+		Tile.LEAVES, Tile.LEAF_JUNGLE, Tile.LEAF_EVIL, Tile.LEAF_HALLOW:
+			var vein := absf(sin(float(x) * 0.75 + float(y) * 0.45))
+			value = 0.52 + vein * 0.26 + rng.randf() * 0.12
+			if vein < 0.16:
+				value *= 0.58
+			if (x * 3 + y * 7) % 13 == 0:
+				value = 0.98
+		Tile.ORE_METAL, Tile.ORE_GEM, Tile.ORE_CRYSTAL:
+			var cluster := (x - 5) * (x - 5) + (y - 6) * (y - 6)
+			value = 0.57 + rng.randf() * 0.06
+			if cluster < 9 or (x > 9 and y > 8 and (x - 12) * (x - 12) + (y - 12) * (y - 12) < 7):
+				value = 1.18
+			elif (x * 5 + y * 3) % 23 < 2:
+				value = 0.94
+		Tile.EVILSTONE:
+			value = 0.68 + absf(sin(float(x) * 0.7 + float(y) * 0.4)) * 0.22 + rng.randf() * 0.05
+			if (x * 3 + y * 5) % 13 == 0:
+				value = 0.42
+		Tile.HALLOWSTONE:
+			value = 0.82 + absf(sin(float(x + y) * 0.46)) * 0.22 + rng.randf() * 0.05
+			if (x * 5 + y * 3) % 17 == 0:
+				value = 1.28
+		Tile.MUD, Tile.DEEP_MUD:
+			value = 0.52 + absf(sin(float(x) * 0.35 + float(y) * 0.7)) * 0.17 + rng.randf() * 0.06
+			if (x * 2 + y) % 11 == 0:
+				value = 0.34
+		Tile.MAGMA:
+			value = 0.48 + absf(sin(float(x) * 0.75 + float(y) * 0.5)) * 0.16 + rng.randf() * 0.04
+			if (x * 3 + y * 4) % 9 == 0:
+				value = 1.30
+		Tile.LIQUID:
+			value = 0.86 + sin(float(x) * 0.4 + float(y) * 0.55) * 0.10
+			if (x + y * 3) % 13 == 0:
+				value = 1.02
+	return value
 
 
 static func _scale_pixel(image: Image, x: int, y: int, factor: float) -> void:

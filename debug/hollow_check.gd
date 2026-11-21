@@ -1,7 +1,7 @@
 extends SceneTree
 
 const HollowScript = preload("res://scripts/enemies/hollow.gd")
-const GloomlingScript = preload("res://scripts/enemies/gloomling.gd")
+const NightlingScript = preload("res://scripts/enemies/nightling.gd")
 const Mesher = preload("res://scripts/world/chunk_mesher.gd")
 
 var main: Node
@@ -57,7 +57,7 @@ func _run() -> void:
 		spawned.queue_free()
 	await _wait_process(2)
 
-	_check_hushwoods()
+	_check_jungle()
 	var lane := _pick_lane()
 	if lane.is_empty():
 		push_error("HOLLOW CHECK FAIL: no flat test lane found")
@@ -75,12 +75,12 @@ func _run() -> void:
 	quit(1 if failures > 0 else 0)
 
 
-func _check_hushwoods() -> void:
+func _check_jungle() -> void:
 	var hush_columns := 0
 	for value in world.biome_map:
 		if value == 1:
 			hush_columns += 1
-	_check(hush_columns > 100, "Hushwoods biome columns=%d" % hush_columns)
+	_check(hush_columns > 100, "Jungle biome columns=%d" % hush_columns)
 
 	var pale_id := int(world.block_ids.get(&"pale_wood", -1))
 	var soil_id := int(world.block_ids.get(&"hush_soil", -1))
@@ -92,14 +92,14 @@ func _check_hushwoods() -> void:
 			pale_blocks += 1
 		elif block_id == soil_id:
 			soil_blocks += 1
-	_check(pale_blocks > 400, "Hushwoods pale wood blocks=%d" % pale_blocks)
-	_check(soil_blocks > 1000, "Hushwoods dark soil blocks=%d" % soil_blocks)
+	_check(pale_blocks > 400, "Jungle pale wood blocks=%d" % pale_blocks)
+	_check(soil_blocks > 1000, "Jungle dark soil blocks=%d" % soil_blocks)
 
 	var hush_sites := 0
 	for site in world.tree_sites:
 		if world.biome_map[int(site["x"]) + int(site["z"]) * world.WORLD_X] == 1:
 			hush_sites += 1
-	_check(hush_sites == 0, "no brown MultiMesh tree sites inside Hushwoods (found %d)" % hush_sites)
+	_check(hush_sites == 0, "no brown MultiMesh tree sites inside Jungle (found %d)" % hush_sites)
 
 	var hush_x := -1
 	var hush_z := -1
@@ -117,7 +117,7 @@ func _check_hushwoods() -> void:
 			break
 		if hush_x >= 0:
 			break
-	_check(hush_x >= 0, "Hushwoods surface column uses hush_soil under open air")
+	_check(hush_x >= 0, "Jungle surface column uses hush_soil under open air")
 	if hush_x < 0:
 		return
 	var ground: int = world.get_surface_height(hush_x, hush_z)
@@ -126,7 +126,7 @@ func _check_hushwoods() -> void:
 	var sky: PackedByteArray = snapshot["sky"]
 	var local := Vector3i(hush_x % 16, ground % 16, hush_z % 16)
 	var index := (local.x + 1) + (local.y + 1) * 18 + (local.z + 1) * 18 * 18
-	_check(int(sky[index]) == 2, "Hushwoods surface snapshot is canopy-shaded (value=%d)" % int(sky[index]))
+	_check(int(sky[index]) == 2, "Jungle surface snapshot is canopy-shaded (value=%d)" % int(sky[index]))
 	var mesh: Dictionary = Mesher.build(snapshot["blocks"], snapshot["light"], sky, world.palette, world.air_id, world.fixture_ids, world.emissive_ids, [])
 	var vertices: PackedVector3Array = mesh["vertices"]
 	var uv2: PackedVector2Array = mesh["uv2"]
@@ -140,7 +140,7 @@ func _check_hushwoods() -> void:
 		if uv2[vertex_index].x == 0.0 and absf(uv2[vertex_index].y - Mesher.HUSH_SUN_SHADE) < 0.001:
 			canopy_encoded = true
 			break
-	_check(canopy_encoded, "Hushwoods geometry gets zero sky fill and dim sun")
+	_check(canopy_encoded, "Jungle geometry gets zero sky fill and dim sun")
 
 	var open_x := 64
 	var open_z := 64
@@ -279,19 +279,19 @@ func _check_enemy_physics(lane: Dictionary) -> void:
 	for level in range(1, 4):
 		world.set_block(Vector3i(wall_x, ground + level, z), stone)
 
-	var gloomling: Gloomling = GloomlingScript.new()
-	gloomling.move_speed = 2.7
-	gloomling.max_health = 100.0
-	gloomling.dissolve_light_level = 16
-	gloomling.position = Vector3(float(start_x) + 0.5, float(ground) + 2.5, float(z) + 0.5)
-	main.add_child(gloomling)
+	var nightling: Nightling = NightlingScript.new()
+	nightling.move_speed = 2.7
+	nightling.max_health = 100.0
+	nightling.dissolve_light_level = 16
+	nightling.position = Vector3(float(start_x) + 0.5, float(ground) + 2.5, float(z) + 0.5)
+	main.add_child(nightling)
 	player.position = Vector3(float(wall_x) + 3.5, float(ground) + 1.05, float(z) + 0.5)
 	player.velocity = Vector3.ZERO
 	await _wait_physics(100)
-	_check(gloomling.on_floor, "Gloomling falls and lands under gravity")
-	_check(gloomling.global_position.x < float(wall_x) - 0.2, "Gloomling cannot pass through a voxel wall (x=%.2f wall=%d)" % [gloomling.global_position.x, wall_x])
-	_check(gloomling.global_position.y < float(ground) + 1.3, "Gloomling is standing on the ground, not flying (y=%.2f)" % gloomling.global_position.y)
-	gloomling.queue_free()
+	_check(nightling.on_floor, "Nightling falls and lands under gravity")
+	_check(nightling.global_position.x < float(wall_x) - 0.2, "Nightling cannot pass through a voxel wall (x=%.2f wall=%d)" % [nightling.global_position.x, wall_x])
+	_check(nightling.global_position.y < float(ground) + 1.3, "Nightling is standing on the ground, not flying (y=%.2f)" % nightling.global_position.y)
+	nightling.queue_free()
 
 	for level in range(1, 4):
 		world.set_block(Vector3i(wall_x, ground + level, z), world.air_id)

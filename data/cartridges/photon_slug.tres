@@ -11,5 +11,5 @@ action = "photon"
 energy_cost = 0.0
 minimum_light = 0
 range = 28.0
-gloom_noise = 10.0
+night_noise = 10.0
 damage = 20.0

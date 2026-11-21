@@ -37,9 +37,9 @@ func _run(main: Node) -> void:
 	await process_frame
 
 	# --- Enemy definitions and loot --------------------------------------------
-	for kind in [EnemyConfig.KIND_GLOOMLING, EnemyConfig.KIND_LAMP_EATER, EnemyConfig.KIND_HOLLOW,
+	for kind in [EnemyConfig.KIND_NIGHTLING, EnemyConfig.KIND_LAMP_EATER, EnemyConfig.KIND_HOLLOW,
 		EnemyConfig.KIND_FROST_STALKER, EnemyConfig.KIND_BOG_CRAWLER, director.KIND_WARDEN]:
-		var enemy: GloomEnemy = director._make_enemy(kind)
+		var enemy: NightEnemy = director._make_enemy(kind)
 		_check(enemy != null and enemy.loot_table != null, "enemy kind %d has loot" % kind)
 		if kind == director.KIND_WARDEN:
 			_check(enemy is HollowWarden, "kind 99 is the Hollow Warden boss")
@@ -60,20 +60,20 @@ func _run(main: Node) -> void:
 	warden.apply_damage(9999.0, 0.0, warden.position + Vector3.FORWARD)
 	var seeds_dropped := 0
 	for node in get_nodes_in_group("item_drops"):
-		if is_instance_valid(node) and StringName(node.get("item_id")) == &"hushwood_seed_core":
+		if is_instance_valid(node) and StringName(node.get("item_id")) == &"jungle_seed_core":
 			seeds_dropped += 1
-	_check(player.progression.has_flag(&"hushwood_seed_granted"), "boss defeat grants the unlock flag")
-	_check(seeds_dropped > 0, "boss drops hushwood_seed_core into the world", "drops=%d" % seeds_dropped)
+	_check(player.progression.has_flag(&"jungle_seed_granted"), "boss defeat grants the unlock flag")
+	_check(seeds_dropped > 0, "boss drops jungle_seed_core into the world", "drops=%d" % seeds_dropped)
 	_check(director.boss_director.boss_is_defeated(&"hollow_warden"), "boss defeat is recorded")
-	var second_seed := player.inventory.count(&"hushwood_seed_core")
+	var second_seed := player.inventory.count(&"jungle_seed_core")
 	director.boss_director.on_boss_defeated(preload("res://data/bosses/hollow_warden.tres"), main, player.position)
-	_check(player.inventory.count(&"hushwood_seed_core") == second_seed, "reward cannot be duplicated")
+	_check(player.inventory.count(&"jungle_seed_core") == second_seed, "reward cannot be duplicated")
 
 	# --- Boss state persistence -------------------------------------------------
 	var state := player.serialize_gameplay_state()
 	var fresh := ProgressionSystem.new()
 	fresh.deserialize(state["progression"])
-	_check(fresh.has_flag(&"hushwood_seed_granted"), "boss reward flag persists in player save")
+	_check(fresh.has_flag(&"jungle_seed_granted"), "boss reward flag persists in player save")
 	_check(director.boss_director.serialize()["defeated"].has("hollow_warden"), "boss defeat persists")
 
 	# --- NPC shop and quest -----------------------------------------------------

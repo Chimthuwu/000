@@ -15,6 +15,7 @@ var _selected_seed: int = 139732
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	WorldSave.ensure_legacy_user_data_migrated()
 	SettingsStore.load_settings()
 	# Hide the legacy minimal buttons; we build the full menu in code.
 	if has_node("StartButton"):
@@ -28,7 +29,7 @@ func _ready() -> void:
 func _build_layout() -> void:
 	# Title styling
 	if title != null:
-		title.text = "3D TERRARIA"
+		title.text = "TERRARIA 3D"
 		title.add_theme_font_size_override("font_size", 44)
 		title.add_theme_color_override("font_color", Color(0.86, 0.95, 0.91))
 
@@ -310,7 +311,7 @@ func _build_credits_panel() -> Control:
 	var lbl := Label.new()
 	lbl.position = Vector2(20, 20)
 	lbl.size = Vector2(720, 440)
-	lbl.text = "CREDITS\n\n3D Terraria\n\nA 3D Terraria sandbox adventure.\n\nWorld engine, mining, streaming, biomes — Agent 1\nGameplay, items, inventory, crafting, combat — Agent 2\nPresentation, HUD, menus, audio, NPC — Agent 3\nBiome content, structures, encounters — Agent 4\n\nBuilt with Godot 4.7.2."
+	lbl.text = "CREDITS\n\nTerraria 3D\n\nA 3D Terraria-inspired sandbox adventure.\n\nWorld engine, mining, streaming, biomes — Agent 1\nGameplay, items, inventory, crafting, combat — Agent 2\nPresentation, HUD, menus, audio, NPC — Agent 3\nBiome content, structures, encounters — Agent 4\n\nUI heart sprites from SkyUOI/Terraria3D (MIT).\n\nBuilt with Godot 4.7.2."
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	panel.add_child(lbl)
 	var close_btn := Button.new()

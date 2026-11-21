@@ -1,7 +1,7 @@
 extends Node3D
 class_name VoxelWorld
 
-signal gloom_noise_emitted(world_position: Vector3, strength: float)
+signal night_noise_emitted(world_position: Vector3, strength: float)
 signal chunk_light_changed(chunk_coords: Vector3i, light_data: PackedByteArray)
 signal chunk_loaded(chunk_coords: Vector3i)
 # Emitted for every successful player edit so the save system can journal
@@ -78,7 +78,7 @@ const BLOCK_RESOURCE_PATHS := [
 	"res://data/blocks/dirt.tres",
 	"res://data/blocks/stone.tres",
 	"res://data/blocks/iron_ore.tres",
-	"res://data/blocks/lumen_crystal.tres",
+	"res://data/blocks/radiant_crystal.tres",
 	"res://data/blocks/torch.tres",
 	"res://data/blocks/mycelium.tres",
 	"res://data/blocks/pale_bloom.tres",
@@ -129,6 +129,28 @@ const BLOCK_RESOURCE_PATHS := [
 	"res://data/blocks/ash.tres",
 	"res://data/blocks/obsidian.tres",
 	"res://data/blocks/hellstone.tres",
+	# Crafted building set. Registered last so the block palette keeps every
+	# previously saved world's indices stable.
+	"res://data/blocks/wood_platform.tres",
+	"res://data/blocks/wood_door.tres",
+	"res://data/blocks/wood_door_open.tres",
+	"res://data/blocks/stone_brick.tres",
+	"res://data/blocks/glass.tres",
+	"res://data/blocks/workbench.tres",
+	"res://data/blocks/furnace.tres",
+	"res://data/blocks/anvil.tres",
+	"res://data/blocks/chest.tres",
+	"res://data/blocks/chair.tres",
+	# Stairs are four facing variants per material, Minecraft-style, so the
+	# facing survives in the save format as a plain block index.
+	"res://data/blocks/wood_stairs_n.tres",
+	"res://data/blocks/wood_stairs_e.tres",
+	"res://data/blocks/wood_stairs_s.tres",
+	"res://data/blocks/wood_stairs_w.tres",
+	"res://data/blocks/stone_stairs_n.tres",
+	"res://data/blocks/stone_stairs_e.tres",
+	"res://data/blocks/stone_stairs_s.tres",
+	"res://data/blocks/stone_stairs_w.tres",
 ]
 const Generator = preload("res://scripts/world/world_generator.gd")
 const VegetationScript = preload("res://scripts/world/vegetation.gd")
@@ -162,12 +184,19 @@ var terrain_tiles: Array = []
 var solid_flags := PackedByteArray()
 var fixture_ids: Dictionary = {}
 var emissive_ids: Dictionary = {}
+# Crafting stations are discovered by looking around the player, like Terraria's
+# "nearby station" check. Cached briefly so a crafting panel full of recipes
+# costs one scan instead of one scan per recipe.
+const STATION_RADIUS := 5
+var _station_cache: Dictionary = {}
+var _station_cache_cell := Vector3i(-99999, -99999, -99999)
+var _station_cache_stamp := -1000000
 var air_id := 0
 var attenuation := PackedByteArray()
 var emitted_light := PackedByteArray()
 var static_light_sources: Array[Dictionary] = []
 var extinguished_sources: Dictionary = {}
-var gloom_manager: GloomManager
+var night_manager: NightManager
 var ambient_sky_level := 0.0
 var flashlight_enabled := true
 var initialized_light_chunks := 0
@@ -322,16 +351,35 @@ func _load_block_palette() -> void:
 		var color := definition.albedo
 		color.a = 1.0
 		palette.append(color)
-		attenuation.append(definition.attenuation)
+		# Terraria light: air and walk-through furniture cost 1 per tile, glass is
+		# free, and a solid block is effectively opaque. Without this every wall
+		# attenuated just like air, so torches lit the room next door and a sealed
+		# room was no darker than the field outside it.
+		var light_cost := definition.attenuation
+		if light_cost > 0 and definition.is_solid_block and not definition.passable:
+			light_cost = LightPropagator.LIGHT_RANGE
+		attenuation.append(light_cost)
 		emitted_light.append(definition.emitted_light)
-		solid_flags.append(1 if definition.is_solid_block else 0)
+		# Furniture is walk-through (Terraria lets you stand in a workbench tile)
+		# but must stay breakable and un-replaceable, so it is not flagged as a
+		# liquid: `passable` only removes collision.
+		solid_flags.append(0 if (not definition.is_solid_block or definition.passable) else 1)
 		if definition.block_id == &"air":
 			air_id = block_index
 	terrain_tiles = TerrainAtlasScript.block_tile_table(block_defs)
 	fixture_ids.clear()
-	for fixture in [&"torch", &"pale_bloom", &"mycelium", &"lumen_crystal", &"beacon", &"water", &"lava"]:
+	for fixture in [&"torch", &"pale_bloom", &"mycelium", &"lumen_crystal", &"beacon", &"water", &"lava",
+			&"wood_platform", &"wood_door", &"wood_door_open", &"workbench", &"furnace", &"anvil", &"chest", &"glass",
+			&"chair"]:
 		if block_ids.has(fixture):
 			fixture_ids[int(block_ids[fixture])] = fixture
+	# Stairs share one fixture per facing across materials; the block's own
+	# texture tile supplies the material, so wood and stone reuse the geometry.
+	for facing in ["n", "e", "s", "w"]:
+		for material in ["wood", "stone"]:
+			var stair_name := StringName("%s_stairs_%s" % [material, facing])
+			if block_ids.has(stair_name):
+				fixture_ids[int(block_ids[stair_name])] = StringName("stairs_%s" % facing)
 	emissive_ids.clear()
 	for index in range(block_defs.size()):
 		if block_defs[index].emitted_light > 0:
@@ -557,6 +605,7 @@ func _install_chunk(coords: Vector3i, blocks: PackedByteArray) -> void:
 		"blocks": blocks,
 		"light": light,
 		"light_ready": false,
+		"light_counted": false,
 		"revision": 0,
 		"mesh_installed": false,
 		"node": chunk,
@@ -603,7 +652,7 @@ func _unload_chunk(coords: Vector3i) -> void:
 		return
 	for cell in record.get("sources", []):
 		_remove_static_light_source(cell)
-	if bool(record["light_ready"]):
+	if bool(record.get("light_counted", false)):
 		initialized_light_chunks = maxi(0, initialized_light_chunks - 1)
 	if bool(record["mesh_installed"]):
 		meshed_chunk_count = maxi(0, meshed_chunk_count - 1)
@@ -754,9 +803,12 @@ func _process_light_updates() -> void:
 		var record: Dictionary = chunk_records.get(coords, {})
 		if record.is_empty():
 			continue
-		var was_initialized := bool(record["light_ready"])
+		# A re-bake (block edit) keeps the chunk counted: only the first bake of a
+		# chunk adds to the "lit" tally.
+		var was_initialized := bool(record.get("light_counted", false))
 		record["light"] = new_light
 		record["light_ready"] = true
+		record["light_counted"] = true
 		record["revision"] = int(record["revision"]) + 1
 		chunk_light_changed.emit(coords, new_light)
 		_queue_mesh(coords)
@@ -917,7 +969,16 @@ func _queue_light_region(cell: Vector3i) -> void:
 	for chunk_y in range(maxi(0, low.y), mini(CHUNKS_Y - 1, high.y) + 1):
 		for chunk_z in range(low.z, high.z + 1):
 			for chunk_x in range(low.x, high.x + 1):
-				_enqueue_light(Vector3i(chunk_x, chunk_y, chunk_z))
+				var coords := Vector3i(chunk_x, chunk_y, chunk_z)
+				var record: Dictionary = chunk_records.get(coords, {})
+				if record.is_empty():
+					continue
+				# A chunk that was already baked must be marked stale before it can
+				# be queued: _enqueue_light deliberately skips light-ready chunks, so
+				# without this an edited chunk kept its old light forever and a torch
+				# placed in a built room never lit it.
+				record["light_ready"] = false
+				_enqueue_light(coords)
 
 
 # --- Meshing ----------------------------------------------------------------
@@ -1160,6 +1221,53 @@ func get_block_id(cell: Vector3i) -> int:
 	return int(record["blocks"][_local_index(cell, coords)])
 
 
+## True when a crafting station of this kind stands within reach of the player.
+## Terraria measures from the crafting player, so this reads the real placed
+## blocks around them instead of assuming every station exists.
+func has_station(station_name: StringName) -> bool:
+	var key := String(station_name)
+	if key == "" or key == "none":
+		return true
+	return _nearby_stations().has(key)
+
+
+func _nearby_stations() -> Dictionary:
+	var cell := _station_probe_cell()
+	var now := Time.get_ticks_msec()
+	if cell == _station_cache_cell and now - _station_cache_stamp < 400:
+		return _station_cache
+	var found: Dictionary = {}
+	for x in range(cell.x - STATION_RADIUS, cell.x + STATION_RADIUS + 1):
+		for y in range(cell.y - STATION_RADIUS, cell.y + STATION_RADIUS + 1):
+			for z in range(cell.z - STATION_RADIUS, cell.z + STATION_RADIUS + 1):
+				var block_id := get_block_id(Vector3i(x, y, z))
+				if block_id == air_id or block_id < 0 or block_id >= block_defs.size():
+					continue
+				var def := block_defs[block_id]
+				if def.station != "" and def.station != "none":
+					found[def.station] = true
+	_station_cache = found
+	_station_cache_cell = cell
+	_station_cache_stamp = now
+	return found
+
+
+func _station_probe_cell() -> Vector3i:
+	var node := get_tree().get_first_node_in_group("player") if get_tree() != null else null
+	if node is Node3D:
+		var position := (node as Node3D).global_position
+		return Vector3i(floori(position.x), floori(position.y + 0.5), floori(position.z))
+	return Vector3i(spawn_origin.x, maxi(0, spawn_height()), spawn_origin.z)
+
+
+## Whether the chunk holding this cell is resident. The housing flood fill
+## must treat an unloaded neighbor as "unknown", never as a wall.
+func is_loaded(cell: Vector3i) -> bool:
+	if cell.y < 0 or cell.y >= WORLD_Y:
+		return false
+	return chunk_records.has(_chunk_of(cell))
+
+
 func is_solid(cell: Vector3i) -> bool:
 	if cell.y < 0 or cell.y >= WORLD_Y:
 		return true
@@ -1211,6 +1319,11 @@ func set_block(cell: Vector3i, block_id: int, journal := true) -> bool:
 		if emitted_light[previous_id] != emitted_light[block_id] or was_extinguished:
 			_update_static_light_source(cell, block_id)
 		_queue_light_region(cell)
+	# Placing or breaking furniture changes which stations are in reach; drop the
+	# cached scan immediately instead of waiting for it to expire.
+	if block_defs[previous_id].station != block_defs[block_id].station:
+		_station_cache.clear()
+		_station_cache_cell = Vector3i(-99999, -99999, -99999)
 	if journal:
 		block_edited.emit(cell, block_id)
 		if liquid_sim != null:
@@ -1263,7 +1376,7 @@ func get_surface_height(x: int, z: int) -> int:
 
 
 # Contract endpoint 1: dominant biome of a world cell. Returns BiomeManager
-# ids: 0 = Ashen Flats, 1 = Hushwoods, 2 = Frostfall, 3 = The Mire.
+# ids: 0 = Forest, 1 = Jungle, 2 = Snow, 3 = Forest.
 func get_biome_at(cell: Vector3i) -> int:
 	return BiomeManager.dominant_biome(cell.x, cell.z)
 
@@ -1381,10 +1494,10 @@ func get_flashlight_level_at(world_position: Vector3) -> float:
 	return clampf(FLASHLIGHT_INTENSITY * cone * falloff * falloff, 0.0, 1.0)
 
 
-func get_gloom_level(cell: Vector3i) -> float:
-	if gloom_manager == null:
+func get_night_level(cell: Vector3i) -> float:
+	if night_manager == null:
 		return 0.0
-	return gloom_manager.get_level_for_cell(cell)
+	return night_manager.get_level_for_cell(cell)
 
 
 func _update_flashlight_uniforms() -> void:
@@ -1394,9 +1507,9 @@ func _update_flashlight_uniforms() -> void:
 	world_material.set_shader_parameter("camera_direction", (-player_camera.global_basis.z).normalized())
 
 
-func emit_gloom_noise(world_position: Vector3, strength: float) -> void:
+func emit_night_noise(world_position: Vector3, strength: float) -> void:
 	if strength > 0.0:
-		gloom_noise_emitted.emit(world_position, strength)
+		night_noise_emitted.emit(world_position, strength)
 
 
 # --- Persistence ------------------------------------------------------------

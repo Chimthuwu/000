@@ -1,7 +1,7 @@
 extends LampEater
 class_name BogCrawler
 
-# The Mire variant of the Lamp Eater: the same lantern-hunting brain, but the
+# Forest variant of the Lamp Eater: the same lantern-hunting brain, but the
 # stilt-legged silhouette is crushed down into a flat carapace that scuttles
 # across the mud. Physically it slips through gaps a standing LampEater could
 # not, and visually it never rises above the fog line.
@@ -22,8 +22,8 @@ func _init() -> void:
 	body_half_extents = Vector3(0.34, 0.28, 0.34)
 
 
-# The Mire crawler abandoned light-hunting: it closes on the player and spits
-# toxin that eats their Lumen reserve, leaving the health bar intact but the
+# Forest crawler abandoned light-hunting: it closes on the player and spits
+# toxin that eats their Arcane reserve, leaving the health bar intact but the
 # lamp defenceless.
 func _update_behavior(delta: float) -> void:
 	spit_cooldown = maxf(0.0, spit_cooldown - delta)
@@ -68,7 +68,7 @@ func _spit(target: Vector3) -> void:
 
 
 func on_hit_player() -> void:
-	var caster := player.get_node_or_null("Lumencaster") as Lumencaster
+	var caster := player.get_node_or_null("ArcaneCaster") as ArcaneCaster
 	if caster != null:
 		caster.reserve = maxf(0.0, caster.reserve - CONTACT_DRAIN)
 

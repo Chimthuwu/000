@@ -2,7 +2,7 @@ extends SceneTree
 
 # Windowed reality check: loads the canonical main menu, renders it, and writes
 # a PNG so the launched project can be inspected rather than assumed.
-#   Godot --path lumen_deepworld --script res://debug/capture_menu.gd
+#   Godot --path Terraria3D --script res://debug/capture_menu.gd
 
 func _initialize() -> void:
 	var packed: PackedScene = load("res://scenes/ui/main_menu.tscn")

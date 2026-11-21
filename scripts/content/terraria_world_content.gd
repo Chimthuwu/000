@@ -15,24 +15,24 @@ class_name TerrariaWorldContent
 const CORE_BIOMES := [
 	{
 		"id": "forest", "display": "Forest", "engine_id": 3, "status": "partial",
-		"variants": ["Overworld", "Ashen Flats", "Mire"],
+		"variants": ["Overworld", "Forest", "Mire"],
 		"layer": "surface", "enemy_theme": "forest", "structure_theme": "settlement",
 		"treasure_tier": "common", "progression_flag": "", "evil": false,
 		"notes": "Spawn biome. Engine id 3 is presented as Overworld; the grassy/swampy look is a variant, not a separate Mire biome.",
 	},
 	{
 		"id": "desert", "display": "Desert", "engine_id": 4, "status": "partial",
-		"variants": ["The Scorchlands"],
+		"variants": ["The Desert"],
 		"layer": "surface", "enemy_theme": "desert", "structure_theme": "ruin",
 		"treasure_tier": "uncommon", "progression_flag": "", "evil": false,
-		"notes": "Engine id 4 is the hot dune/sandstone climate; Scorchlands remains a variant name.",
+		"notes": "Engine id 4 is the hot dune/sandstone climate; Desert remains a variant name.",
 	},
 	{
 		"id": "jungle", "display": "Jungle", "engine_id": 6, "status": "implemented",
-		"variants": ["Hushwoods"],
+		"variants": ["Jungle"],
 		"layer": "surface", "enemy_theme": "jungle", "structure_theme": "temple",
 		"treasure_tier": "uncommon", "progression_flag": "", "evil": false,
-		"notes": "Engine id 6: jungle grass over mud with dense canopy trees. Hushwoods remains a dark variant region.",
+		"notes": "Engine id 6: jungle grass over mud with dense canopy trees. Jungle remains a dark variant region.",
 	},
 	{
 		"id": "corruption", "display": "The Corruption", "engine_id": 7, "status": "implemented",
@@ -57,10 +57,10 @@ const CORE_BIOMES := [
 	},
 	{
 		"id": "snow", "display": "Snow", "engine_id": 2, "status": "partial",
-		"variants": ["Frostfall"],
+		"variants": ["Snow"],
 		"layer": "surface", "enemy_theme": "snow", "structure_theme": "ice_ruin",
 		"treasure_tier": "uncommon", "progression_flag": "", "evil": false,
-		"notes": "Engine id 2 is the frozen climate; Frostfall is the regional variant name.",
+		"notes": "Engine id 2 is the frozen climate; Snow is the regional variant name.",
 	},
 	{
 		"id": "ocean", "display": "Ocean", "engine_id": 10, "status": "implemented",
@@ -71,10 +71,10 @@ const CORE_BIOMES := [
 	},
 	{
 		"id": "mushroom", "display": "Mushroom", "engine_id": 5, "status": "partial",
-		"variants": ["Glowgrove"],
+		"variants": ["Mushroom"],
 		"layer": "surface", "enemy_theme": "mushroom", "structure_theme": "fungal_grove",
 		"treasure_tier": "uncommon", "progression_flag": "", "evil": false,
-		"notes": "Engine id 5 is the glow-cap climate; Glowgrove is its variant name.",
+		"notes": "Engine id 5 is the glow-cap climate; Mushroom is its variant name.",
 	},
 ]
 
@@ -82,11 +82,11 @@ const CORE_BIOMES := [
 # They are not independent identities and must not displace the core names.
 const LEGACY_ALIASES := {
 	"ashen_flats": "forest",
-	"hushwoods": "jungle",
-	"frostfall": "snow",
+	"jungle": "jungle",
+	"snow": "snow",
 	"mire": "forest",
-	"scorchlands": "desert",
-	"glowgrove": "mushroom",
+	"desert": "desert",
+	"mushroom": "mushroom",
 }
 
 # Terraria-style vertical model. Agent 1's WorldLayers provides the bands;

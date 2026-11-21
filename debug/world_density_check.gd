@@ -1,6 +1,6 @@
 extends SceneTree
 
-# Density audit for the redesigned Ashen Flats: rock detail is present, while
+# Density audit for the redesigned Forest: rock detail is present, while
 # grass, reeds and shrub props stay out of the barren canyon palette.
 
 const SAMPLE := 128

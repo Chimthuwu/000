@@ -96,8 +96,8 @@ func _run() -> void:
 				if marker_ids.has(top_id):
 					matching += 1
 		_check(checked_columns > 0, "sampled columns land in the generated chunk", BiomeManager.biome_name(biome))
-		# Hushwoods and Frostfall should be almost entirely on their own palette;
-		# Ashen and the Mire keep blended border columns in the same chunk.
+		# Jungle and Snow should be almost entirely on their own palette;
+		# Ashen and the Forest keep blended border columns in the same chunk.
 		var ratio := float(matching) / float(maxi(1, checked_columns))
 		var minimum := 0.5 if biome == BiomeManager.ASHEN or biome == BiomeManager.MIRE else 0.8
 		_check(ratio >= minimum, "surface palette matches biome", "%s: %d/%d (%.2f)" % [BiomeManager.biome_name(biome), matching, checked_columns, ratio])

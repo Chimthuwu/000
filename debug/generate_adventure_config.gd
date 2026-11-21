@@ -2,7 +2,7 @@ extends SceneTree
 
 # Developer tool: regenerates data/world/adventure_config.tres from the defaults
 # in scripts/content/adventure_config.gd. Run from the repo root:
-#   Godot --headless --path lumen_deepworld --script res://debug/generate_adventure_config.gd
+#   Godot --headless --path Terraria3D --script res://debug/generate_adventure_config.gd
 
 func _initialize() -> void:
 	var config := AdventureConfig.new()

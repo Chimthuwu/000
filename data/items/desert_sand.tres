@@ -6,7 +6,7 @@
 script = ExtResource("1")
 item_id = &"desert_sand"
 display_name = "Desert Sand"
-description = "Fine sand from the Scorchlands. Pours through fingers and stack limits alike."
+description = "Fine sand from the Desert. Pours through fingers and stack limits alike."
 category = 0
 stack_limit = 999
 value = 1

@@ -2,8 +2,8 @@ extends Node
 class_name EnemyDirector
 
 const CONFIG: EnemyConfig = preload("res://data/world/enemy_config.tres")
-const GLOOM_CONFIG: GloomConfig = preload("res://data/world/gloom_config.tres")
-const GloomlingScript = preload("res://scripts/enemies/gloomling.gd")
+const NIGHT_CONFIG: NightConfig = preload("res://data/world/night_config.tres")
+const NightlingScript = preload("res://scripts/enemies/nightling.gd")
 const LampEaterScript = preload("res://scripts/enemies/lamp_eater.gd")
 const HollowScript = preload("res://scripts/enemies/hollow.gd")
 const FrostStalkerScript = preload("res://scripts/enemies/frost_stalker.gd")
@@ -13,14 +13,14 @@ const WARDEN_BOSS: BossDef = preload("res://data/bosses/hollow_warden.tres")
 const KIND_WARDEN := 99
 
 # Agent 2 loot tables (data-driven, item ids stay in the item database).
-const LOOT_GLOOMLING: LootTable = preload("res://data/loot/gloomling.tres")
+const LOOT_NIGHTLING: LootTable = preload("res://data/loot/nightling.tres")
 const LOOT_LAMP_EATER: LootTable = preload("res://data/loot/lamp_eater.tres")
 const LOOT_HOLLOW: LootTable = preload("res://data/loot/hollow.tres")
 const LOOT_FROST_STALKER: LootTable = preload("res://data/loot/frost_stalker.tres")
 const LOOT_BOG_CRAWLER: LootTable = preload("res://data/loot/bog_crawler.tres")
 
 var world: VoxelWorld
-var gloom: GloomManager
+var night: NightManager
 var player: VoxelPlayer
 var spawn_timer := 0.0
 var rng := RandomNumberGenerator.new()
@@ -33,7 +33,7 @@ var boss_director: BossDirector
 
 func _ready() -> void:
 	world = get_parent().get_node("VoxelWorld") as VoxelWorld
-	gloom = get_parent().get_node("GloomManager") as GloomManager
+	night = get_parent().get_node("NightManager") as NightManager
 	player = get_parent().get_node("Player") as VoxelPlayer
 	rng.randomize()
 	boss_director = BossDirector.new()
@@ -54,20 +54,20 @@ func _process(delta: float) -> void:
 	if spawn_timer < CONFIG.spawn_tick_seconds:
 		return
 	spawn_timer = 0.0
-	_spawn_from_gloom()
+	_spawn_from_night()
 
-func _spawn_from_gloom() -> void:
+func _spawn_from_night() -> void:
 	var enemies := get_tree().get_nodes_in_group("enemies")
 	if enemies.size() >= CONFIG.max_active_enemies:
 		return
-	# Candidate pool: gloom-dark chunks that are fully ready (generated, lit
+	# Candidate pool: night-dark chunks that are fully ready (generated, lit
 	# and meshed), so a spawn never lands in frontier terrain.
 	var candidates: Array[Vector3i] = []
 	for key in world.chunk_records.keys():
 		var chunk_index: Vector3i = key
 		if not world.is_chunk_ready(chunk_index):
 			continue
-		if float(gloom.levels.get(chunk_index, 0.0)) < GLOOM_CONFIG.spawn_threshold:
+		if float(night.levels.get(chunk_index, 0.0)) < NIGHT_CONFIG.spawn_threshold:
 			continue
 		if float(chunk_cooldowns.get(chunk_index, 0.0)) > 0.0:
 			continue
@@ -91,11 +91,11 @@ func _spawn_from_gloom() -> void:
 		if kind == EnemyConfig.KIND_HOLLOW and hollow_count >= CONFIG.max_active_hollows:
 			# Cap reached: fall back to the identity's small game instead of
 			# re-rolling, keeping the table deterministic per Terraria biome.
-			kind = EnemyConfig.KIND_FROST_STALKER if identity == GameplayBiome.Identity.SNOW else EnemyConfig.KIND_GLOOMLING
-		var pack_kind := kind == EnemyConfig.KIND_GLOOMLING or kind == EnemyConfig.KIND_FROST_STALKER
-		var count := mini(CONFIG.gloomling_group_size, CONFIG.max_active_enemies - enemies.size()) if pack_kind else 1
+			kind = EnemyConfig.KIND_FROST_STALKER if identity == GameplayBiome.Identity.SNOW else EnemyConfig.KIND_NIGHTLING
+		var pack_kind := kind == EnemyConfig.KIND_NIGHTLING or kind == EnemyConfig.KIND_FROST_STALKER
+		var count := mini(CONFIG.nightling_group_size, CONFIG.max_active_enemies - enemies.size()) if pack_kind else 1
 		for index in range(count):
-			var enemy: GloomEnemy
+			var enemy: NightEnemy
 			match kind:
 				EnemyConfig.KIND_LAMP_EATER:
 					enemy = LampEaterScript.new()
@@ -110,8 +110,8 @@ func _spawn_from_gloom() -> void:
 					enemy = BogCrawlerScript.new()
 					_configure_bog_crawler(enemy)
 				_:
-					enemy = GloomlingScript.new()
-					_configure_gloomling(enemy)
+					enemy = NightlingScript.new()
+					_configure_nightling(enemy)
 			# The Hollow is too tall to risk the usual jitter embedding it in
 			# terrain; it spawns exactly on the checked surface cell.
 			var jitter := Vector3.ZERO if kind == EnemyConfig.KIND_HOLLOW else Vector3(rng.randf_range(-1.2, 1.2), 0.0, rng.randf_range(-1.2, 1.2))
@@ -176,8 +176,8 @@ func _find_cave_spawn_position(coords: Vector3i) -> Vector3:
 		return spawn
 	return Vector3(-1.0, -1.0, -1.0)
 
-func debug_spawn_gloomlings(count: int = 3) -> void:
-	_debug_spawn(EnemyConfig.KIND_GLOOMLING, count)
+func debug_spawn_nightlings(count: int = 3) -> void:
+	_debug_spawn(EnemyConfig.KIND_NIGHTLING, count)
 
 func debug_spawn_lamp_eater() -> void:
 	_debug_spawn(EnemyConfig.KIND_LAMP_EATER, 1)
@@ -197,7 +197,7 @@ func debug_spawn_bog_crawler() -> void:
 func spawn_named(name: String) -> bool:
 	var kind := -1
 	match name.to_lower():
-		"gloomling": kind = EnemyConfig.KIND_GLOOMLING
+		"nightling": kind = EnemyConfig.KIND_NIGHTLING
 		"lamp_eater": kind = EnemyConfig.KIND_LAMP_EATER
 		"hollow": kind = EnemyConfig.KIND_HOLLOW
 		"frost_stalker": kind = EnemyConfig.KIND_FROST_STALKER
@@ -240,13 +240,13 @@ func _debug_spawn(kind: int, count: int) -> void:
 		if not found_column:
 			continue
 		var surface: int = world.get_surface_height(cell_x, cell_z)
-		var enemy: GloomEnemy = _make_enemy(kind)
+		var enemy: NightEnemy = _make_enemy(kind)
 		enemy.position = Vector3(cell_x + 0.5, surface + 1.05, cell_z + 0.5)
 		_finalize_enemy(enemy)
 		get_parent().add_child(enemy)
 
 
-func _finalize_enemy(enemy: GloomEnemy) -> void:
+func _finalize_enemy(enemy: NightEnemy) -> void:
 	var surface := world.get_surface_height(floori(enemy.position.x), floori(enemy.position.z))
 	var depth := maxf(0.0, float(surface - floori(enemy.position.y)))
 	enemy.difficulty_scale = 1.0 + clampf(depth / 64.0, 0.0, 2.0)
@@ -259,8 +259,8 @@ func _on_enemy_died(_enemy: Node, _position: Vector3) -> void:
 		player.progression.add_stat(&"enemies_defeated", 1.0)
 
 
-func _make_enemy(kind: int) -> GloomEnemy:
-	var enemy: GloomEnemy
+func _make_enemy(kind: int) -> NightEnemy:
+	var enemy: NightEnemy
 	match kind:
 		KIND_WARDEN:
 			enemy = WardenScript.new()
@@ -278,21 +278,21 @@ func _make_enemy(kind: int) -> GloomEnemy:
 			enemy = BogCrawlerScript.new()
 			_configure_bog_crawler(enemy)
 		_:
-			enemy = GloomlingScript.new()
-			_configure_gloomling(enemy)
+			enemy = NightlingScript.new()
+			_configure_nightling(enemy)
 	return enemy
 
 
-func _configure_gloomling(enemy: GloomEnemy) -> void:
-	enemy.move_speed = CONFIG.gloomling_speed
-	enemy.max_health = CONFIG.gloomling_health
-	enemy.touch_damage = CONFIG.gloomling_damage
-	enemy.attack_range = CONFIG.gloomling_attack_range
-	enemy.dissolve_light_level = CONFIG.gloomling_dissolve_light
-	enemy.loot_table = LOOT_GLOOMLING
+func _configure_nightling(enemy: NightEnemy) -> void:
+	enemy.move_speed = CONFIG.nightling_speed
+	enemy.max_health = CONFIG.nightling_health
+	enemy.touch_damage = CONFIG.nightling_damage
+	enemy.attack_range = CONFIG.nightling_attack_range
+	enemy.dissolve_light_level = CONFIG.nightling_dissolve_light
+	enemy.loot_table = LOOT_NIGHTLING
 
 
-func _configure_lamp_eater(enemy: GloomEnemy) -> void:
+func _configure_lamp_eater(enemy: NightEnemy) -> void:
 	enemy.move_speed = CONFIG.lamp_eater_speed
 	enemy.max_health = CONFIG.lamp_eater_health
 	enemy.touch_damage = CONFIG.lamp_eater_damage
@@ -306,7 +306,7 @@ func _configure_lamp_eater(enemy: GloomEnemy) -> void:
 		enemy.target_blocks = CONFIG.lamp_eater_target_blocks
 
 
-func _configure_hollow(enemy: GloomEnemy) -> void:
+func _configure_hollow(enemy: NightEnemy) -> void:
 	# The Hollow is a statue while observed; unobserved it closes at a sprint.
 	enemy.move_speed = CONFIG.hollow_chase_speed
 	enemy.max_health = CONFIG.hollow_health
@@ -317,7 +317,7 @@ func _configure_hollow(enemy: GloomEnemy) -> void:
 	enemy.loot_table = LOOT_HOLLOW
 
 
-func _configure_frost_stalker(enemy: GloomEnemy) -> void:
+func _configure_frost_stalker(enemy: NightEnemy) -> void:
 	enemy.move_speed = CONFIG.frost_stalker_speed
 	enemy.max_health = CONFIG.frost_stalker_health
 	enemy.touch_damage = CONFIG.frost_stalker_damage
@@ -326,7 +326,7 @@ func _configure_frost_stalker(enemy: GloomEnemy) -> void:
 	enemy.loot_table = LOOT_FROST_STALKER
 
 
-func _configure_bog_crawler(enemy: GloomEnemy) -> void:
+func _configure_bog_crawler(enemy: NightEnemy) -> void:
 	enemy.move_speed = CONFIG.bog_crawler_speed
 	enemy.max_health = CONFIG.bog_crawler_health
 	enemy.touch_damage = CONFIG.bog_crawler_damage
@@ -366,7 +366,7 @@ func spawn_discovery_encounter(discovery_id: String, world_seed: int) -> Array:
 		if not world.is_chunk_ready(world._chunk_of(cell)):
 			continue
 		var kind := CONFIG.roll_kind_identity(identity, rng.randf())
-		var enemy: GloomEnemy = _make_enemy(kind)
+		var enemy: NightEnemy = _make_enemy(kind)
 		enemy.position = Vector3(cell.x + 0.5 + rng.randf_range(-1.0, 1.0), cell.y + 0.05, cell.z + 0.5 + rng.randf_range(-1.0, 1.0))
 		_finalize_enemy(enemy)
 		get_parent().add_child(enemy)
@@ -380,10 +380,10 @@ func spawn_encounter(room_id: String, kinds: Array = [], count := 3) -> Array:
 		return spawned
 	var center := _encounter_center(room_id)
 	for index in range(maxi(0, count)):
-		var kind := int(kinds[index % kinds.size()]) if not kinds.is_empty() else EnemyConfig.KIND_GLOOMLING
+		var kind := int(kinds[index % kinds.size()]) if not kinds.is_empty() else EnemyConfig.KIND_NIGHTLING
 		if kind == KIND_WARDEN:
 			continue
-		var enemy: GloomEnemy = _make_enemy(kind)
+		var enemy: NightEnemy = _make_enemy(kind)
 		enemy.position = center + Vector3(rng.randf_range(-2.0, 2.0), 0.0, rng.randf_range(-2.0, 2.0))
 		_finalize_enemy(enemy)
 		get_parent().add_child(enemy)
@@ -396,13 +396,13 @@ func spawn_encounter(room_id: String, kinds: Array = [], count := 3) -> Array:
 func spawn_boss(_room_id: String = "") -> Node:
 	if not world.is_generated or not player.spawned or boss_director == null:
 		return null
-	if boss_director.has_flag_reward(&"hushwood_seed_granted") or boss_director.boss_is_defeated(WARDEN_BOSS.boss_id):
+	if boss_director.has_flag_reward(&"jungle_seed_granted") or boss_director.boss_is_defeated(WARDEN_BOSS.boss_id):
 		return null
 	for existing in get_tree().get_nodes_in_group("bosses"):
 		if is_instance_valid(existing):
 			return null
 	var center := _encounter_center(_room_id)
-	var boss: GloomEnemy = WardenScript.new()
+	var boss: NightEnemy = WardenScript.new()
 	boss.position = center + Vector3.UP * 0.2
 	_finalize_enemy(boss)
 	get_parent().add_child(boss)

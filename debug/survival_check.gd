@@ -44,7 +44,7 @@ func _run() -> void:
 	await _wait_world()
 	var world: VoxelWorld = main.world
 	var player: VoxelPlayer = main.player
-	var caster: Lumencaster = player.get_node("Lumencaster")
+	var caster: ArcaneCaster = player.get_node("ArcaneCaster")
 	var hud: GameHUD = main.get_node("HUD")
 
 	# --- Mortality ----------------------------------------------------------
@@ -74,16 +74,16 @@ func _run() -> void:
 	# --- Light-driven recovery and drain ------------------------------------
 	player.health = 50.0
 	world.set_ambient_sky_level(0.6)
-	main.gloom.set_level_for_cell(Vector3i(floori(player.position.x), 0, floori(player.position.z)), 0.0)
+	main.night.set_level_for_cell(Vector3i(floori(player.position.x), 0, floori(player.position.z)), 0.0)
 	await _wait_frames(20, true)
-	_check(player.health > 50.0, "health regenerates in bright, low-Gloom light", "hp=%.1f" % player.health)
+	_check(player.health > 50.0, "health regenerates in bright, low-Night light", "hp=%.1f" % player.health)
 	hud._update_environment()
 	_check(hud.environment_label.text == "SHELTERED", "HUD reports sheltered state", hud.environment_label.text)
 
 	caster.reserve = 100.0
 	caster.selected_cartridge = 1
 	caster._fire_selected_cartridge()
-	_check(caster.reserve < 100.0, "placing a beacon costs Lumen", "reserve=%.0f" % caster.reserve)
+	_check(caster.reserve < 100.0, "placing a beacon costs Arcane", "reserve=%.0f" % caster.reserve)
 	if caster.temporary_lights.is_empty():
 		var fallback_cell := Vector3i(floori(player.position.x), world.get_surface_height(floori(player.position.x), floori(player.position.z)) + 1, floori(player.position.z))
 		var torch_id: int = world.block_ids[&"torch"]
@@ -92,15 +92,15 @@ func _run() -> void:
 	var serialized: Array = caster.serialize_temporary_lights()
 	_check(serialized.size() > 0, "temporary light is serializable")
 
-	# A dark, high-Gloom column has no light and bleeds the reserve.
+	# A dark, high-Night column has no light and bleeds the reserve.
 	var dark := Vector3(100.5, float(world.get_surface_height(100, 100)) + 1.0, 100.5)
 	var home := player.position
 	player.position = dark
 	world.set_ambient_sky_level(0.0)
-	main.gloom.set_level_for_cell(Vector3i(100, floori(dark.y), 100), 1.0)
+	main.night.set_level_for_cell(Vector3i(100, floori(dark.y), 100), 1.0)
 	var reserve_before := caster.reserve
 	await _wait_frames(20, true)
-	_check(caster.reserve < reserve_before, "unlit high Gloom drains Lumen", "%.1f -> %.1f" % [reserve_before, caster.reserve])
+	_check(caster.reserve < reserve_before, "unlit high Night drains Arcane", "%.1f -> %.1f" % [reserve_before, caster.reserve])
 	player.position = home
 
 	# --- Environmental clues ------------------------------------------------
@@ -144,7 +144,7 @@ func _run() -> void:
 	# The world keeps simulating during the regeneration wait after reload, so
 	# the reserve may drift slightly from recharge/drain; the restored value must
 	# still be the saved figure rather than the pre-load 5.0.
-	_check(absf(caster.reserve - 41.0) < 3.0, "Lumen reserve survives save/load", "reserve=%.2f" % caster.reserve)
+	_check(absf(caster.reserve - 41.0) < 3.0, "Arcane reserve survives save/load", "reserve=%.2f" % caster.reserve)
 	_check(int(caster.inventory.get(&"stone", 0)) == 7, "inventory survives save/load")
 	_check(player.god_mode, "god flag survives save/load")
 	_check(caster.temporary_lights.size() > 0, "placed lights survive save/load")

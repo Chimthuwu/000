@@ -6,6 +6,6 @@
 script = ExtResource("1")
 recipe_id = &"craft_iron_helmet"
 display_name = "Iron Helmet"
-station = "workbench"
+station = "anvil"
 ingredients = {&"iron_bar": 4}
 outputs = {&"iron_helmet": 1}

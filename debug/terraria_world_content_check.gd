@@ -2,7 +2,7 @@ extends SceneTree
 
 # Agent 4 direction audit. Validates the Terraria-style biome CONTENT contract
 # and reports the honest gap to the live engine. It does not modify generation.
-#   Godot --headless --path lumen_deepworld --script res://debug/terraria_world_content_check.gd
+#   Godot --headless --path Terraria3D --script res://debug/terraria_world_content_check.gd
 
 var failures := 0
 

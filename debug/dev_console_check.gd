@@ -41,7 +41,7 @@ func _run() -> void:
 	_check(is_equal_approx(player.health, VoxelPlayer.MAX_HEALTH), "heal restores health")
 
 	var before := get_nodes_in_group("enemies").size()
-	console._execute("spawn gloomling")
+	console._execute("spawn nightling")
 	await process_frame
 	var after := get_nodes_in_group("enemies").size()
 	_check(after == before + 1, "spawn creates one enemy in front of the player", "%d -> %d" % [before, after])

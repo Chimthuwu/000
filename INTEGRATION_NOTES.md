@@ -15,7 +15,7 @@
   and enemy/boss data (Agents 1/2/4 scope); HUD only binds to generic boss
   signals (`max_health >= 100`) and discovery signals, not to dungeon-specific
   state.
-- Biome identity correction (Ashen/Hushwoods/etc. must not replace Terraria core
+- Biome identity correction (Ashen/Jungle/etc. must not replace Terraria core
   biomes) is Agent 1/4 domain; no experience-layer changes required. Agent 3
   consumes biome names only via existing `BiomeManager`/`WorldBiomes` APIs.
 - No new files or replacement projects created; changes limited to experience

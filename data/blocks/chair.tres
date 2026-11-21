@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="BlockLightDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/light/block_light_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+block_id = &"chair"
+attenuation = 1
+albedo = Color(0.72, 0.5, 0.29, 1)
+display_name = "Wooden Chair"
+hardness = 0.6
+mining_tier = 0
+station = "none"
+passable = true
+seating = true

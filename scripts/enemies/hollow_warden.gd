@@ -1,4 +1,4 @@
-extends GloomEnemy
+extends NightEnemy
 class_name HollowWarden
 
 ## Agent 2 boss: The Hollow Warden (reserved enemy kind 99). Three readable

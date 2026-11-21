@@ -81,8 +81,8 @@ func get_light(cell: Vector3i) -> int:
 	return int(world.call("get_light_level", cell))
 
 
-func get_gloom(cell: Vector3i) -> float:
-	return float(world.call("get_gloom_level", cell))
+func get_night(cell: Vector3i) -> float:
+	return float(world.call("get_night_level", cell))
 
 
 func biome_at(cell: Vector3i) -> int:
@@ -94,7 +94,9 @@ func surface_height(x: int, z: int) -> int:
 
 
 func spawn_origin() -> Vector2i:
-	return world.get("spawn_origin") as Vector2i
+	# VoxelWorld publishes a Vector3i spawn column; gameplay only needs X/Z.
+	var cell: Vector3i = world.get("spawn_origin")
+	return Vector2i(cell.x, cell.z)
 
 
 func spawn_height() -> int:
@@ -102,8 +104,8 @@ func spawn_height() -> int:
 
 
 func emit_noise(position: Vector3, strength: float) -> void:
-	if world != null and world.has_method("emit_gloom_noise"):
-		world.call("emit_gloom_noise", position, strength)
+	if world != null and world.has_method("emit_night_noise"):
+		world.call("emit_night_noise", position, strength)
 
 
 ## Authoritative mining data comes from Agent 1's MiningSystem. The old STUB

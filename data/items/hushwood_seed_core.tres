@@ -4,8 +4,8 @@
 
 [resource]
 script = ExtResource("1")
-item_id = &"hushwood_seed_core"
-display_name = "Hushwood Seed Core"
+item_id = &"jungle_seed_core"
+display_name = "Jungle Seed Core"
 description = "A living seed that silences sound. A boss's gift, and a world-changer."
 category = 6
 stack_limit = 16

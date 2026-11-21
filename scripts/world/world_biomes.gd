@@ -81,7 +81,7 @@ static func underground_biome_at(x: int, y: int, z: int, surface_y: int, surface
 			return Underground.CRYSTAL
 		if WorldCaves.volcanic_factor(x, y, z) > 0.45:
 			return Underground.VOLCANIC
-	# Frozen underlayer follows Frostfall and fades with depth.
+	# Frozen underlayer follows Snow and fades with depth.
 	if surface_biome == BiomeManager.FROST and depth < 96:
 		var frozen: FastNoiseLite = _noise["frozen"]
 		if frozen.get_noise_3d(float(x), float(y), float(z)) > -0.55:

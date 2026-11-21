@@ -1,10 +1,12 @@
-; Lumen: Deepworld — 3D Terraria-inspired sandbox
+; Terraria 3D — a 3D interpretation of Terraria
 
 config_version=5
 
 [application]
 
-config/name="Lumen: Deepworld"
+config/name="Terraria 3D"
+config/description="A 3D Terraria-inspired voxel sandbox: explore, mine, build, craft, fight and progress through a streamed world."
+config/version="0.2.0"
 run/main_scene="res://scenes/ui/main_menu.tscn"
 config/features=PackedStringArray("4.7")
 
@@ -16,7 +18,6 @@ window/size/window_width_override=1920
 window/size/window_height_override=1080
 window/stretch/mode="viewport"
 window/stretch/aspect="keep"
-window/stretch/scale_mode="integer"
 
 [input]
 
@@ -80,7 +81,7 @@ load_world={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":74)]
 }
-debug_spawn_gloomlings={
+debug_spawn_nightlings={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":4194337)]
 }
@@ -88,7 +89,7 @@ debug_spawn_lamp_eater={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":4194338)]
 }
-debug_local_gloom={
+debug_local_night={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":4194339)]
 }

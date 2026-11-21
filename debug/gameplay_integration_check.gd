@@ -1,7 +1,7 @@
 extends SceneTree
 
 # Gameplay-side integration check: biome spawn tables, new enemy variants,
-# buggy chunk-readiness governor, HUD biome indicator, and save policy.
+# HUD biome indicator, HUD visibility regressions, and save policy.
 
 var main: Node
 var failures := 0
@@ -40,9 +40,9 @@ func _run() -> void:
 	# --- Biome spawn tables (pure config) ---
 	var config: EnemyConfig = preload("res://data/world/enemy_config.tres")
 	var allowed := [
-		[EnemyConfig.KIND_GLOOMLING, EnemyConfig.KIND_LAMP_EATER],
-		[EnemyConfig.KIND_GLOOMLING, EnemyConfig.KIND_HOLLOW],
-		[EnemyConfig.KIND_GLOOMLING, EnemyConfig.KIND_FROST_STALKER],
+		[EnemyConfig.KIND_NIGHTLING, EnemyConfig.KIND_LAMP_EATER],
+		[EnemyConfig.KIND_NIGHTLING, EnemyConfig.KIND_HOLLOW],
+		[EnemyConfig.KIND_NIGHTLING, EnemyConfig.KIND_FROST_STALKER],
 		[EnemyConfig.KIND_LAMP_EATER, EnemyConfig.KIND_BOG_CRAWLER],
 	]
 	for biome in range(4):
@@ -57,10 +57,10 @@ func _run() -> void:
 
 	# --- Enemy variants ---
 	var director: EnemyDirector = main.enemy_director
-	var stalker: GloomEnemy = director._make_enemy(EnemyConfig.KIND_FROST_STALKER)
+	var stalker: NightEnemy = director._make_enemy(EnemyConfig.KIND_FROST_STALKER)
 	main.add_child(stalker)
-	_check(stalker is Gloomling, "Frost Stalker reuses Gloomling logic")
-	_check(is_equal_approx(stalker.move_speed, config.frost_stalker_speed) and stalker.move_speed > config.gloomling_speed, "Frost Stalker is faster", "speed=%.1f" % stalker.move_speed)
+	_check(stalker is Nightling, "Frost Stalker reuses Nightling logic")
+	_check(is_equal_approx(stalker.move_speed, config.frost_stalker_speed) and stalker.move_speed > config.nightling_speed, "Frost Stalker is faster", "speed=%.1f" % stalker.move_speed)
 	var icy := false
 	for child in stalker.visual_root.get_children():
 		var material := child.material_override as StandardMaterial3D
@@ -69,36 +69,24 @@ func _run() -> void:
 	_check(icy, "Frost Stalker glow parts are blue-tinted")
 	stalker.queue_free()
 
-	var crawler: GloomEnemy = director._make_enemy(EnemyConfig.KIND_BOG_CRAWLER)
+	var crawler: NightEnemy = director._make_enemy(EnemyConfig.KIND_BOG_CRAWLER)
 	main.add_child(crawler)
 	_check(crawler is LampEater, "Bog Crawler reuses Lamp Eater logic")
 	_check(crawler.body_half_extents.y < 0.35, "Bog Crawler is low-slung (crawls)", "half_y=%.2f" % crawler.body_half_extents.y)
 	crawler.queue_free()
 	await _wait_frames(3)
 
-	# --- Buggy governor ---
-	var buggy: DuneBuggy = main.buggy
-	await _wait_frames(2)
-	if not buggy.parked_ready:
-		_check(false, "buggy parked before governor test")
-		quit(1)
-		return
-	var saved_position := buggy.position
-	buggy.position = Vector3(64.5, float(world.spawn_height() + 1), 64.5)
-	buggy.velocity = Vector3.ZERO
-	buggy._update_stream_governor()
-	_check(not buggy.stream_frozen and buggy.governor_speed_cap > 0.0, "governor allows driving over ready terrain", "cap=%.1f" % buggy.governor_speed_cap)
-	_check(world._focus_is_fresh(), "governor published a generation focus")
-	buggy.position = Vector3(9000.5, 40.0, 9000.5)
-	buggy._update_stream_governor()
-	_check(buggy.stream_frozen and buggy.governor_speed_cap == 0.0, "governor hard-freezes over missing chunks")
-	buggy.position = saved_position
-	buggy.velocity = Vector3.ZERO
-	buggy.stream_frozen = false
-
-	# --- HUD biome indicator ---
+	# --- Sandbox HUD / vehicle removal ---
 	var hud: GameHUD = main.get_node("HUD")
 	await _wait_frames(2)
+	_check(main.get_node_or_null("Buggy") == null, "dune buggy is no longer spawned in the world")
+	_check(not main.player.driving, "player starts on foot, not in a vehicle")
+	_check(not hud.dialogue_footer.is_visible_in_tree(), "dialogue footer stays hidden with no dialogue open")
+	_check(not hud.boss_panel.visible and not hud.boss_health_fill.visible, "boss bar stays hidden with no boss")
+	_check(hud.mana_caption.position.y > 560.0 and hud.heart_icons.size() == 10 and hud.heart_icons[0].position.y > 560.0, "vitals stack is anchored at the bottom left", "mana_y=%.0f heart_y=%.0f" % [hud.mana_caption.position.y, hud.heart_icons[0].position.y if hud.heart_icons.size() > 0 else -1.0])
+	_check(hud.hotbar_panel.position.y > 600.0, "hotbar is anchored at the bottom", "y=%.0f" % hud.hotbar_panel.position.y)
+
+	# --- HUD biome indicator ---
 	hud._update_biome(0.016)
 	_check(hud.last_biome >= 0 and hud.biome_label.text != "", "HUD shows the persistent biome tag", hud.biome_label.text)
 	_check(not hud.biome_intro_label.visible, "no crossing banner on first read")

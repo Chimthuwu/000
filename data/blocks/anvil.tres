@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BlockLightDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/light/block_light_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+block_id = &"anvil"
+attenuation = 1
+albedo = Color(0.40, 0.42, 0.46, 1)
+display_name = "Iron Anvil"
+hardness = 1.4
+mining_tier = 0
+station = "anvil"
+passable = true

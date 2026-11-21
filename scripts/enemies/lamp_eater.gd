@@ -1,4 +1,4 @@
-extends GloomEnemy
+extends NightEnemy
 class_name LampEater
 
 var target_light_cell := Vector3i(-1, -1, -1)
@@ -49,7 +49,7 @@ func _update_behavior(delta: float) -> void:
 	super._update_behavior(delta)
 
 
-# Extinguishing a light is a loud event in Gloom terms: nearby chunks darken
+# Extinguishing a light is a loud event in Night terms: nearby chunks darken
 # and the swarm converges on the now-defenceless position.
 func _on_light_extinguished(target: Vector3) -> void:
 	flare_timer = 1.2
@@ -57,7 +57,7 @@ func _on_light_extinguished(target: Vector3) -> void:
 		var core_material := lantern_core.material_override as StandardMaterial3D
 		if core_material != null:
 			core_material.emission_energy_multiplier = 0.15
-	world.emit_gloom_noise(target, 0.9)
+	world.emit_night_noise(target, 0.9)
 	Vfx.burst(get_parent() as Node3D, target, Color(1.0, 0.52, 0.14), Vector3.UP, 18, 3.2, 0.06, 0.5)
 
 func _create_placeholder_mesh() -> void:

@@ -15,7 +15,7 @@ const VEIN_CELL_XZ := 8
 const VEIN_CELL_Y := 6
 
 const BIOME_ORES := {
-	0: [ # Ashen Flats: the baseline industrial ladder
+	0: [ # Forest: the baseline industrial ladder
 		[&"coal_ore", 4, 80, 3.4, 0.50],
 		[&"copper_ore", 8, 80, 2.6, 0.50],
 		[&"iron_ore", 18, 88, 2.4, 0.52],
@@ -23,7 +23,7 @@ const BIOME_ORES := {
 		[&"gold_ore", 60, 104, 0.9, 0.60],
 		[&"lumen_crystal", 26, 104, 0.35, 0.64],
 	],
-	1: [ # Hushwoods: organic and fungal wealth, less metal
+	1: [ # Jungle: organic and fungal wealth, less metal
 		[&"coal_ore", 6, 70, 2.2, 0.50],
 		[&"copper_ore", 10, 76, 2.0, 0.52],
 		[&"iron_ore", 22, 88, 1.8, 0.54],
@@ -31,27 +31,27 @@ const BIOME_ORES := {
 		[&"lumen_crystal", 28, 100, 0.7, 0.58],
 		[&"ancient_ore", 62, 104, 0.35, 0.66],
 	],
-	2: [ # Frostfall: iron/silver and frozen crystal
+	2: [ # Snow: iron/silver and frozen crystal
 		[&"coal_ore", 6, 60, 1.2, 0.56],
 		[&"iron_ore", 10, 88, 3.0, 0.50],
 		[&"silver_ore", 20, 96, 2.8, 0.50],
 		[&"frost_crystal_ore", 24, 104, 2.0, 0.52],
 		[&"gold_ore", 50, 104, 0.8, 0.62],
 	],
-	3: [ # The Mire: buried ancient material and fungus
+	3: [ # Forest: buried ancient material and fungus
 		[&"copper_ore", 8, 74, 2.2, 0.52],
 		[&"iron_ore", 20, 86, 2.0, 0.54],
 		[&"fungal_ore", 10, 78, 2.4, 0.50],
 		[&"ancient_ore", 36, 104, 1.8, 0.54],
 		[&"gold_ore", 62, 104, 0.7, 0.62],
 	],
-	4: [ # The Scorchlands: copper/silver in sandstone, deep ancient caches
+	4: [ # The Desert: copper/silver in sandstone, deep ancient caches
 		[&"copper_ore", 6, 92, 2.4, 0.52],
 		[&"silver_ore", 24, 120, 2.2, 0.52],
 		[&"gold_ore", 60, 160, 1.2, 0.58],
 		[&"ancient_ore", 92, 180, 1.0, 0.60],
 	],
-	5: [ # Glowgrove: fungal wealth with a little metal and crystal
+	5: [ # Mushroom: fungal wealth with a little metal and crystal
 		[&"fungal_ore", 6, 130, 3.4, 0.50],
 		[&"coal_ore", 8, 90, 1.8, 0.54],
 		[&"iron_ore", 30, 120, 1.6, 0.56],

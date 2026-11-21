@@ -1,5 +1,5 @@
 extends Node3D
-class_name GloomEnemy
+class_name NightEnemy
 
 ## Agent 2 enemy base. Movement/AI are retained; damage now carries knockback,
 ## difficulty scaling, loot drops and a death signal for progression.

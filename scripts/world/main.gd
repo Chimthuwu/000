@@ -6,9 +6,8 @@ const SaveSystem = preload("res://scripts/save/save_manager.gd")
 @onready var player: VoxelPlayer = $Player
 @onready var debug_label: Label = $HUD/DebugReadout
 @onready var cycle: DayNightCycle = $DayNightCycle
-@onready var gloom: GloomManager = $GloomManager
+@onready var night: NightManager = $NightManager
 @onready var enemy_director: EnemyDirector = $EnemyDirector
-@onready var buggy: DuneBuggy = $Buggy
 @onready var hud: GameHUD = $HUD
 
 var edit_journal := BlockEditJournal.new()
@@ -20,6 +19,8 @@ var clue_cooldown := 0.0
 var last_clue_site := ""
 var _auto_continue := false
 var _hallow_checked := false
+var _guide: NpcBase = null
+var _house_timer := 0.0
 
 func _ready() -> void:
 	world.process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -30,7 +31,7 @@ func _ready() -> void:
 	world.block_edited.connect(edit_journal.on_block_edited)
 	player.died.connect(_on_player_died)
 	player.respawned.connect(_on_player_respawned)
-	gloom.unsettling_event.connect(_on_unsettling_event)
+	night.unsettling_event.connect(_on_unsettling_event)
 	player.progression.flag_set.connect(_on_progression_flag)
 	_auto_continue = bool(SettingsStore.get_value("game", "continue_on_boot", false))
 
@@ -56,14 +57,17 @@ func _process(delta: float) -> void:
 		_auto_continue = false
 		load_game()
 	if world.is_generated and player.spawned:
+		if _guide == null:
+			_spawn_guide()
 		_update_environmental_clues(delta)
-		if Input.is_action_just_pressed("debug_spawn_gloomlings"):
-			enemy_director.debug_spawn_gloomlings(3)
+		_update_housing(delta)
+		if Input.is_action_just_pressed("debug_spawn_nightlings"):
+			enemy_director.debug_spawn_nightlings(3)
 		if Input.is_action_just_pressed("debug_spawn_lamp_eater"):
 			enemy_director.debug_spawn_lamp_eater()
-		if Input.is_action_just_pressed("debug_local_gloom"):
+		if Input.is_action_just_pressed("debug_local_night"):
 			var cell := Vector3i(floori(player.camera.global_position.x), floori(player.camera.global_position.y), floori(player.camera.global_position.z))
-			gloom.set_level_for_cell(cell, 1.0)
+			night.set_level_for_cell(cell, 1.0)
 	# The readout includes a voxel raycast, a group query and string formatting.
 	# Only pay for it while the panel is visible, and only four times a second.
 	if debug_visible:
@@ -71,6 +75,98 @@ func _process(delta: float) -> void:
 		if debug_refresh >= 0.25:
 			debug_refresh = 0.0
 			debug_label.text = _debug_text()
+
+## The Guide waits a few blocks from spawn, on the surface, and is the in-world
+## entry point to the crafting guide (talk to him, then press G).
+func _spawn_guide() -> void:
+	var origin := world.spawn_origin
+	# Pick the first flat candidate that is not standing inside a tree.
+	var candidates := [Vector2i(6, 3), Vector2i(-6, 4), Vector2i(5, -6), Vector2i(-5, -5), Vector2i(8, 0)]
+	var gx := origin.x + 6
+	var gz := origin.z + 3
+	for offset in candidates:
+		var point: Vector2i = offset
+		var cx: int = origin.x + point.x
+		var cz: int = origin.z + point.y
+		var clear := true
+		var sites := WorldGenerator.collect_tree_sites_region(world.world_seed, cx - 3, cz - 3, cx + 3, cz + 3)
+		for site in sites:
+			if Vector2(float(site["x"]) - float(cx), float(site["z"]) - float(cz)).length() < 3.0:
+				clear = false
+				break
+		if clear:
+			gx = cx
+			gz = cz
+			break
+	var gy := world.get_surface_height(gx, gz)
+	if gy <= 0:
+		gy = world.spawn_height()
+	var guide := NpcBase.new()
+	guide.name = "Guide"
+	guide.npc_name = "Guide"
+	guide.display_name = "Guide"
+	guide.dialogue_lines = PackedStringArray([
+		"Hello! My name is the Guide. I know everything about crafting.",
+		"Show me a material and I will tell you what can be made with it.",
+		"Press G to browse every recipe, and check the workbench requirements.",
+		"Build a shelter and light it before nightfall. Good luck out there!",
+		"A sealed room with a door, a torch, a chair and a workbench is a home. I would move into one.",
+	])
+	guide.interaction_radius = 3.0
+	add_child(guide)
+	guide.global_position = Vector3(float(gx) + 0.5, float(gy) + 1.0, float(gz) + 0.5)
+	_guide = guide
+
+
+## Terraria house rules, adapted: the room the player is standing in must be
+## sealed, with a door, a light, a chair and a workbench. When one qualifies,
+## the nearest NPC without a home moves in - which is what makes merchants
+## and the Guide actual residents instead of wandering set dressing.
+func _update_housing(delta: float) -> void:
+	if hud == null or not player.spawned or not world.is_generated:
+		return
+	_house_timer -= delta
+	if _house_timer > 0.0:
+		return
+	# The flood fill is bounded but still walks a room; four times a second is
+	# plenty to react to a roof being closed or a chair being placed.
+	_house_timer = 0.25
+	var cell := Vector3i(floori(player.position.x), floori(player.position.y + 0.5), floori(player.position.z))
+	var report := HouseValidator.validate(world, cell)
+	# Outdoors has no house to report; only speak once the player is inside
+	# something that is at least sealed.
+	var show := bool(report.get("sealed", false))
+	hud.set_house_status(HouseValidator.summary(report) if show else "", bool(report.get("valid", false)))
+	if bool(report.get("valid", false)):
+		_house_nearest_npc(report)
+
+
+func _house_nearest_npc(report: Dictionary) -> void:
+	var best: NpcBase = null
+	var best_distance := INF
+	for node in get_tree().get_nodes_in_group("npc"):
+		var npc := node as NpcBase
+		if npc == null or not is_instance_valid(npc):
+			continue
+		if player.npc_service.is_resident(npc):
+			continue
+		var distance: float = npc.global_position.distance_to(player.global_position)
+		if distance < best_distance:
+			best_distance = distance
+			best = npc
+	if best == null:
+		return
+	if not player.npc_service.house_npc(best):
+		return
+	# Terraria moves the resident into the house; put them in the middle of the
+	# room so the player can actually find them there.
+	var cells: Array = report.get("cells", [])
+	if not cells.is_empty():
+		var inside: Vector3i = cells[cells.size() / 2]
+		best.global_position = Vector3(inside) + Vector3(0.5, 0.1, 0.5)
+	hud.show_world_hint("%s HAS MOVED IN." % best.display_name.to_upper(), 4.0)
+	player.set_status("%s IS NOW A RESIDENT" % best.display_name.to_upper())
+
 
 func _update_environmental_clues(delta: float) -> void:
 	clue_cooldown -= delta
@@ -125,7 +221,7 @@ func respawn_player() -> void:
 		return
 	var spawn := Vector3(float(world.spawn_origin.x) + 0.5, float(world.spawn_height()) + 1.0, float(world.spawn_origin.z) + 0.5)
 	world.set_generation_focus(world.spawn_origin)
-	var caster := player.get_node_or_null("Lumencaster") as Lumencaster
+	var caster := player.get_node_or_null("ArcaneCaster") as ArcaneCaster
 	if caster != null:
 		caster.stop_action_state()
 	player.respawn_at(spawn)
@@ -135,7 +231,7 @@ func respawn_player() -> void:
 
 
 func _survival_save_data() -> Dictionary:
-	var caster := player.get_node_or_null("Lumencaster") as Lumencaster
+	var caster := player.get_node_or_null("ArcaneCaster") as ArcaneCaster
 	var data := {
 		"health": player.health,
 		"god_mode": player.god_mode,
@@ -165,8 +261,7 @@ func save_game() -> void:
 		return
 	var extra := {
 		"day_night_elapsed": cycle.elapsed_seconds,
-		"gloom_levels": gloom.to_save_array(),
-		"buggy": buggy.to_save_data()
+		"night_levels": night.to_save_array()
 	}
 	extra.merge(_survival_save_data(), true)
 	SaveSystem.save_world(world, edit_journal, player.position, extra)
@@ -180,7 +275,7 @@ func load_game() -> void:
 	if save_data.is_empty() or not world.restore_save(save_data):
 		if had_directory:
 			# Approved migration policy: old formats are discarded, not converted.
-			var caster := player.get_node_or_null("Lumencaster") as Lumencaster
+			var caster := player.get_node_or_null("ArcaneCaster") as ArcaneCaster
 			if caster != null:
 				caster.show_context_hint(SaveSystem.FORMAT_CHANGED_MESSAGE, 3.0)
 		return
@@ -190,14 +285,10 @@ func load_game() -> void:
 	var metadata: Dictionary = save_data["metadata"]
 	var saved_position: Array = metadata.get("player_position", [])
 	var m4_data: Dictionary = metadata.get("m4", {})
-	var buggy_data: Dictionary = m4_data.get("buggy", {})
-	buggy.apply_save_data(buggy_data)
 	if saved_position.size() == 3:
 		player.position = Vector3(saved_position[0], saved_position[1], saved_position[2])
-	if bool(buggy_data.get("driving", false)):
-		player.position = buggy.get_exit_position()
 	cycle.restore_time(float(m4_data.get("day_night_elapsed", 0.0)))
-	gloom.restore_from_array(m4_data.get("gloom_levels", []))
+	night.restore_from_array(m4_data.get("night_levels", []))
 	_restore_survival_state(metadata, m4_data)
 	# Agent 2: restore the real gameplay state from the same nested key.
 	if m4_data.has("gameplay"):
@@ -209,7 +300,7 @@ func load_game() -> void:
 
 func _restore_survival_state(metadata: Dictionary, m4_data: Dictionary) -> void:
 	var survival: Dictionary = m4_data.get("survival", {})
-	var caster := player.get_node_or_null("Lumencaster") as Lumencaster
+	var caster := player.get_node_or_null("ArcaneCaster") as ArcaneCaster
 	if not survival.is_empty():
 		player.health = clampf(float(survival.get("health", player.health)), 0.0, VoxelPlayer.MAX_HEALTH)
 		player.regen_grace = 2.0
@@ -241,10 +332,10 @@ func _debug_text() -> String:
 	if not hit.is_empty():
 		light_cell = hit["previous_air"]
 	var light_level: int = world.get_light_level(light_cell) if world.is_generated else 0
-	var gloom_level := world.get_gloom_level(light_cell)
+	var night_level := world.get_night_level(light_cell)
 	var chunk_coords: Vector3i = world._chunk_of(light_cell)
 	var biome_name := BiomeManager.biome_name(world.get_biome_at(light_cell))
-	return "LUMENFALL M4 | FPS %d | Draw %d | HP %d | %s | %s | LIGHT %d | GLOOM %.2f\nChunks %d loaded, %d generated, %d meshed, %d lit | blocks %d\nGloom chunk %s | enemies %d | static lights %d | WASD move | 1–4 cartridges | WHEEL cartridges/projector | K save | J load | F3 HUD | F flashlight %s | F6 gloomlings | F7 lamp eater | F8 local gloom" % [Engine.get_frames_per_second(), draw_calls, roundi(player.health), cycle.phase_name.to_upper(), biome_name, light_level, gloom_level, loaded, generated, meshed, world.initialized_light_chunks, block_total, str(chunk_coords), get_tree().get_nodes_in_group("enemies").size(), world.static_light_sources.size(), "ON" if world.flashlight_enabled else "OFF"]
+	return "TERRARIA 3D M4 | FPS %d | Draw %d | HP %d | %s | %s | LIGHT %d | NIGHT %.2f\nChunks %d loaded, %d generated, %d meshed, %d lit | blocks %d\nNight chunk %s | enemies %d | static lights %d | WASD move | 1–4 cartridges | WHEEL cartridges/projector | K save | J load | F3 HUD | F flashlight %s | F6 nightlings | F7 lamp eater | F8 local night" % [Engine.get_frames_per_second(), draw_calls, roundi(player.health), cycle.phase_name.to_upper(), biome_name, light_level, night_level, loaded, generated, meshed, world.initialized_light_chunks, block_total, str(chunk_coords), get_tree().get_nodes_in_group("enemies").size(), world.static_light_sources.size(), "ON" if world.flashlight_enabled else "OFF"]
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:

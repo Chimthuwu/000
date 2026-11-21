@@ -73,8 +73,8 @@ func _run() -> void:
 				mire_columns += 1
 				if BiomeManager.is_mire_water(x, z):
 					water_columns += 1
-	_check(mire_columns > 200, "the Mire has a large footprint", "columns=%d" % mire_columns)
-	_check(water_columns > 10, "the Mire holds standing toxic water", "water_columns=%d of %d" % [water_columns, mire_columns])
+	_check(mire_columns > 200, "the Forest has a large footprint", "columns=%d" % mire_columns)
+	_check(water_columns > 10, "the Forest holds standing toxic water", "water_columns=%d of %d" % [water_columns, mire_columns])
 
 	if failures > 0:
 		quit(1)

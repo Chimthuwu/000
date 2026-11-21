@@ -16,9 +16,64 @@ const BLOCK_DEFS_VERSION := 3
 const EDITS_FILE := "edits.bin"
 const METADATA_FILE := "metadata.json"
 const FORMAT_CHANGED_MESSAGE := "World format changed — starting fresh"
+const LEGACY_USER_FOLDER := "Lumen- Deepworld"
+static var _legacy_migration_checked := false
+
+
+## The project was renamed from its legacy identity. Godot derives user:// from
+## config/name, so existing worlds live in the old sibling data directory.
+## Copy worlds and settings once, without touching the old folder.
+static func ensure_legacy_user_data_migrated() -> void:
+	if _legacy_migration_checked:
+		return
+	_legacy_migration_checked = true
+	var new_root := ProjectSettings.globalize_path("user://").simplify_path().trim_suffix("/")
+	var old_root := new_root.get_base_dir().path_join(LEGACY_USER_FOLDER)
+	if not DirAccess.dir_exists_absolute(old_root):
+		return
+	var new_worlds := new_root.path_join("worlds")
+	if not DirAccess.dir_exists_absolute(new_worlds) and DirAccess.dir_exists_absolute(old_root.path_join("worlds")):
+		var copy_error := _copy_directory(old_root.path_join("worlds"), new_worlds)
+		if copy_error == OK:
+			print("SAVE MIGRATION: copied worlds from %s" % old_root)
+		else:
+			push_warning("SAVE MIGRATION: could not copy old worlds (%s)" % error_string(copy_error))
+	var old_settings := old_root.path_join("settings.cfg")
+	var new_settings := new_root.path_join("settings.cfg")
+	if FileAccess.file_exists(old_settings) and not FileAccess.file_exists(new_settings):
+		DirAccess.copy_absolute(old_settings, new_settings)
+
+
+static func _copy_directory(source: String, destination: String) -> Error:
+	var make_error := DirAccess.make_dir_recursive_absolute(destination)
+	if make_error != OK:
+		return make_error
+	var dir := DirAccess.open(source)
+	if dir == null:
+		return ERR_CANT_OPEN
+	dir.list_dir_begin()
+	var entry := dir.get_next()
+	while entry != "":
+		if entry != "." and entry != "..":
+			var from_path := source.path_join(entry)
+			var to_path := destination.path_join(entry)
+			if dir.current_is_dir():
+				var nested_error := _copy_directory(from_path, to_path)
+				if nested_error != OK:
+					dir.list_dir_end()
+					return nested_error
+			else:
+				var copy_error := DirAccess.copy_absolute(from_path, to_path)
+				if copy_error != OK:
+					dir.list_dir_end()
+					return copy_error
+		entry = dir.get_next()
+	dir.list_dir_end()
+	return OK
 
 
 static func save_world(world: Node, journal: BlockEditJournal, player_position: Vector3, extra_metadata: Dictionary = {}) -> bool:
+	ensure_legacy_user_data_migrated()
 	var save_dir := "user://worlds/%d" % world.world_seed
 	var dir_error := DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(save_dir))
 	if dir_error != OK:
@@ -74,6 +129,7 @@ static func save_world(world: Node, journal: BlockEditJournal, player_position: 
 
 
 static func load_world(seed: int, world: Node) -> Dictionary:
+	ensure_legacy_user_data_migrated()
 	var save_dir := "user://worlds/%d" % seed
 	var metadata_path := save_dir.path_join(METADATA_FILE)
 	var metadata_file := FileAccess.open(metadata_path, FileAccess.READ)

@@ -6,7 +6,7 @@
 script = ExtResource("1")
 item_id = &"mushroom_soil"
 display_name = "Mushroom Soil"
-description = "Rich Glowgrove earth, faintly luminous after dark."
+description = "Rich Mushroom earth, faintly luminous after dark."
 category = 0
 stack_limit = 999
 value = 2

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"wood_platform"
+display_name = "Wood Platform"
+description = "Saw a plank in half and it becomes a walkable deck. Every good house starts with one."
+category = 5
+stack_limit = 999
+rarity = 0
+value = 1
+place_block = &"wood_platform"

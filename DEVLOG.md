@@ -1,5 +1,23 @@
 # DEVLOG
 
+## 2026-11-21 — Jungle broadleaf trees, layered sky islands, Windows export
+
+- Replaced the pale Jungle claw-tree archetypes with broadleaf trees: thick trunks, buttress fins, branch crowns, layered green canopies and hanging vines. The biome-visual check now asserts that the Jungle mesh contains leafy green vertices.
+- Reshaped sky islands from symmetrical ellipsoids into grassy `ashen_soil` caps over dirt/stone bands and a tapered `deepstone` underside, with stone stalactites. Fixed the cap material so it is no longer brown dirt.
+- Widened `BiomeManager.find_biome_center` to 1,800 blocks so Desert and other far regions resolve instead of returning the Forest spawn.
+- Added `debug/capture_biomes.gd`, `debug/sky_island_check.gd`, and the evidence sheets `biome_contact_small_1.png`, `biome_contact_small_2.png`, `biome_sky_final.png`.
+- `build/Terraria3D.exe` exported successfully; a headless `--quit-after 90` smoke run exited 0. No commit or push was made.
+- Visual limits: the Desert frame includes a neighboring Snow spire field, the Underground frame is a close crystal/stone view, and streaming intermittently stalls the first capture attempt.
+
+## 2026-11-21 — Terraria 3D identity cleanup and reference harvest
+
+- Renamed the project identity from the legacy Lumen/Deepworld naming to **Terraria 3D** across `project.godot`, menu, export presets, launchers, README, agent instructions and docs.
+- Renamed the disabled `Lumencaster` system to `ArcaneCaster` and the `Gloom` subsystem to `Night` (`NightManager`, `NightConfig`, `NightEnemy`, `Nightling`). Legacy biome display names now present as Forest/Jungle/Snow/Desert/Mushroom.
+- Imported the MIT-licensed heart sprites from SkyUOI/Terraria3D and replaced the HUD health bar with a ten-heart row. Attribution is in `res/terraria3d/`.
+- The reference terrain atlas is effectively blank and has only one 16x16 dirt tile, so the existing generated terrain atlas remains authoritative. C# reference systems were not copied because equivalent GDScript systems already exist.
+- Added save migration for the old Godot user-data directory and removed stale legacy build binaries.
+
+
 ## 2026-11-21 — Terrain textures, third-person default, real Underworld
 
 ### Done
@@ -21,6 +39,18 @@
 
 - Windowed captures inspected: `debug/evidence/phase1_menu.png`, `phase1_world.png`, `phase1_underworld.png`. Menu and textured Forest (third-person explorer, trees, hotbar icons, health/mana, no stray HUD bar) look correct. The Underworld capture shows the layer label and `Lava` target but still reads as a hazy flat plane; it is not a usable advertisement of the region.
 - Deep-layer atmosphere now uses ember fog, caps sky fill at 0.06, disables the sun and hides the surface horizon rings below depth 168. Those changes did not visibly improve the capture, so the plane's cause (fog, camera enclosure, or an unlit haze surface) is still unresolved.
+
+### Playtest follow-up: car removal and HUD repairs
+
+- Removed the dune buggy from the world scene and from save/load; `buggy_check` now asserts the vehicle is absent rather than auditing driving.
+- Fixed the windowed look: dropped integer stretch scaling so the 1280x720 viewport fills a 1080p window without black bars; parented the dialogue footer to the dialogue panel (it had been visible for the whole session); restricted the boss bar to the `bosses` group (a 100+ HP regular enemy triggered it); moved the MANA caption, environment/depth labels and health value into the bottom-left vitals stack; suppressed the `Sky` target label when aiming at air.
+- Verified with `buggy_check`, `gameplay_integration_check` and `world_boot_check` (exit 0) and a fresh `--fixed-fps 60` windowed capture at `debug/evidence/phase1_world.png`.
+
+### Surface trees: leafy canopies
+
+- The visible bare trees were the six `WorldVegetation` archetypes inherited from the horror build. Each now grows blocky green leaf clusters (octahedron blobs with dark undersides and lit tops) around its crown, so surface forests read as living trees instead of dead claws.
+- The floating discs are generated sky islands (`WorldSky`), not trees. Their four thick 2-5 block hanging roots were cut to two 1-3 block strands so the islands stop looking like mushroom stems.
+- `world_boot_check` and `biome_visuals_check` pass; the refreshed windowed capture shows green canopies across the Forest.
 - Capture lesson: run window captures with `--fixed-fps 60`. An uncapped window burns frames faster than the streaming workers and the world looks stalled at ~120 chunks.
 - Remaining visual limits: the Underworld capture is an ash/lava close-up, not a wide lava-sea vista; desert/snow/jungle/corruption/crimson/hallow and boss/NPC views were not separately captured. First-person mode and the inventory/crafting panel visuals were not captured.
 
@@ -78,7 +108,7 @@
 
 ### Verified
 
-- Godot 4.7.2 reports nonzero `LIGHT_LEVEL 12` for AIR at `(13, 15, 14)` in the primary screenshot; HUD also shows `GLOOM_LEVEL`.
+- Godot 4.7.2 reports nonzero `LIGHT_LEVEL 12` for AIR at `(13, 15, 14)` in the primary screenshot; HUD also shows `NIGHT_LEVEL`.
 - Before/after images show the same view with changed dither lighting and the source marker moved from `(15, 15, 15)` to `(8, 15, 12)` after the L-key action.
 - All seven saved screenshots are 854×480. Three border-angle screenshots are distinct views.
 - The five-run timing criterion remains PASS: median 1.661 ms and max 2.356 ms. The meaningful budget is the amortized cost of up to two chunks in a frame against the 20 ms worst-case frame budget; a single-chunk timing in isolation does not establish that combined frame cost.
@@ -117,7 +147,7 @@ M0 verdict: OPEN — four-band/fog appearance, conclusive three-angle seam check
 
 ### Confirmed
 
-- Inspected `debug/evidence/m0_01_dither_air_crosshair.png`: its HUD reads `LIGHT_LEVEL 12 | GLOOM_LEVEL 0.00 | block air at (13, 15, 14)`. The crosshair sample is the AIR cell immediately before the wall hit, so the primary dither capture has the requested nonzero light value.
+- Inspected `debug/evidence/m0_01_dither_air_crosshair.png`: its HUD reads `LIGHT_LEVEL 12 | NIGHT_LEVEL 0.00 | block air at (13, 15, 14)`. The crosshair sample is the AIR cell immediately before the wall hit, so the primary dither capture has the requested nonzero light value.
 - Confirmed the 2569 us and 3191 us values came from screenshot capture runs with capture/render overhead. They are not part of the clean five-run timing set. The accepted five-run result remains 1.620, 1.641, 1.661, 1.783, and 2.356 ms (median 1.661 ms, max 2.356 ms), meeting median <3 ms and max <4 ms.
 - Human visual review accepted the dither (five distinct wall bands), integer scaling/letterboxing in a resized window, and seam visibility (no brightness step across the chunk border at the supplied angles).
 
@@ -233,7 +263,7 @@ OPEN — AIR crosshair readout, three-angle chunk-border seam, visible light-mov
 
 - Godot 4.7.2 automated test passed all air, mycelium, and pale-bloom light values at distances 1–15.
 - Automated values across the x=15/16 chunk boundary matched the expected propagated light.
-- The primary capture reports `LIGHT_LEVEL 12 | GLOOM_LEVEL 0.00 | block air at (13, 15, 14)`.
+- The primary capture reports `LIGHT_LEVEL 12 | NIGHT_LEVEL 0.00 | block air at (13, 15, 14)`.
 - Five full padded chunk runs were 1182, 1184, 1184, 1190, and 1252 µs; median 1184 µs, max 1252 µs. Both revised criteria pass (<3 ms median, <4 ms max).
 - Light movement was captured before and after using the existing L-key action; both images use the same view and show different illumination.
 
@@ -325,7 +355,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 
 ### Next
 
-- M3 plan: Lumencaster cartridge swapping, mining hitscan and Gloom noise, Lumen reserve recharge/fire gating, and 4×4×4 Projector Mode. No code until user approves the plan.
+- M3 plan: ArcaneCaster cartridge swapping, mining hitscan and Night noise, Arcane reserve recharge/fire gating, and 4×4×4 Projector Mode. No code until user approves the plan.
 
 ### Files changed
 
@@ -341,15 +371,15 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 
 ### Done
 
-- Added four cartridge resources and a data-driven Lumencaster configuration.
-- Added a player Lumencaster with grid DDA, 1–4 cartridge selection, EXCAVATOR block mining/inventory and Gloom noise signal, light-gated Lumen reserve/recharge, temporary BEACON/FLARE lights, and PHOTON hit signaling.
-- Added Projector Mode: surface drag rectangle capped at 4×4, scroll extrusion depth 1–4, translucent no-depth preview, and atomic inventory/Lumen checks before build.
+- Added four cartridge resources and a data-driven ArcaneCaster configuration.
+- Added a player ArcaneCaster with grid DDA, 1–4 cartridge selection, EXCAVATOR block mining/inventory and Night noise signal, light-gated Arcane reserve/recharge, temporary BEACON/FLARE lights, and PHOTON hit signaling.
+- Added Projector Mode: surface drag rectangle capped at 4×4, scroll extrusion depth 1–4, translucent no-depth preview, and atomic inventory/Arcane checks before build.
 - Fixed black world clear, opaque-or-discard dither pixels, explicit back-face culling, solid-to-air mesh face filtering, and the see-through projector preview.
 - Converted static light propagation to resumable 16-cell batches with a 1 ms per-frame work budget and nearest-player chunk priority.
 
 ### Verified
 
-- Ran `Godot_v4.7.2-stable_win64_console.exe --headless --editor --path . --quit`; the global cache registered `CartridgeDef` and `LumencasterConfig`, with no script parse errors.
+- Ran `Godot_v4.7.2-stable_win64_console.exe --headless --editor --path . --quit`; the global cache registered `CartridgeDef` and `ArcaneCasterConfig`, with no script parse errors.
 - Ran a 600-frame headless startup. World generation completed and no repeated >20 ms frame warning occurred. The previous single-chunk light update spike was replaced by budgeted incremental work.
 - A first smoke run exposed an unsupported StandardMaterial3D `wireframe` assignment; removed it and reran import/startup without that warning.
 
@@ -367,20 +397,20 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 - `STATE.md`, `DEVLOG.md`, `project.godot`
 - `shaders/light_dither.gdshader`
 - `scripts/world/chunk_mesher.gd`, `scripts/world/world.gd`, `scripts/light/light_propagator.gd`, `scripts/world/main.gd`
-- `scripts/player/player.gd`, `scripts/player/cartridge_def.gd`, `scripts/player/lumencaster_config.gd`, `scripts/player/lumencaster.gd`
+- `scripts/player/player.gd`, `scripts/player/cartridge_def.gd`, `scripts/player/arcane_caster_config.gd`, `scripts/player/arcane_caster.gd`
 - `scenes/world/main.tscn`
 - `data/cartridges/*.tres`
 
 ### Commit message
 
-`Implement Lumencaster and smooth M3 rendering`
+`Implement ArcaneCaster and smooth M3 rendering`
 ## 2026-11-16 — M3 rendering and bake follow-up
 
 ### Done
 
 - Kept zero-light Bayer samples as opaque black and retained `depth_draw_opaque`; the voxel ShaderMaterial never writes `ALPHA` or uses alpha blending.
 - Reversed each quad's triangle order to Godot's clockwise front-face winding while preserving outward face normals. `cull_back` remains enabled. The mesher checks each solid cell's six neighbors and emits only toward air.
-- Replaced the filled projector box with a 12-edge `ArrayMesh` line cage sized to the complete selected volume. Added a 32 px HUD left inset and widened the Lumen label.
+- Replaced the filled projector box with a 12-edge `ArrayMesh` line cage sized to the complete selected volume. Added a 32 px HUD left inset and widened the Arcane label.
 - Cut unnecessary lighting work: sources that cannot reach a chunk core are excluded by a conservative Manhattan bound; chunks with no relevant sources receive a zero buffer without copying the padded volume or starting a flood fill.
 - Set incremental light work to a 7 ms/frame budget in 64-cell steps.
 
@@ -403,7 +433,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 - `STATE.md`, `DEVLOG.md`
 - `shaders/light_dither.gdshader`
 - `scripts/world/chunk_mesher.gd`, `scripts/world/world.gd`, `scripts/light/light_propagator.gd`
-- `scripts/world/main.gd`, `scenes/world/main.tscn`, `scripts/player/lumencaster.gd`
+- `scripts/world/main.gd`, `scenes/world/main.tscn`, `scripts/player/arcane_caster.gd`
 
 ### Commit message
 
@@ -413,7 +443,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 ### Done
 
 - Recorded M3 as ACCEPTED and closed at the user's direction.
-- Reviewed BIBLE.md M4 scope and the current world light, Gloom-noise, block-resource, and player weapon interfaces. Prepared an M4 implementation plan only; no M4 code was written.
+- Reviewed BIBLE.md M4 scope and the current world light, Night-noise, block-resource, and player weapon interfaces. Prepared an M4 implementation plan only; no M4 code was written.
 
 ### Verified
 
@@ -425,7 +455,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 
 ### Next
 
-- After plan approval: implement data-driven Gloom, the 25-minute day/night cycle, Gloomling/Lamp Eater spawning and behavior, and bounded rotted-block conversion.
+- After plan approval: implement data-driven Night, the 25-minute day/night cycle, Nightling/Lamp Eater spawning and behavior, and bounded rotted-block conversion.
 
 ### Files changed
 
@@ -438,11 +468,11 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 
 ### Done
 
-- Added data resources for day/night timing and sky levels, Gloom rates/thresholds, enemy spawning/combat, and rotted dirt/ashen-soil variants.
-- Added per-chunk 0–1 Gloom values, per-chunk static-light coverage, ambient exposure, underground/night multipliers, Lumencaster noise input, save/restore, and bounded dirt/ashen-soil rotting.
+- Added data resources for day/night timing and sky levels, Night rates/thresholds, enemy spawning/combat, and rotted dirt/ashen-soil variants.
+- Added per-chunk 0–1 Night values, per-chunk static-light coverage, ambient exposure, underground/night multipliers, ArcaneCaster noise input, save/restore, and bounded dirt/ashen-soil rotting.
 - Added the 7-minute day, 2-minute twilight, 15-minute night, and 1-minute dawn cycle. Ambient sky level is evaluated in the opaque Bayer shader using per-vertex UV2 sky exposure, so it does not rebuild chunks each frame.
-- Added hidden-from-player spawn checks, capped Gloomling swarms, Gloomling damage and strong-light dissolving, and Lamp Eaters that seek and temporarily extinguish torches/beacons.
-- Added player health and Lumencaster hitscan damage against enemies. The debug overlay shows phase, HP, crosshair LIGHT_LEVEL/GLOOM_LEVEL, enemy count, and world status.
+- Added hidden-from-player spawn checks, capped Nightling swarms, Nightling damage and strong-light dissolving, and Lamp Eaters that seek and temporarily extinguish torches/beacons.
+- Added player health and ArcaneCaster hitscan damage against enemies. The debug overlay shows phase, HP, crosshair LIGHT_LEVEL/NIGHT_LEVEL, enemy count, and world status.
 
 ### Verified
 
@@ -452,7 +482,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 
 ### Broken / not verified
 
-- M4 is not yet accepted. In-game visual/gameplay review is still needed for day-to-night readability, Gloom changes under light, enemy spawn visibility, Gloomling attacks/dissolving, Lamp Eater targeting/extinguishing, and rotted terrain appearance.
+- M4 is not yet accepted. In-game visual/gameplay review is still needed for day-to-night readability, Night changes under light, enemy spawn visibility, Nightling attacks/dissolving, Lamp Eater targeting/extinguishing, and rotted terrain appearance.
 - Headless startup reported the existing Windows Godot certificate/cache/log write warnings and startup slow-frame warnings; it also completed successfully. The headless timing is not a performance acceptance run.
 - The current world has dirt and ashen_soil as rot substrates; no separate grass block exists in M1 content.
 
@@ -463,13 +493,13 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 ### Files changed
 
 - `STATE.md`, `DEVLOG.md`, `scenes/world/main.tscn`, `shaders/light_dither.gdshader`
-- `scripts/world/world.gd`, `scripts/world/chunk.gd`, `scripts/world/chunk_mesher.gd`, `scripts/world/main.gd`, `scripts/world/day_night_cycle.gd`, `scripts/world/gloom_manager.gd`, `scripts/world/enemy_director.gd`, `scripts/world/day_night_config.gd`, `scripts/world/gloom_config.gd`, `scripts/world/enemy_config.gd`
-- `scripts/enemies/enemy_base.gd`, `scripts/enemies/gloomling.gd`, `scripts/enemies/lamp_eater.gd`, `scripts/player/player.gd`, `scripts/player/lumencaster.gd`, `scripts/save/save_manager.gd`, `scripts/light/block_light_def.gd`
+- `scripts/world/world.gd`, `scripts/world/chunk.gd`, `scripts/world/chunk_mesher.gd`, `scripts/world/main.gd`, `scripts/world/day_night_cycle.gd`, `scripts/world/night_manager.gd`, `scripts/world/enemy_director.gd`, `scripts/world/day_night_config.gd`, `scripts/world/night_config.gd`, `scripts/world/enemy_config.gd`
+- `scripts/enemies/enemy_base.gd`, `scripts/enemies/nightling.gd`, `scripts/enemies/lamp_eater.gd`, `scripts/player/player.gd`, `scripts/player/arcane_caster.gd`, `scripts/save/save_manager.gd`, `scripts/light/block_light_def.gd`
 - `data/world/*.tres`, `data/blocks/dirt.tres`, `data/blocks/ashen_soil.tres`, `data/blocks/rotted_dirt.tres`, `data/blocks/rotted_ashen_soil.tres`
 
 ### Commit message
 
-`Implement M4 Gloom, day-night cycle, and enemies`
+`Implement M4 Night, day-night cycle, and enemies`
 
 ## 2026-11-16 — M4 constraint pass
 
@@ -477,7 +507,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 
 - Locked the three approved M4 decisions. Surface-only spawning and one-way rot already matched the code, so only the Lamp Eater targeting changed.
 - Added `lamp_eater_target_radius` (24 m) and `lamp_eater_target_blocks` (data whitelist, currently `torch`) to `EnemyConfig` and its `.tres`.
-- Lamp Eaters now skip sources outside the radius and any block not in the whitelist. Because player torches, Beacon rounds, and Flares all place the `torch` block, they remain valid targets; lumen crystals are excluded.
+- Lamp Eaters now skip sources outside the radius and any block not in the whitelist. Because player torches, Beacon rounds, and Flares all place the `torch` block, they remain valid targets; radiant crystals are excluded.
 
 ### Verified
 
@@ -487,7 +517,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 
 ### Broken / not verified
 
-- The whitelist filter and radius have not been observed in gameplay; headless runs do not exercise Lamp Eater target selection. Confirm during the M4 playtest by placing a torch and a lumen crystal near a Lamp Eater.
+- The whitelist filter and radius have not been observed in gameplay; headless runs do not exercise Lamp Eater target selection. Confirm during the M4 playtest by placing a torch and a radiant crystal near a Lamp Eater.
 - M4 remains unaccepted pending the user's playtest.
 
 ### Files changed
@@ -502,31 +532,31 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 
 ### Done
 
-- Added `LumencasterViewmodel` under the player camera: five BoxMeshes for body/barrel/muzzle/grip/sight, an unshaded material whose albedo follows local voxel light plus the flashlight cone, a six-segment emissive Lumen strip, and a muzzle-flash cube.
-- Added a `fired(cartridge_id, kick)` signal to the Lumencaster, emitted only after a shot passes the light/reserve checks. The viewmodel converts it into positional kickback, upward pitch, and a short lateral shake with exponential recovery.
-- Replaced the top-left reserve bar/text with the gun's Lumen cells: the `HUD/LumenBar` node was removed, and `LumenReadout` now shows mode/build/status only. `lumencaster.gd` looks the nodes up with `get_node_or_null` and tolerates the removed bar.
-- Added F6/F7/F8 input actions and handlers: F6 spawns three Gloomlings, F7 spawns a Lamp Eater, F8 sets the player's current chunk Gloom to 1.0. Debug spawning bypasses the Gloom threshold and enemy cap.
+- Added `ArcaneCasterViewmodel` under the player camera: five BoxMeshes for body/barrel/muzzle/grip/sight, an unshaded material whose albedo follows local voxel light plus the flashlight cone, a six-segment emissive Arcane strip, and a muzzle-flash cube.
+- Added a `fired(cartridge_id, kick)` signal to the ArcaneCaster, emitted only after a shot passes the light/reserve checks. The viewmodel converts it into positional kickback, upward pitch, and a short lateral shake with exponential recovery.
+- Replaced the top-left reserve bar/text with the gun's Arcane cells: the `HUD/ArcaneBar` node was removed, and `ArcaneReadout` now shows mode/build/status only. `arcane_caster.gd` looks the nodes up with `get_node_or_null` and tolerates the removed bar.
+- Added F6/F7/F8 input actions and handlers: F6 spawns three Nightlings, F7 spawns a Lamp Eater, F8 sets the player's current chunk Night to 1.0. Debug spawning bypasses the Night threshold and enemy cap.
 
 ### Verified
 
-- Headless editor import exited 0 and registered `LumencasterViewmodel` with no script parse errors.
+- Headless editor import exited 0 and registered `ArcaneCasterViewmodel` with no script parse errors.
 - 600-frame headless main-scene run exited 0: world generated, light bake completed in 115 frames (max 9525 µs), and no viewmodel or debug-key runtime errors appeared.
 - The headless run executes the viewmodel `_ready`/`_process`, so mesh construction, material setup, and the per-frame light query are exercised.
 
 ### Broken / not verified
 
-- Screen placement, silhouette, recoil feel, Lumen-cell readability, and muzzle flash are not verified headlessly; they need the user's playtest.
+- Screen placement, silhouette, recoil feel, Arcane-cell readability, and muzzle flash are not verified headlessly; they need the user's playtest.
 - Firing is not simulated headlessly, so the `fired` signal path is only parse-checked until the user shoots in game.
 
 ### Files changed
 
-- `scripts/player/lumencaster_viewmodel.gd` (new), `scripts/player/lumencaster.gd`
-- `scripts/world/main.gd`, `scripts/world/gloom_manager.gd`, `scripts/world/enemy_director.gd`
+- `scripts/player/arcane_caster_viewmodel.gd` (new), `scripts/player/arcane_caster.gd`
+- `scripts/world/main.gd`, `scripts/world/night_manager.gd`, `scripts/world/enemy_director.gd`
 - `scenes/world/main.tscn`, `project.godot`, `STATE.md`, `DEVLOG.md`
 
 ### Commit message
 
-`Add Lumencaster viewmodel and M4 debug spawn keys`
+`Add ArcaneCaster viewmodel and M4 debug spawn keys`
 
 ## 2026-11-16 — M4 cave enemy spawning
 
@@ -545,34 +575,34 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 
 ### Broken / not verified
 
-- Cave spawn frequency and whether cave Gloomlings feel fair are playtest questions; the cave path passed once per check run and uses randomized sampling.
-- Cave Gloomlings still use the existing horizontal chase with no pathfinding, so they cannot follow the player between cave levels.
+- Cave spawn frequency and whether cave Nightlings feel fair are playtest questions; the cave path passed once per check run and uses randomized sampling.
+- Cave Nightlings still use the existing horizontal chase with no pathfinding, so they cannot follow the player between cave levels.
 
 ### Files changed
 
-- `scripts/world/enemy_director.gd`, `scripts/player/lumencaster_viewmodel.gd`, `debug/cave_spawn_check.gd` (new), `STATE.md`, `DEVLOG.md`
+- `scripts/world/enemy_director.gd`, `scripts/player/arcane_caster_viewmodel.gd`, `debug/cave_spawn_check.gd` (new), `STATE.md`, `DEVLOG.md`
 
 ### Commit message
 
-`Add cave enemy spawning for underground Gloom`
+`Add cave enemy spawning for underground Night`
 
 ## 2026-11-16 — M4 visual polish and weapon simplification
 
 ### Done
 
-- Removed the firing economy for this phase: all four cartridges now have `energy_cost = 0`, and `minimum_light = 0` so shots work away from torches. The existing reserve gates remain in code for restoration; Projector Mode still spends Lumen.
+- Removed the firing economy for this phase: all four cartridges now have `energy_cost = 0`, and `minimum_light = 0` so shots work away from torches. The existing reserve gates remain in code for restoration; Projector Mode still spends Arcane.
 - Confirmed the Excavator was already instant: it breaks the raycast block in the same shot, with no charge/beam state to remove.
 - Upgraded the muzzle flash from a box to a bright emissive sphere, shown for 0.05 s and scaled randomly per shot.
 - Added `scripts/fx/vfx.gd` (`Vfx.burst`), a one-shot `GPUParticles3D` helper with per-effect color, direction, count, speed, size, lifetime, and glow. Block hits emit amber sparks along the face normal; enemy hits emit magenta sparks.
-- Rebuilt the Gloomling visual: near-black sphere with two red emissive eyes, a sine-wave bob on a visual child, and a dim purple smoke burst on dissolve. Lamp Eaters keep the base placeholder sphere.
+- Rebuilt the Nightling visual: near-black sphere with two red emissive eyes, a sine-wave bob on a visual child, and a dim purple smoke burst on dissolve. Lamp Eaters keep the base placeholder sphere.
 - Raised the block palette contrast: pale ash surface, dark earth, charcoal stone, rust iron, bright teal crystal, violet mycelium, bone pale bloom, near-black rotted soils.
 - Debug F6/F7/F8 were already present and were left in place.
 - Fixed two issues found while testing: debug enemy spawning now retries angles near world edges instead of placing out of bounds, and enemies resolve the world/player through the scene root when `current_scene` is null.
 
 ### Verified
 
-- Headless editor import exited 0 with `Vfx`, `Gloomling`, `GloomEnemy`, `Lumencaster`, and `LumencasterViewmodel` registered and no parse errors.
-- Extended `debug/cave_spawn_check.gd`; three consecutive headless runs all passed: cave spawn, particle burst creation, debug Gloomling spawn, and a real `_fire_selected_cartridge()` call that emitted `fired`.
+- Headless editor import exited 0 with `Vfx`, `Nightling`, `NightEnemy`, `ArcaneCaster`, and `ArcaneCasterViewmodel` registered and no parse errors.
+- Extended `debug/cave_spawn_check.gd`; three consecutive headless runs all passed: cave spawn, particle burst creation, debug Nightling spawn, and a real `_fire_selected_cartridge()` call that emitted `fired`.
 - 600-frame headless startup exited 0: world generated and light bake completed in 123 frames (max 9004 µs); only the pre-existing startup slow-frame warnings appeared.
 
 ### Broken / not verified
@@ -583,15 +613,15 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 
 ### Files changed
 
-- `scripts/fx/vfx.gd` (new), `scripts/enemies/enemy_base.gd`, `scripts/enemies/gloomling.gd`
-- `scripts/player/lumencaster.gd`, `scripts/player/lumencaster_viewmodel.gd`, `scripts/world/enemy_director.gd`
+- `scripts/fx/vfx.gd` (new), `scripts/enemies/enemy_base.gd`, `scripts/enemies/nightling.gd`
+- `scripts/player/arcane_caster.gd`, `scripts/player/arcane_caster_viewmodel.gd`, `scripts/world/enemy_director.gd`
 - `data/cartridges/*.tres`, `data/blocks/*.tres`, `debug/cave_spawn_check.gd`, `STATE.md`, `DEVLOG.md`
 
 ### Commit message
 
-`Polish Lumencaster and Gloomling visuals, remove firing costs`
+`Polish ArcaneCaster and Nightling visuals, remove firing costs`
 
-## 2026-11-16 — Ashen Flats world generation overhaul
+## 2026-11-16 — Forest world generation overhaul
 
 ### Done
 
@@ -599,7 +629,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 - Kept the flattened spawn clearing and the 7-block structure suppression, so the player still spawns on clean ground.
 - Added deterministic dead trees using `dead_wood` (block index 11), recolored from near-black to medium-dark grey so trunks read against the pale plain: 11–20 block trunks, occasional 2x2 bases, lean every fourth step, branches only in the upper half, a four-arm crown, and pale ash blooms (`pale_bloom`) on 35% of branch tips.
 - Added eight landmark trees in a ring 10–20 m from spawn, so a grove is visible immediately instead of depending on random density.
-- Added giant Lumen-crystal clusters: 3–5 shards, sometimes a 12–17 block central shard, 2x2 bases that taper. Two landmark clusters at `(80,51)` and `(46,77)`; one is visible from spawn.
+- Added giant Arcane-crystal clusters: 3–5 shards, sometimes a 12–17 block central shard, 2x2 bases that taper. Two landmark clusters at `(80,51)` and `(46,77)`; one is visible from spawn.
 - Removed large brown dirt patches from the surface; the plain is now pale ashen soil with rare charcoal stone outcrops.
 - Brightened daytime from 0.22 to 0.5 sky level (twilight 0.16) and raised dither bands from 6 to 8, so the world reads as a pale overcast day instead of near-night.
 - Added a flashlight toggle on T. `VoxelWorld.set_flashlight_enabled()` updates the shader uniform, `get_flashlight_level_at()` returns 0 when off, and the HUD shows `T flashlight ON/OFF`.
@@ -608,7 +638,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 
 - Headless editor import exited 0 with no parse errors.
 - Generated-world counts: `dead_wood=4843`, `pale_bloom=285`, `lumen_crystal=572`, `ashen_soil=15894`, `stone=248947`, `dirt=65534`.
-- Extended `debug/cave_spawn_check.gd`: heights 17..23, relief 6, max adjacent slope 2, tall dead wood and tall crystal present, spawn cell clear, flashlight action and shader flag wired. Cave spawn, particle burst, debug Gloomling spawn, and firing checks also pass.
+- Extended `debug/cave_spawn_check.gd`: heights 17..23, relief 6, max adjacent slope 2, tall dead wood and tall crystal present, spawn cell clear, flashlight action and shader flag wired. Cave spawn, particle burst, debug Nightling spawn, and firing checks also pass.
 - 1,200-frame headless startup exited 0; light bake completed in 204 frames (max frame work 10,747 µs).
 - Captured the spawn view with the flashlight off and reviewed it: individual trunk/branch silhouettes, visible crystal, pale plain. The temporary capture script and screenshot were deleted afterward.
 
@@ -625,11 +655,11 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 
 ### Commit message
 
-`Restore gentle Ashen Flats plains and add a visible dead grove`## 2026-11-16 — Terrain and tree art pass
+`Restore gentle Forest plains and add a visible dead grove`## 2026-11-16 — Terrain and tree art pass
 
 ### Done
 
-- Rebuilt the Ashen Flats heightfield from three layered noise octaves (broad landform, hills, fine detail) and cut the fine detail amplitude so the plain reads as smooth rolling dunes instead of a crumpled one-block mosaic.
+- Rebuilt the Forest heightfield from three layered noise octaves (broad landform, hills, fine detail) and cut the fine detail amplitude so the plain reads as smooth rolling dunes instead of a crumpled one-block mosaic.
 - Surface material: pale ashen soil with coherent charcoal stone where the local slope exposes rock, plus rare coherent outcrops, replacing the old high-frequency black speckle that covered the plain.
 - Replaced per-column decoration RNG with deterministic per-grid-cell placement: trees on an 11-block grid and crystal clusters on a 24-block grid, both stamped with a reach margin so neighbouring chunks produce identical, complete structures.
 - Rewrote the dead trees: 2x2 ground-level root flare, coherent single-axis lean with filled elbows, thick-trunk and broken-stump variants, face-connected stair-step branches (no edge-only diagonal cubes that read as floating), drooping twigs, forked spires, and pale ash blooms on some tips.
@@ -642,7 +672,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 ### Verified
 
 - `--headless --editor` import exits 0 with no script parse errors.
-- `debug/cave_spawn_check.gd` passes: terrain 17..28 (relief 11, max adjacent slope 1), tall wood and crystal features, clear spawn cell, flashlight toggle, cave spawn, VFX, Gloomling debug spawn, and cartridge fire.
+- `debug/cave_spawn_check.gd` passes: terrain 17..28 (relief 11, max adjacent slope 1), tall wood and crystal features, clear spawn cell, flashlight toggle, cave spawn, VFX, Nightling debug spawn, and cartridge fire.
 - Reviewed 854x480 captures for the spawn view, a close tree portrait, a wide vista, a torch-lit night, and the day torch: branches are connected, terrain contours read cleanly, and the sky/fog gradient works in Compatibility.
 - Before/after vista captures kept at `debug/evidence/terrain_before_wide.png` and `debug/evidence/terrain_after_wide.png`; the temporary capture script was deleted.
 
@@ -650,7 +680,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 
 - No timing measurement of the AO mesher. It runs on `WorkerThreadPool`, but the added corner queries were not profiled.
 - Startup slow-frame warnings during generation/lighting remain unchanged from before this pass.
-- Night fog/sky behaviour under Gloom was not playtested beyond the static capture.
+- Night fog/sky behaviour under Night was not playtested beyond the static capture.
 
 ### Files changed
 
@@ -662,7 +692,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 
 ### Commit message
 
-`Rework Ashen Flats terrain, trees, and voxel shading`
+`Rework Forest terrain, trees, and voxel shading`
 ## 2026-11-16 — P0 gun feel pass
 
 ### Done
@@ -686,7 +716,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 
 ### Files changed
 
-- `scripts/player/lumencaster.gd`, `scripts/player/lumencaster_viewmodel.gd`, `scripts/player/cartridge_def.gd`
+- `scripts/player/arcane_caster.gd`, `scripts/player/arcane_caster_viewmodel.gd`, `scripts/player/cartridge_def.gd`
 - `data/cartridges/excavator.tres`, `data/cartridges/beacon.tres`, `data/cartridges/photon_slug.tres`, `data/cartridges/flare.tres`
 - `scenes/world/main.tscn`, `project.godot`
 - `debug/gun_feel_check.gd`
@@ -715,7 +745,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 
 ### Files changed
 
-- `scripts/player/lumencaster.gd`, `scripts/player/lumencaster_viewmodel.gd`, `scripts/fx/vfx.gd`
+- `scripts/player/arcane_caster.gd`, `scripts/player/arcane_caster_viewmodel.gd`, `scripts/fx/vfx.gd`
 - `scripts/world/world_generator.gd`
 - `debug/gun_feel_check.gd`, `debug/world_density_check.gd`, `debug/capture_audit.gd`
 - `debug/evidence/audit_spawn.png`, `debug/evidence/audit_vista.png`, `debug/evidence/audit_ground.png`
@@ -746,7 +776,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 ### Files changed
 
 - `shaders/light_dither.gdshader`, `scripts/world/world.gd`, `scripts/world/day_night_cycle.gd`, `data/world/day_night_config.tres`
-- `scripts/world/chunk_mesher.gd`, `scripts/player/lumencaster_viewmodel.gd`, `scenes/world/main.tscn`
+- `scripts/world/chunk_mesher.gd`, `scripts/player/arcane_caster_viewmodel.gd`, `scenes/world/main.tscn`
 - `debug/evidence/audit_spawn.png`, `debug/evidence/audit_vista.png`, `debug/evidence/audit_ground.png`
 - `GRAPHICS_AUDIT.md`, `STATE.md`, `DEVLOG.md`
 ## 2026-11-16 — Watertight fixtures, charred trees, glow and surface detail
@@ -785,7 +815,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 ### Done
 
 - `DebugReadout` now starts hidden (`debug_visible := false`); F still toggles it.
-- Moved `LumenReadout` from under the debug text to the top-right, right-aligned, and reduced it to the loadout only: `CARTRIDGE n/4 | BUILD <material> ×n | DEPTH n`.
+- Moved `ArcaneReadout` from under the debug text to the top-right, right-aligned, and reduced it to the loadout only: `CARTRIDGE n/4 | BUILD <material> ×n | DEPTH n`.
 - Added `HUD/StatusLabel`, centred above the crosshair, and moved all transient status messages ("PHOTON BEAM HIT", "FLARE LANDED", reserve warnings, projector errors) into it. Cartridge switching and projector-mode toggles no longer post duplicate status lines because the readout already shows them.
 - Added a 1 px dark text shadow to the cartridge readout, status label and context hint so they stay readable over bright sky and ash.
 
@@ -802,7 +832,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 
 ### Files changed
 
-- `scenes/world/main.tscn`, `scripts/player/lumencaster.gd`, `scripts/world/main.gd`
+- `scenes/world/main.tscn`, `scripts/player/arcane_caster.gd`, `scripts/world/main.gd`
 - `debug/gun_feel_check.gd`
 - `debug/evidence/audit_spawn.png`, `debug/evidence/probe_flash.png`
 - `GRAPHICS_AUDIT.md`, `STATE.md`, `DEVLOG.md`
@@ -863,10 +893,10 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 ### Done
 
 - Added `scripts/ui/game_hud.gd` (`GameHUD`) and reduced the scene's HUD to a single CanvasLayer node with that script. It builds all UI in code with StyleBoxFlat panels, rather than a pile of loose labels in the scene.
-- Bottom-left loadout card: cartridge accent strip, name, `LUMENCASTER`/`PROJECTOR MODE` line in the cartridge accent, four cartridge pips (selected pip taller and opaque), six Lumen segments plus the numeric reserve, and a build line with material, stock and depth. Material ids render with spaces and stock 0 highlights red.
+- Bottom-left loadout card: cartridge accent strip, name, `ARCANE CASTER`/`PROJECTOR MODE` line in the cartridge accent, four cartridge pips (selected pip taller and opaque), six Arcane segments plus the numeric reserve, and a build line with material, stock and depth. Material ids render with spaces and stock 0 highlights red.
 - New VITALS bar and numeric health readout above the card, a dot-and-tick crosshair, and a bordered Projector controls card.
-- Status messages are polled from the Lumencaster and shown above the crosshair with a short fade; hint text and fade come from the same source, so the HUD is now the only writer of UI text.
-- Pause: Esc opens a full-screen overlay with a dimmed backdrop, a 460×320 panel, a two-column controls list, and Resume/Save/Load/Quit buttons. Esc resumes; the overlay defers to the Lumencaster when it is dragging or in Projector Mode. The tree pauses and the mouse is released while open.
+- Status messages are polled from the ArcaneCaster and shown above the crosshair with a short fade; hint text and fade come from the same source, so the HUD is now the only writer of UI text.
+- Pause: Esc opens a full-screen overlay with a dimmed backdrop, a 460×320 panel, a two-column controls list, and Resume/Save/Load/Quit buttons. Esc resumes; the overlay defers to the ArcaneCaster when it is dragging or in Projector Mode. The tree pauses and the mouse is released while open.
 - `VoxelPlayer` no longer toggles mouse capture on Esc; `Main` now exposes `save_game()`/`load_game()` so the K/J keys and the overlay buttons share one path.
 
 ### Verified
@@ -886,7 +916,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 ### Files changed
 
 - `scripts/ui/game_hud.gd` (new), `scenes/world/main.tscn`
-- `scripts/player/lumencaster.gd`, `scripts/player/player.gd`, `scripts/world/main.gd`
+- `scripts/player/arcane_caster.gd`, `scripts/player/player.gd`, `scripts/world/main.gd`
 - `debug/gun_feel_check.gd`, `debug/capture_audit.gd`
 - `debug/evidence/audit_spawn.png`, `ui_projector.png`, `ui_pause.png`
 - `GRAPHICS_AUDIT.md`, `STATE.md`, `DEVLOG.md`
@@ -896,12 +926,12 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 
 - Audited both enemy types in-engine at night and wrote `ENEMY_AESTHETIC_AUDIT.md`.
 - Added `debug/capture_enemies.gd` to spawn via the F6/F7 paths, freeze an enemy and capture it from two distances, plus a group shot.
-- Captures: `enemy_gloomling.png`, `enemy_gloomling_close.png`, `enemy_lamp_eater.png`, `enemy_lamp_eater_close.png`, `enemy_group_night.png`.
+- Captures: `enemy_nightling.png`, `enemy_nightling_close.png`, `enemy_lamp_eater.png`, `enemy_lamp_eater_close.png`, `enemy_group_night.png`.
 
 ### Findings
 
-- The Gloomling's eyes are buried inside its body sphere (eye z −0.30 vs surface −0.333 at eye height), so the red eyes never render; it reads as a featureless black egg.
-- The Lamp Eater still inherits `GloomEnemy._create_placeholder_mesh` and is a bright purple unshaded sphere with no eyes, limbs or lantern motif.
+- The Nightling's eyes are buried inside its body sphere (eye z −0.30 vs surface −0.333 at eye height), so the red eyes never render; it reads as a featureless black egg.
+- The Lamp Eater still inherits `NightEnemy._create_placeholder_mesh` and is a bright purple unshaded sphere with no eyes, limbs or lantern motif.
 - Both are unshaded with no shadow, no hit reaction, no attack wind-up and no dissolve animation, so they read as pasted-on props rather than creatures.
 
 ### Verified
@@ -965,7 +995,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 ### Verified
 
 - Headless editor import and 600-frame startup exit 0; only the known light-bake >20 ms frame warnings remain.
-- `debug/cave_spawn_check.gd` (terrain relief 25/14..39, 55 tree sites, tall crystal, clear spawn, cave spawn, Gloomling, firing) and `debug/world_density_check.gd` both pass after updating them for shaped terrain and stump-only trees.
+- `debug/cave_spawn_check.gd` (terrain relief 25/14..39, 55 tree sites, tall crystal, clear spawn, cave spawn, Nightling, firing) and `debug/world_density_check.gd` both pass after updating them for shaped terrain and stump-only trees.
 - Windowed captures in `debug/evidence/phase2_*.png` show sun-lit terrain, long tree shadows, mesas/ridges and visible ash grass.
 
 ### Next
@@ -976,17 +1006,17 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 
 ### Done
 
-- Trimmed lumen crystal clusters: landmark cores 10–12 blocks (was 16–18), ordinary clusters 6–8 (was 10–14), side shards 3–5 (was 5–9), three landmark shards instead of four. The spires now sit under the ridge line instead of towering over the horizon.
+- Trimmed radiant crystal clusters: landmark cores 10–12 blocks (was 16–18), ordinary clusters 6–8 (was 10–14), side shards 3–5 (was 5–9), three landmark shards instead of four. The spires now sit under the ridge line instead of towering over the horizon.
 - Added `HorizonRidges` plus `shaders/horizon_ridge.gdshader`: three concentric silhouette rings outside the 128×128 map (radii 120/152/196) with a foot-to-crest haze gradient, and a haze annulus beyond the world edge. `DayNightCycle` tints them with the sky, horizon and twilight colours and they darken at night like real distant ranges.
 - Fixed the invisible reedbed: grass and reeds had `visibility_range_end` measured from the world-centred AABB, so the whole MultiMesh was culled once the camera left the map centre. Removed the range on both cover batches; all 2,407 reed clumps and ~3,000 grass tufts now draw everywhere.
 - Rebuilt reeds as four tapered crossed cards plus seed heads per clump, with warmer olive/straw colours, so they read as a stand from across the channel instead of pale specks. Also reduced their excessive width for close-up play.
 
 ### Verified
 
-- Re-ran `debug/cave_spawn_check.gd` (terrain, 55 tree sites, tall crystal, spawn, cave spawn, Gloomling, fire) and `debug/world_density_check.gd`: all pass.
+- Re-ran `debug/cave_spawn_check.gd` (terrain, 55 tree sites, tall crystal, spawn, cave spawn, Nightling, fire) and `debug/world_density_check.gd`: all pass.
 - Headless editor import: no parse errors.
 - Captures `debug/evidence/phase3_vista.png`, `phase3_horizon.png`, `phase3_skyline.png`, `phase3_river.png`, `phase3_channel_top.png`, `phase3_night.png`. Riverbed and skyline show the reed stand; vista and horizon show three layered ranges. A diagnostic top-down confirmed the channel winding east of spawn.
-- Copies of all evidence now live in the user's desktop folder `Lumenfall Screenshots`.
+- Copies of all evidence now live in the user's desktop folder `Terraria 3D Screenshots`.
 
 ### Next
 
@@ -1001,15 +1031,15 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 - Reworked lighting for streaming: each chunk builds a padded 46³ block volume from its loaded 3×3×3 neighbourhood (Y clamped to 0..3) and runs `LightPropagator` on that volume. There are no global light arrays and no load-order dependency, so light is seamless across chunk boundaries. Meshing snapshots an 18³ block+light+sky halo, builds on a worker, and installs only when the chunk revision still matches.
 - Fixed a catastrophic coordinate bug: `WorldGenerator.generate_chunk` was treating chunk coordinates as block origins. It now multiplies by `CHUNK_SIZE` internally, which removed the phantom terrain, wrong biome sampling and broken collisions. `BiomeManager`, the generator, light and meshing now share one block-space convention.
 - Added `BiomeManager`: static and seed-pure, with domain-warped heat/wet noise, four anchors, normalized `exp(-d²/0.028)` weights, four continuous height functions summed by weight, a deterministic surface dither, sky modes (open / canopy / overcast), a Mire water test, and a spawn lock that forces Ashen inside 150 blocks and blends to the natural field by 240. Macro metrics: 3,417 / 2,228 / 1,918 / 2,638 sample columns, average run 121 blocks, mean adjacent height delta 0.46 (max 10).
-- Implemented the four biomes: Ashen Flats keeps the locked canyon terrain; Hushwoods gets pale trees and mycelium over rotted Ashen soil; Frostfall gets snow over ice and jagged ice spires; The Mire gets dark mud, toxic silt at the waterline and a translucent water plane. Added `frost_snow`, `frost_ice`, `mire_mud` and `toxic_silt` (ids 16–19). The old `hush_soil` lookup did not exist, so Hushwoods had been falling back to Ashen ground; that is fixed and covered by a check.
+- Implemented the four biomes: Forest keeps the locked canyon terrain; Jungle gets pale trees and mycelium over rotted Ashen soil; Snow gets snow over ice and jagged ice spires; Forest gets dark mud, toxic silt at the waterline and a translucent water plane. Added `frost_snow`, `frost_ice`, `mire_mud` and `toxic_silt` (ids 16–19). The old `hush_soil` lookup did not exist, so Jungle had been falling back to Ashen ground; that is fixed and covered by a check.
 - Added the Gameplay Agent contract: `get_biome_at(cell) -> int`, `block_edited(cell, id)` signal (player edits only), `is_chunk_ready(chunk_cell)`, `set_generation_focus(cell)`, `spawn_origin`/`spawn_height`, and floor/posmod-safe `get_surface_height`, `is_solid`, `get_block_id`. Unloaded frontier space reports air to queries but solid to `is_solid`, so the player and buggy cannot fall out of the world.
 - Streaming save support: sparse edited-cell journal keyed by world coordinates, re-applied when a chunk regenerates, with modified chunks surviving unload. Format version 3; older saves are rejected with `World format changed — starting fresh`.
-- Gated the Mire water plane and vegetation rebuilds by biome/distance. The water scan only runs when Mire weight > 0.1; rebuilding it over every Ashen column had caused 100–200 ms main-thread hitches. The worst walk-test frame dropped from ~210 ms to ~89 ms.
+- Gated the Forest water plane and vegetation rebuilds by biome/distance. The water scan only runs when Mire weight > 0.1; rebuilding it over every Ashen column had caused 100–200 ms main-thread hitches. The worst walk-test frame dropped from ~210 ms to ~89 ms.
 
 ### Verified
 
 - `debug/biome_check.gd` passes: all four biomes present, average run 121 blocks, mean height delta 0.46, spawn 100% Ashen, weights sum 1.0000, Mire water present (190 of 6,534 sampled columns).
-- `debug/biome_surface_check.gd` (new; generates chunks with no world and no streaming) passes: Ashen 215/233, Hushwoods 220/256, Frostfall 182/218, Mire 240/256 surface cells on the correct palette, distinct block colours, deterministic chunk bytes.
+- `debug/biome_surface_check.gd` (new; generates chunks with no world and no streaming) passes: Ashen 215/233, Jungle 220/256, Snow 182/218, Mire 240/256 surface cells on the correct palette, distinct block colours, deterministic chunk bytes.
 - `debug/world_contract_check.gd` passes all six API endpoints, including negative coordinates and the solid unloaded frontier.
 - `debug/streaming_check.gd` passes spawn readiness, chunk determinism, unload/reload, byte-identical regeneration, edits surviving unload, and the sparse save (56 bytes for 2 edited cells).
 - `debug/ashen_flats_check.gd` passes: 735 gravel surface cells, landmark spires 7/7/9, 2,972 of 2,996 canyon floor columns reachable on foot.
@@ -1027,7 +1057,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 
 ### Files changed
 
-- `scripts/world/biome_manager.gd` (new), `scripts/world/world.gd`, `scripts/world/world_generator.gd`, `scripts/world/chunk_mesher.gd`, `scripts/world/vegetation.gd`, `scripts/world/water_surface.gd`, `scripts/world/horizon_ridges.gd`, `scripts/world/gloom_manager.gd`, `scripts/world/enemy_director.gd`, `scripts/world/main.gd`
+- `scripts/world/biome_manager.gd` (new), `scripts/world/world.gd`, `scripts/world/world_generator.gd`, `scripts/world/chunk_mesher.gd`, `scripts/world/vegetation.gd`, `scripts/world/water_surface.gd`, `scripts/world/horizon_ridges.gd`, `scripts/world/night_manager.gd`, `scripts/world/enemy_director.gd`, `scripts/world/main.gd`
 - `scripts/light/light_propagator.gd`, `scripts/save/save_manager.gd`, `scripts/ui/game_hud.gd`, `scripts/player/player.gd`
 - `data/blocks/frost_snow.tres`, `frost_ice.tres`, `mire_mud.tres`, `toxic_silt.tres`
 - `debug/biome_check.gd`, `debug/biome_surface_check.gd`, `debug/streaming_check.gd`, `debug/world_contract_check.gd`, plus updated `ashen_flats_check`, `world_density_check`, `m1_walk_test`, `m1_roundtrip_test`
@@ -1041,25 +1071,25 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 
 ### Done
 
-- Added player mortality: `VoxelPlayer` now has `MAX_HEALTH`, `god_mode`, `dead`, `died`/`respawned` signals, damage gating, slow health recovery only in real light with low Gloom, and a single `respawn_at()` reset path. `Main` shows a death overlay, releases the mouse and respawns at `world.spawn_origin`.
-- Added a `GameHUD` death screen (YOU DIED / RESPAWN AT CAMP / Enter), an environment readout (SHELTERED / EXPOSED / GLOOM RISING) and a fading world-hint label for environmental clues.
-- Made light consequential: Beacon (18) and Flare (12) now spend Lumen; unlit high-Gloom standing drains Lumen at 2.5/s; Gloomlings retreat from lit cells and dissolve in strong light; Lamp Eaters investigate the player flashlight, dim their lantern-organ after extinguishing a light, and emit a Gloom noise pulse so the swarm converges on the now-unprotected position.
-- Added procedural, asset-free threat audio (`scripts/audio/audio_director.gd`) on `World`/`UI` buses: a Gloom-scaled drone, proximity skitters for Gloomlings, a Lamp Eater hum and cached enemy scans. Added a rare deep-night Gloom disturbance that feeds dark into the area and raises a HUD hint without a jumpscare.
-- Added deterministic abandoned camps to Ashen Flats (`DERELICT_CELL` grid): collapsed stone shelter, one torch, an iron/crystal cache, plus a pure `derelict_site_near()` query and a proximity clue in `Main`.
-- Extended the existing v3 save instead of adding a new system: health, god flag, Lumen reserve, selected cartridge, inventory and remaining temporary lights now round-trip through `metadata.player_stats`, `metadata.inventory` and `metadata.m4.survival`.
+- Added player mortality: `VoxelPlayer` now has `MAX_HEALTH`, `god_mode`, `dead`, `died`/`respawned` signals, damage gating, slow health recovery only in real light with low Night, and a single `respawn_at()` reset path. `Main` shows a death overlay, releases the mouse and respawns at `world.spawn_origin`.
+- Added a `GameHUD` death screen (YOU DIED / RESPAWN AT CAMP / Enter), an environment readout (SHELTERED / EXPOSED / NIGHT RISING) and a fading world-hint label for environmental clues.
+- Made light consequential: Beacon (18) and Flare (12) now spend Arcane; unlit high-Night standing drains Arcane at 2.5/s; Nightlings retreat from lit cells and dissolve in strong light; Lamp Eaters investigate the player flashlight, dim their lantern-organ after extinguishing a light, and emit a Night noise pulse so the swarm converges on the now-unprotected position.
+- Added procedural, asset-free threat audio (`scripts/audio/audio_director.gd`) on `World`/`UI` buses: a Night-scaled drone, proximity skitters for Nightlings, a Lamp Eater hum and cached enemy scans. Added a rare deep-night Night disturbance that feeds dark into the area and raises a HUD hint without a jumpscare.
+- Added deterministic abandoned camps to Forest (`DERELICT_CELL` grid): collapsed stone shelter, one torch, an iron/crystal cache, plus a pure `derelict_site_near()` query and a proximity clue in `Main`.
+- Extended the existing v3 save instead of adding a new system: health, god flag, Arcane reserve, selected cartridge, inventory and remaining temporary lights now round-trip through `metadata.player_stats`, `metadata.inventory` and `metadata.m4.survival`.
 - Fixed a real UX bug exposed by the audits: the buggy proximity prompt was overwriting the Projector control hint. The Projector hint now has priority for 6 s and a short suppression window on exit. Refreshed stale `gun_feel_check` expectations (wheel wrap = Projector Mode, beacon places a `beacon` block, HUD throttling).
 
 ### Verified
 
 - `gda project scan`: clean, `AudioDirector` registered; `gda scene validate res://scenes/world/main.tscn`: valid, no problems.
-- New `debug/survival_check.gd` passes end to end: damage/cooldown/death/death screen, respawn at spawn origin, god mode, light regen, sheltered HUD state, beacon Lumen cost, high-Gloom Lumen drain, camp generation/query/clue, audio buses, and save/load of health, reserve, inventory, god flag, placed lights and streaming readiness after reload. No runtime diagnostics.
+- New `debug/survival_check.gd` passes end to end: damage/cooldown/death/death screen, respawn at spawn origin, god mode, light regen, sheltered HUD state, beacon Arcane cost, high-Night Arcane drain, camp generation/query/clue, audio buses, and save/load of health, reserve, inventory, god flag, placed lights and streaming readiness after reload. No runtime diagnostics.
 - Regression suite all green on Godot 4.7.2: `gameplay_integration_check`, `gun_feel_check`, `world_density_check`, `mesher_fixture_check`, `world_contract_check`, `streaming_check`, `biome_check`, `biome_surface_check`, `ashen_flats_check`, `buggy_check`, `visual_regression_check`, `cave_spawn_check`, `m2_acceptance_test` (median 1304 µs / max 2120 µs chunk timing), and the two-process `run_m1_roundtrip.ps1`. `gameplay_integration_check` still emits its expected legacy-save rejection `push_error`.
 
 ### Broken / not verified
 
 - No hand playtest: rendering, audio mix, death-screen feel, enemy encounters and frame pacing were not observed in a windowed session. Headless checks prove state and wiring, not look or comfort.
 - `debug/hollow_check.gd` remains stale on the old fixed-map API and was not migrated in this pass.
-- The new Gloom event is exposed to tests through GloomManager but its timing/randomness was not asserted in headless.
+- The new Night event is exposed to tests through NightManager but its timing/randomness was not asserted in headless.
 
 ### Next
 
@@ -1067,7 +1097,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 
 ### Files changed
 
-- `scripts/player/player.gd`, `scripts/player/lumencaster.gd`, `scripts/ui/game_hud.gd`, `scripts/world/main.gd`, `scripts/world/gloom_manager.gd`, `scripts/world/world_generator.gd`, `scripts/enemies/gloomling.gd`, `scripts/enemies/lamp_eater.gd`, `scripts/save/save_manager.gd`, `scripts/audio/audio_director.gd` (new)
+- `scripts/player/player.gd`, `scripts/player/arcane_caster.gd`, `scripts/ui/game_hud.gd`, `scripts/world/main.gd`, `scripts/world/night_manager.gd`, `scripts/world/world_generator.gd`, `scripts/enemies/nightling.gd`, `scripts/enemies/lamp_eater.gd`, `scripts/save/save_manager.gd`, `scripts/audio/audio_director.gd` (new)
 - `scenes/world/main.tscn`, `data/cartridges/beacon.tres`, `data/cartridges/flare.tres`
 - `debug/survival_check.gd` (new), `debug/gun_feel_check.gd`, `STATE.md`, `DEVLOG.md`
 
@@ -1079,10 +1109,10 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 
 ### Done
 
-- Dev console: `scripts/ui/dev_console.gd` (`~` / physical key 96), drop-down LineEdit + scrollback, `toggle_console` action. Commands `god`, `spawn <name>`, `tp <biome>`, `time <0-24>`, `heal`, `help`. Added `EnemyDirector.spawn_named()` (ground placement in front of the camera via the shared factory), `DayNightCycle.set_time_hours()` and `BiomeManager.find_biome_center()`. `Main.console_open` suppresses player movement and Lumencaster input while typing.
+- Dev console: `scripts/ui/dev_console.gd` (`~` / physical key 96), drop-down LineEdit + scrollback, `toggle_console` action. Commands `god`, `spawn <name>`, `tp <biome>`, `time <0-24>`, `heal`, `help`. Added `EnemyDirector.spawn_named()` (ground placement in front of the camera via the shared factory), `DayNightCycle.set_time_hours()` and `BiomeManager.find_biome_center()`. `Main.console_open` suppresses player movement and ArcaneCaster input while typing.
 - Hollow: frozen while the crosshair or flashlight chest beam has line of sight; otherwise sprints at the new `hollow_chase_speed` 7.0. Observation is disabled while the player is dead, and a dust VFX puff marks the freeze→move transition.
-- Frost Stalker applies `player.apply_slow(3.0)` on hit (45% move speed); Bog Crawler no longer hunts lights — it chases the player and spits `ToxicProjectile`, draining 14 Lumen on impact and 6 on contact. Added the `GloomEnemy.on_hit_player()` hook so variant effects do not duplicate the base attack loop.
-- Biome visuals: stopped stamping voxel Hushwoods trees and Frostfall spires. `WorldVegetation` now builds pale claw-tree, glowing-mushroom, ice-spire and swamp-root MultiMeshes from deterministic site collectors in `WorldGenerator` (797 Hush sites, 42 Frost sites, 115 Mire sites in the checked radius). Fog scale/tint retuned to dark Hush (3.6), pale white Frost and sickly green Mire (3.2), with faster cross-fade. Added a camera-attached blizzard that emits only in Frostfall and Mire water bubbles that follow the water region. Ashen borders keep their existing weight/dither feathering.
+- Frost Stalker applies `player.apply_slow(3.0)` on hit (45% move speed); Bog Crawler no longer hunts lights — it chases the player and spits `ToxicProjectile`, draining 14 Arcane on impact and 6 on contact. Added the `NightEnemy.on_hit_player()` hook so variant effects do not duplicate the base attack loop.
+- Biome visuals: stopped stamping voxel Jungle trees and Snow spires. `WorldVegetation` now builds pale claw-tree, glowing-mushroom, ice-spire and swamp-root MultiMeshes from deterministic site collectors in `WorldGenerator` (797 Hush sites, 42 Frost sites, 115 Mire sites in the checked radius). Fog scale/tint retuned to dark Hush (3.6), pale white Frost and sickly green Mire (3.2), with faster cross-fade. Added a camera-attached blizzard that emits only in Snow and Mire water bubbles that follow the water region. Ashen borders keep their existing weight/dither feathering.
 
 ### Verified
 
@@ -1103,7 +1133,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 ### Files changed
 
 - New: `scripts/ui/dev_console.gd`, `scripts/fx/blizzard.gd`, `scripts/enemies/toxic_projectile.gd`, `debug/dev_console_check.gd`, `debug/enemy_behavior_check.gd`, `debug/biome_visuals_check.gd`
-- Edited: `project.godot`, `scenes/world/main.tscn`, `scripts/world/main.gd`, `scripts/world/biome_manager.gd`, `scripts/world/world.gd`, `scripts/world/world_generator.gd`, `scripts/world/vegetation.gd`, `scripts/world/water_surface.gd`, `scripts/world/enemy_config.gd`, `scripts/world/enemy_director.gd`, `scripts/world/day_night_cycle.gd`, `scripts/enemies/enemy_base.gd`, `scripts/enemies/hollow.gd`, `scripts/enemies/frost_stalker.gd`, `scripts/enemies/bog_crawler.gd`, `scripts/player/player.gd`, `scripts/player/lumencaster.gd`, `data/world/enemy_config.tres`, `STATE.md`, `DEVLOG.md`
+- Edited: `project.godot`, `scenes/world/main.tscn`, `scripts/world/main.gd`, `scripts/world/biome_manager.gd`, `scripts/world/world.gd`, `scripts/world/world_generator.gd`, `scripts/world/vegetation.gd`, `scripts/world/water_surface.gd`, `scripts/world/enemy_config.gd`, `scripts/world/enemy_director.gd`, `scripts/world/day_night_cycle.gd`, `scripts/enemies/enemy_base.gd`, `scripts/enemies/hollow.gd`, `scripts/enemies/frost_stalker.gd`, `scripts/enemies/bog_crawler.gd`, `scripts/player/player.gd`, `scripts/player/arcane_caster.gd`, `data/world/enemy_config.tres`, `STATE.md`, `DEVLOG.md`
 
 ### Commit message
 
@@ -1125,7 +1155,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
   4-row resident vertical window so the deep slab costs no memory until explored.
 - Made `WorldLayers` depth-relative (24/64/108/150) and added a dedicated
   underground-biome layer (`WorldBiomes`) driving stone, ore, enemy tags and ambience.
-- Added Scorchlands (desert) and Glowgrove (mushroom) surface biomes with their own
+- Added Desert (desert) and Mushroom (mushroom) surface biomes with their own
   height functions, materials, cacti and giant mushrooms; expanded fog tables to six.
 - Added water/lava generation (aquifers, lava pools), deep chasms, crystal stone,
   biome+underground-aware ore pools, and six chunk-safe structure templates.
@@ -1187,10 +1217,10 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 - `data/items/`, `data/recipes/`, `data/loot/`, `data/bosses/`, `data/npc/`
 - `scenes/gameplay/`, `debug/agent2_*`, the three coordination docs, `STATE.md`.
 
-## Agent 4 — Undercroft ported into canonical lumen_deepworld
+## Agent 4 — Undercroft ported into canonical Terraria3D
 
 ### Done
-- Confirmed `lumen_deepworld/` is the canonical project (256-block world, 96x96 `WorldStructures`, MiningSystem, six surface biomes, Agent 2 gameplay, Agent 3 HUD/NPC/menu). The earlier `Terraria3D/` copy was Agent 4's workspace; no directory was deleted.
+- Confirmed `Terraria3D/` is the canonical project (256-block world, 96x96 `WorldStructures`, MiningSystem, six surface biomes, Agent 2 gameplay, Agent 3 HUD/NPC/menu). The earlier `Terraria3D/` copy was Agent 4's workspace; no directory was deleted.
 - Ported and ADAPTED rather than copied: `scripts/content/adventure_config.gd`, `scripts/content/adventure_content.gd`, `data/world/adventure_config.tres`, `debug/adventure_content_check.gd`, `debug/generate_adventure_config.gd`, plus coordination docs and this log.
 - Adaptations: `WORLD_Y` 64 -> dynamic `WorldLayers.WORLD_Y`; absolute y=12/2 -> depth-relative levels from the lowest local surface; block ids by name only (no numeric fallbacks); surface gate follows lifted surface; validated each level inside its own 4-row streaming window; held player teleports against canonical Main's boot auto-continue save load.
 - One additive call in Agent 1's `world_generator.gd` after `WorldStructures`/`_stamp_biome_props`. Agent 3's `GameHUD` and Agent 2 systems were not modified.
@@ -1253,8 +1283,8 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 
 ### Done
 - Audited the canonical implementation against the corrected 3D Terraria
-  sandbox direction. Engine has six climate biomes (Ashen, Hushwoods, Frostfall,
-  Mire presented as Overworld, Scorchlands, Glowgrove) and no Corruption,
+  sandbox direction. Engine has six climate biomes (Ashen, Jungle, Snow,
+  Mire presented as Overworld, Desert, Mushroom) and no Corruption,
   Crimson, Hallow, Ocean or Jungle identity; no evil exclusivity; no Hallow gate.
 - Added `scripts/content/terraria_world_content.gd`: the nine required core
   Terraria surface biomes, legacy names as variants only, five vertical layer
@@ -1288,7 +1318,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 ### Done
 - `BiomeManager` grew from 6 to 11 surface regions with core identities:
   Forest (MIRE), Desert, Snow (FROST), Mushroom, Jungle, The Corruption,
-  The Crimson, The Hallow and Ocean. Ashen Flats and Hushwoods remain regional
+  The Crimson, The Hallow and Ocean. Forest and Jungle remain regional
   variants, not replacements.
 - Evil identity is deterministic per seed and exclusive by default
   (`set_evil_mode("corruption" | "crimson" | "both")`). The Hallow has zero
@@ -1410,7 +1440,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
   added three accessory items and recipes.
 - Warden victory sets the `hardmode` world flag. NPC roles, shops and housing
   flags are data-driven (`NpcProfile`, `NpcService`).
-- Retired the Lumencaster viewmodel/loadout, granted a starter tool kit and
+- Retired the ArcaneCaster viewmodel/loadout, granted a starter tool kit and
   repositioned the HUD for 1280x720. All headless checks listed in STATE.md pass.
 
 ### Agent 2 — Phase 4 discovery gameplay
@@ -1436,7 +1466,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
   movement after ~0.18 blocks. Cause: `data/blocks/air.tres` omitted
   `is_solid_block = false` (the `BlockLightDef` field defaults to true).
 - Added `is_solid_block = false` to `data/blocks/air.tres` (one line).
-- Rebuilt `build/LumenDeepworld.exe` from current canonical sources so the
+- Rebuilt `build/ArcaneTerraria 3D.exe` from current canonical sources so the
   executable the user launches contains the fix (the previous build was from
   23:08 and predated later agent work).
 
@@ -1450,7 +1480,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 - Rebuilt exe reports Godot 4.7.2.stable and boots headless.
 
 ### Files changed this session
-- `data/blocks/air.tres` (one line), `build/LumenDeepworld.exe` (rebuilt),
+- `data/blocks/air.tres` (one line), `build/ArcaneTerraria 3D.exe` (rebuilt),
   `MULTI_AGENT_STATUS.md`, `DEVLOG.md`.
 
 ## Branding + HUD cleanup (user feedback, this session)
@@ -1459,7 +1489,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 - Renamed the desktop shortcut to `3D Terraria.lnk`; menu title now reads
   `3D TERRARIA` (credits relabelled). Kept `config/name` unchanged so saved
   worlds keep the same `user://` path.
-- Fixed the odd-looking HUD: legacy `LUMEN`/`VITALS`/health captions were
+- Fixed the odd-looking HUD: legacy `MANA`/`VITALS`/health captions were
   attached directly to the CanvasLayer and stayed visible after their panels
   were hidden; named and hid them in `_layout_for_viewport()`. Cleared the
   leftover `PROJECTOR MODE` gun hint at HUD startup.
@@ -1467,7 +1497,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
   was locked by the running game; repointed the desktop shortcut to it.
 
 ### Verified
-- HUD probe: `LoadoutPanel`, `LegacyLumenCaption`, `LegacyVitalsCaption`,
+- HUD probe: `LoadoutPanel`, `LegacyArcaneCaption`, `LegacyVitalsCaption`,
   `HealthValue` and `HintPanel` all hidden after `_ready`.
 - `menu_click_check`, `gameplay_integration_check`, `npc_check`,
   `world_boot_check`, `biome_discovery_check` all PASS.
@@ -1475,7 +1505,7 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 
 ### Files changed this session
 - `scripts/ui/main_menu.gd`, `scripts/ui/game_hud.gd`, `build/3DTerraria.exe`
-  (new), `build/LumenDeepworld.tmp` (removed), desktop shortcut, shared docs.
+  (new), `build/ArcaneTerraria 3D.tmp` (removed), desktop shortcut, shared docs.
 
 ## Terrain material pass + reference harvest (this session)
 
@@ -1499,3 +1529,30 @@ M2 isolated verdict: OPEN — automated checks pass; waiting for human visual ac
 ### Notes
 - Reference repo is an early prototype (one terrain tile, unfinished mod loader),
   not the mature asset source the brief assumed. No assets copied.
+
+## Terraria identity art pass
+
+- Rebuilt tree silhouettes: short thick trunks, wide layered three-tier canopies (lobed rings plus flat deck plates), same canopy helper for jungle/evil/hallow/snow; trees no longer cast hard ground shadows.
+- Grass tufts, flowers and bushes now cover every grassy surface biome instead of only the ash shelf; tufts reduced and re-tinted.
+- Atlas contrast raised for grass, dirt and stone; sky-visibility lighting falloff changed to sqrt so shaded surface keeps daylight while caves stay dark.
+- HUD restyled to the Terraria navy/gold palette with bevelled slots, equipment icons and full item tooltips.
+- The Guide now spawns near spawn and opens a real crafting-guide list (recipes that use the held material, with have/need and station requirements).
+
+## Building set and physical crafting stations
+
+- Stations are now physical: world.has_station() scans placed furniture near the player, and crafting refuses bench/furnace/anvil recipes until you build and stand beside them.
+- Added platform, door (two-state), stone brick, glass, workbench, furnace, anvil and chest, each with its own atlas tile, mesher fixture, item and recipe; metal gear moved to the anvil so bench -> furnace -> anvil is a real progression.
+- HUD lists the stations in reach and tags locked recipes with why they are locked.
+
+## Chests, NPC housing and stairs
+
+- Chests are real storage: a 20-slot store keyed by cell, opened with E, clicked stack-by-stack between chest and inventory, persisted in the existing gameplay save, and spilled as item drops when the chest is broken.
+- Houses are validated, not hand-flagged: a flood fill must stay sealed, and the room needs a door, a light, a chair and a workbench. A valid room houses the nearest un-housed NPC and the HUD reports `HOUSE READY`.
+- Stairs are Minecraft-style: four facing variants per material, facing chosen from the aim direction, one item per material, stepped mesh over a full-cube collider.
+- Evidence: `debug/capture_building_extra.gd` writes `extra_stairs`, `extra_house` and `extra_chest` PNGs; `debug/building_extra_check.gd` covers all three systems (92 assertions).
+
+## Terraria-style light: edits re-bake, walls block
+
+- Diagnosis: `_enqueue_light` refuses light-ready chunks, and block edits never cleared `light_ready`, so a chunk's baked light was frozen at install time; a torch placed in a built room could not light it, and glass was the only block that diverged from `attenuation = 1`, so torchlight passed through brick just like air.
+- Fix: solid, non-passable blocks attenuate light by the full 15 (opaque), air/passable stays 1 and glass 0; `_queue_light_region` now clears `light_ready` on the affected chunks before enqueueing them, so the padded bake re-runs; a new `light_counted` flag keeps the lit-chunk tally correct across re-bakes.
+- `debug/building_extra_check.gd` covers the behaviour: torch bakes at 15, room interior 13, cell behind the wall 0, removing the torch re-bakes to 0.

@@ -1,6 +1,6 @@
 extends SceneTree
 
-# Verifies the Terraria presentation pass: starter kit, no Lumencaster weapon,
+# Verifies the Terraria presentation pass: starter kit, no ArcaneCaster weapon,
 # and a HUD laid out for the real viewport.
 
 var failures := 0
@@ -41,8 +41,8 @@ func _run(main: Node) -> void:
 
 	var viewmodel := player.camera.get_node_or_null("Viewmodel")
 	_check(viewmodel == null or not viewmodel.visible, "legacy gun viewmodel is hidden")
-	var legacy := player.get_node_or_null("Lumencaster")
-	_check(legacy == null or bool(legacy.get("disabled")), "legacy Lumencaster is disabled")
+	var legacy := player.get_node_or_null("ArcaneCaster")
+	_check(legacy == null or bool(legacy.get("disabled")), "legacy ArcaneCaster is disabled")
 
 	var hud: CanvasLayer = main.get_node("HUD") as CanvasLayer
 	var vp: Vector2 = hud.get_viewport().size
@@ -56,9 +56,9 @@ func _run(main: Node) -> void:
 	var labels: Array[String] = []
 	for child in hud.get_children():
 		var lbl := child as Label
-		if lbl != null and lbl.visible and lbl.text.contains("LUMENCASTER"):
+		if lbl != null and lbl.visible and lbl.text.contains("ARCANE CASTER"):
 			labels.append(lbl.text)
-	_check(labels.is_empty(), "no Lumencaster label rendered", str(labels))
+	_check(labels.is_empty(), "no ArcaneCaster label rendered", str(labels))
 
 	if failures > 0:
 		print("PRESENTATION RESULT: %d/%d failed" % [failures, checks])

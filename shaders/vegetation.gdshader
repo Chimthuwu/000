@@ -9,13 +9,19 @@ uniform float ambient_sky_level = 0.0;
 uniform float wind_strength = 0.0;
 uniform float wind_speed = 1.7;
 uniform float ground_cover = 0.0;
+// Generated bark/leaf atlas. Foliage uses cutout alpha; trunks use bark grain.
+uniform sampler2D tree_texture : source_color, filter_nearest, repeat_disable;
+uniform float texture_strength = 0.0;
+uniform float glow_strength = 0.0;
 
 varying vec3 base_color;
 varying float height_factor;
+varying vec2 texture_uv;
 
 void vertex() {
 	base_color = COLOR.rgb;
 	height_factor = COLOR.a;
+	texture_uv = UV;
 	if (wind_strength > 0.0001) {
 		vec3 world_origin = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
 		float phase = world_origin.x * 0.45 + world_origin.z * 0.37;
@@ -32,12 +38,18 @@ void fragment() {
 		// treating cover as ground-facing keeps it lit like the soil it grows from.
 		NORMAL = vec3(0.0, 1.0, 0.0);
 	}
-	ALBEDO = base_color;
+	vec4 texel = texture(tree_texture, texture_uv);
+	if (texture_strength > 0.5 && texel.a < 0.5) {
+		discard;
+	}
+	vec3 detail = mix(vec3(1.0), texel.rgb * 1.18 + 0.04, texture_strength);
+	vec3 surface_color = base_color * detail;
+	ALBEDO = surface_color;
 	ROUGHNESS = 1.0;
 	SPECULAR = 0.0;
 	// Unshadowed sky/ambient term; sunlight arrives through the light() pass with
 	// the directional shadow map folded into ATTENUATION.
-	EMISSION = base_color * sky_tint * (ambient_sky_level * 0.45);
+	EMISSION = surface_color * (sky_tint * (ambient_sky_level * 0.60) + vec3(0.06 + glow_strength));
 }
 
 void light() {

@@ -2,11 +2,11 @@ extends Resource
 class_name EnemyConfig
 
 # Biome spawn tables. Index order matches the world biome ids:
-# 0 = Ashen Flats, 1 = Hushwoods, 2 = Frostfall, 3 = The Mire,
-# 4 = The Scorchlands, 5 = Glowgrove.
-# Weights are per kind: [gloomling, lamp_eater, hollow, frost_stalker, bog_crawler].
+# 0 = Forest, 1 = Jungle, 2 = Snow, 3 = Forest,
+# 4 = The Desert, 5 = Mushroom.
+# Weights are per kind: [nightling, lamp_eater, hollow, frost_stalker, bog_crawler].
 
-const KIND_GLOOMLING := 0
+const KIND_NIGHTLING := 0
 const KIND_LAMP_EATER := 1
 const KIND_HOLLOW := 2
 const KIND_FROST_STALKER := 3
@@ -15,7 +15,7 @@ const KIND_COUNT := 5
 
 @export_range(1, 300.0, 1.0) var spawn_tick_seconds := 5.0
 @export_range(1, 128, 1) var max_active_enemies := 16
-@export_range(1, 8, 1) var gloomling_group_size := 3
+@export_range(1, 8, 1) var nightling_group_size := 3
 @export_range(0, 8, 1) var max_active_hollows := 2
 @export_range(5.0, 64.0, 1.0) var min_spawn_distance := 10.0
 @export_range(5.0, 128.0, 1.0) var max_spawn_distance := 28.0
@@ -39,11 +39,11 @@ const KIND_COUNT := 5
 @export var hallow_weights: Array[float] = [0.30, 0.40, 0.30, 0.0, 0.0]
 @export var ocean_weights: Array[float] = [0.50, 0.50, 0.0, 0.0, 0.0]
 
-@export var gloomling_speed := 2.7
-@export var gloomling_health := 16.0
-@export var gloomling_damage := 4.0
-@export var gloomling_attack_range := 1.15
-@export_range(0, 15, 1) var gloomling_dissolve_light := 11
+@export var nightling_speed := 2.7
+@export var nightling_health := 16.0
+@export var nightling_damage := 4.0
+@export var nightling_attack_range := 1.15
+@export_range(0, 15, 1) var nightling_dissolve_light := 11
 @export var lamp_eater_speed := 1.8
 @export var lamp_eater_health := 34.0
 @export var lamp_eater_damage := 7.0
@@ -122,14 +122,14 @@ func roll_kind_identity(identity: int, value: float) -> int:
 	for index in range(KIND_COUNT):
 		total += float(weights[index]) if index < weights.size() else 0.0
 	if total <= 0.0:
-		return KIND_GLOOMLING
+		return KIND_NIGHTLING
 	var threshold := clampf(value, 0.0, 0.999999) * total
 	var accumulated := 0.0
 	for index in range(KIND_COUNT):
 		accumulated += float(weights[index]) if index < weights.size() else 0.0
 		if threshold < accumulated:
 			return index
-	return KIND_GLOOMLING
+	return KIND_NIGHTLING
 
 
 func roll_kind(biome: int, value: float) -> int:
@@ -138,11 +138,11 @@ func roll_kind(biome: int, value: float) -> int:
 	for index in range(KIND_COUNT):
 		total += float(weights[index]) if index < weights.size() else 0.0
 	if total <= 0.0:
-		return KIND_GLOOMLING
+		return KIND_NIGHTLING
 	var threshold := clampf(value, 0.0, 0.999999) * total
 	var accumulated := 0.0
 	for index in range(KIND_COUNT):
 		accumulated += float(weights[index]) if index < weights.size() else 0.0
 		if threshold < accumulated:
 			return index
-	return KIND_GLOOMLING
+	return KIND_NIGHTLING

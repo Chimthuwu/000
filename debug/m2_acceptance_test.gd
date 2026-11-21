@@ -64,7 +64,7 @@ func _check_air_hud(scene: Node) -> void:
 	camera.look_at(Vector3(15.5, 15.5, 15.5))
 	scene.call("_update_readout")
 	var readout: Label = scene.get_node("HUD/Readout")
-	var passed := readout.text.contains("LIGHT_LEVEL 12") and readout.text.contains("GLOOM_LEVEL") and readout.text.contains("block air at (13, 15, 14)")
+	var passed := readout.text.contains("LIGHT_LEVEL 12") and readout.text.contains("NIGHT_LEVEL") and readout.text.contains("block air at (13, 15, 14)")
 	print("M2 AIR HUD %s | %s" % ["PASS" if passed else "FAIL", readout.text.get_slice("\n", 1)])
 	if not passed:
 		failures += 1

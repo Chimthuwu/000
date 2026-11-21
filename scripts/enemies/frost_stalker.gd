@@ -1,7 +1,7 @@
-extends Gloomling
+extends Nightling
 class_name FrostStalker
 
-# Frostfall variant of the Gloomling: same dissolve-in-light brain and limb
+# Snow variant of the Nightling: same dissolve-in-light brain and limb
 # silhouette, re-tinted to glacier blue. The director gives it a higher move
 # speed from EnemyConfig.
 

@@ -3,7 +3,7 @@ extends SceneTree
 # Direction-correction check: the live generator must expose all nine core
 # Terraria surface identities, keep Corruption/Crimson exclusive, gate Hallow
 # behind progression, and flood the Ocean.
-#   Godot --headless --path lumen_deepworld --script res://debug/core_biomes_check.gd
+#   Godot --headless --path Terraria3D --script res://debug/core_biomes_check.gd
 
 const SEED := 139732
 const SCAN_RADIUS := 2048

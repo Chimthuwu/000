@@ -2,7 +2,7 @@ extends Node3D
 class_name ToxicProjectile
 
 # Bog Crawler spittle. A small projectile with voxel collision that
-# drains the player's Lumen reserve instead of dealing health damage.
+# drains the player's Arcane reserve instead of dealing health damage.
 
 const SPEED := 13.0
 const GRAVITY := 14.0
@@ -58,10 +58,10 @@ func _physics_process(delta: float) -> void:
 
 
 func _hit_player() -> void:
-	var caster := player.get_node_or_null("Lumencaster") as Lumencaster
+	var caster := player.get_node_or_null("ArcaneCaster") as ArcaneCaster
 	if caster != null:
 		caster.reserve = maxf(0.0, caster.reserve - DRAIN)
-		caster._set_status("TOXIC SPIT — LUMEN -%d" % int(DRAIN))
+		caster._set_status("TOXIC SPIT — MANA -%d" % int(DRAIN))
 	Vfx.burst(get_parent() as Node3D, global_position, Color(0.42, 0.9, 0.14), Vector3.UP, 16, 3.0, 0.05, 0.4, 0.8)
 	queue_free()
 

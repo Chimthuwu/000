@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"stone_stairs"
+display_name = "Stone Stairs"
+description = "Cut brick steps. Heavy, but they will outlast the roof."
+category = 5
+stack_limit = 999
+rarity = 0
+value = 1
+place_block = &"stone_stairs_n"

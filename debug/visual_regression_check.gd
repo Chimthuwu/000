@@ -1,7 +1,7 @@
 extends SceneTree
 
 # Regression audit for the look of three systems that were not meant to change:
-# the Lumencaster viewmodel, the crystal shard mesh, and HUD status messages.
+# the ArcaneCaster viewmodel, the crystal shard mesh, and HUD status messages.
 
 var main: Node
 var failures := 0
@@ -24,8 +24,8 @@ func _check(condition: bool, label: String, detail := "") -> void:
 func _run() -> void:
 	await process_frame
 	var player: VoxelPlayer = main.player
-	var viewmodel: LumencasterViewmodel = player.get_node_or_null("Camera3D/Viewmodel") as LumencasterViewmodel
-	_check(viewmodel != null, "Lumencaster viewmodel is mounted on the camera")
+	var viewmodel: ArcaneCasterViewmodel = player.get_node_or_null("Camera3D/Viewmodel") as ArcaneCasterViewmodel
+	_check(viewmodel != null, "ArcaneCaster viewmodel is mounted on the camera")
 	if viewmodel != null:
 		var body := viewmodel.body_material.albedo_color
 		_check(body.r < 0.25 and body.g < 0.25 and body.b < 0.25, "gun body is still the dark blocky receiver", str(body))
@@ -61,7 +61,7 @@ func _run() -> void:
 
 	# HUD status: plain bright text, never a black box.
 	var hud: GameHUD = main.get_node("HUD") as GameHUD
-	var caster: Lumencaster = player.get_node("Lumencaster") as Lumencaster
+	var caster: ArcaneCaster = player.get_node("ArcaneCaster") as ArcaneCaster
 	caster.status_message = "PHOTON BEAM HIT"
 	caster.status_time = 2.0
 	hud._update_status()

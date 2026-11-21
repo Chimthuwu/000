@@ -9,6 +9,9 @@ signal respawned
 signal gameplay_message(text: String)
 signal mining_progress_changed(progress: float, cell: Vector3i)
 signal camera_mode_changed(mode: int)
+# A chest under the crosshair was interacted with. The HUD owns the panel; the
+# player only reports which world cell to open.
+signal container_requested(cell: Vector3i)
 
 const MAX_HEALTH := 100.0
 const PLAYER_HALF_EXTENTS := Vector3(0.32, 0.9, 0.32)
@@ -51,6 +54,8 @@ var statuses: StatusController
 var weapons: WeaponController
 var npc_service: NpcService
 var discovery_rewards: DiscoveryRewards
+# Chests live in the world, not in the player: the store is keyed by cell.
+var containers := ContainerStore.new()
 
 var status_message := ""
 var status_time := 0.0
@@ -96,10 +101,10 @@ func _ready() -> void:
 	inventory.changed.connect(_refresh_mining_tier)
 	_refresh_mining_tier()
 	_fall_start_y = position.y
-	# Terraria-style game: the Lumencaster is gone from gameplay. The node is
+	# Terraria-style game: the ArcaneCaster is gone from gameplay. The node is
 	# kept only as a data source for Agent 3's legacy HUD, fully disabled and
 	# with no visible weapon. The first-person hands are hidden as well.
-	var legacy := get_node_or_null("Lumencaster")
+	var legacy := get_node_or_null("ArcaneCaster")
 	if legacy != null:
 		legacy.set("disabled", true)
 	var viewmodel := camera.get_node_or_null("Viewmodel")
@@ -328,6 +333,11 @@ func _avatar_box(size: Vector3, at: Vector3, color: Color) -> void:
 	var material := StandardMaterial3D.new()
 	material.albedo_color = color
 	material.roughness = 0.95
+	# A whisper of self-illumination keeps the avatar readable under the deep
+	# canopy shadows instead of turning into a black silhouette.
+	material.emission_enabled = true
+	material.emission = color
+	material.emission_energy_multiplier = 0.22
 	mesh.material = material
 	var part := MeshInstance3D.new()
 	part.mesh = mesh
@@ -441,14 +451,46 @@ func _tier_label(tier: int) -> String:
 	return names[clampi(tier, 0, names.size() - 1)]
 
 
+## Doors are two block states of one object, like Terraria: a closed door is
+## solid, an open one is passable. Interacting swaps them without ever
+## creating or consuming an item.
+func _toggle_door() -> bool:
+	if not gateway.ready():
+		return false
+	var hit := _voxel_raycast(REACH)
+	if hit.is_empty():
+		return false
+	var cell: Vector3i = hit["cell"]
+	var block_name := gateway.get_block_name(cell)
+	var target := &""
+	if block_name == &"wood_door":
+		target = &"wood_door_open"
+	elif block_name == &"wood_door_open":
+		target = &"wood_door"
+	if target == &"":
+		return false
+	var block_id := gateway.block_id_for(target)
+	if block_id < 0:
+		return false
+	if not world.set_block(cell, block_id):
+		return false
+	set_status("DOOR %s" % ("OPEN" if target == &"wood_door_open" else "CLOSED"))
+	return true
+
+
 func _complete_mining(cell: Vector3i) -> void:
 	# Agent 1 owns break rules, tier gating and the drop descriptor.
+	var was_chest := gateway.get_block_name(cell) == &"chest"
 	var result := MiningSystem.break_block(world, cell, mining_tier)
 	if not bool(result.get("mined", false)):
 		mining_progress = 0.0
 		if bool(result.get("blocked", false)):
 			set_status("TIER TOO LOW")
 		return
+	if was_chest:
+		# Terraria drops a chest's contents on the ground, never deleting them.
+		for stack in containers.empty_into(cell):
+			ItemEntity.spawn(get_parent(), Vector3(cell) + Vector3(0.5, 0.7, 0.5), StringName(stack.get("id", &"")), int(stack.get("amount", 0)))
 	var drop: Dictionary = result.get("drop", {})
 	var drop_id := ItemDatabase.item_id_for_drop(StringName(drop.get("block_id", &"")))
 	var count := int(drop.get("count", 0))
@@ -515,10 +557,27 @@ func _try_place_block(def: ItemDef) -> void:
 	if _player_overlaps_cell(cell):
 		return
 	# Agent 1 owns placement validation as well.
-	if MiningSystem.place_block(world, cell, def.place_block):
+	if MiningSystem.place_block(world, cell, _placement_block(def)):
 		inventory.consume(def.item_id, 1)
 	else:
 		set_status("CANNOT PLACE THERE")
+
+
+## Stairs are four facing variants of one item; pick the variant whose high
+## side points away from the player, like Minecraft does on placement.
+func _placement_block(def: ItemDef) -> StringName:
+	var base := String(def.place_block)
+	var material := ""
+	if base.begins_with("wood_stairs"):
+		material = "wood"
+	elif base.begins_with("stone_stairs"):
+		material = "stone"
+	if material == "":
+		return def.place_block
+	var aim := aim_direction()
+	if absf(aim.x) >= absf(aim.z):
+		return StringName("%s_stairs_%s" % [material, "e" if aim.x > 0.0 else "w"])
+	return StringName("%s_stairs_%s" % [material, "s" if aim.z > 0.0 else "n"])
 
 
 func _use_consumable(def: ItemDef) -> void:
@@ -537,6 +596,8 @@ func _try_interact() -> void:
 	if _interact_cooldown > 0.0:
 		return
 	_interact_cooldown = 0.35
+	if _toggle_door():
+		return
 	for node in get_tree().get_nodes_in_group("npc"):
 		var npc := node as Node3D
 		if npc == null or not is_instance_valid(npc):
@@ -577,7 +638,7 @@ func _update_light_regen(delta: float) -> void:
 	var cell := Vector3i(floori(position.x), floori(position.y + 0.5), floori(position.z))
 	var voxel_light := float(world.get_light_level(cell)) / 15.0
 	var effective_light := maxf(voxel_light, world.ambient_sky_level)
-	if effective_light >= 0.35 and world.get_gloom_level(cell) < 0.6:
+	if effective_light >= 0.35 and world.get_night_level(cell) < 0.6:
 		health = minf(max_health, health + 1.5 * delta)
 	if statuses.has(&"regen"):
 		health = minf(max_health, health + 4.0 * delta)
@@ -611,6 +672,9 @@ func full_heal() -> void:
 
 
 func apply_slow(duration: float) -> void:
+	# Keep the legacy timer and the status effect in sync so both movement
+	# paths and older save/restore code observe the same slow duration.
+	slow_time = maxf(slow_time, duration)
 	statuses.apply(&"slow", duration)
 
 
@@ -642,6 +706,7 @@ func serialize_gameplay_state() -> Dictionary:
 		"mana": weapons.mana if weapons != null else 100.0,
 		"camera_mode": camera_mode,
 		"player_stats": {"health": health, "god_mode": god_mode},
+		"containers": containers.serialize(),
 	}
 
 
@@ -654,6 +719,10 @@ func deserialize_gameplay_state(data: Dictionary) -> void:
 		inventory.deserialize(data["inventory"])
 	if data.has("progression"):
 		progression.deserialize(data["progression"])
+	if data.has("containers"):
+		var stored: Variant = data["containers"]
+		if stored is Dictionary:
+			containers.deserialize(stored)
 	if data.has("statuses"):
 		statuses.deserialize(data["statuses"])
 	if data.has("mana") and weapons != null:

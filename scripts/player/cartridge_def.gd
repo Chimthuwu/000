@@ -8,7 +8,7 @@ class_name CartridgeDef
 @export_range(0.0, 100.0, 0.1) var energy_cost := 15.0
 @export_range(0, 15, 1) var minimum_light := 1
 @export_range(1.0, 64.0, 0.5) var range := 12.0
-@export_range(0.0, 100.0, 0.1) var gloom_noise := 8.0
+@export_range(0.0, 100.0, 0.1) var night_noise := 8.0
 @export_range(0.0, 1000.0, 0.1) var damage := 0.0
 @export_range(0, 15, 1) var light_level := 0
 @export var light_block_id: StringName = &"torch"

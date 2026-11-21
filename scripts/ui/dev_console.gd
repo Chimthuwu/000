@@ -2,7 +2,7 @@ extends CanvasLayer
 class_name DevConsole
 
 # Drop-down debug console. Uses _input so it consumes the toggle key, typing
-# and Escape before the player, the Lumencaster or the pause menu see them.
+# and Escape before the player, the ArcaneCaster or the pause menu see them.
 
 const LINE_LIMIT := 9
 
@@ -35,7 +35,7 @@ func _build() -> void:
 	add_child(panel)
 
 	var title := Label.new()
-	title.text = "LUMENFALL DEV CONSOLE  ·  ~ close"
+	title.text = "TERRARIA 3D DEV CONSOLE  ·  ~ close"
 	title.position = Vector2(12, 6)
 	title.size = Vector2(500, 16)
 	title.add_theme_font_size_override("font_size", 10)
@@ -56,7 +56,7 @@ func _build() -> void:
 	input = LineEdit.new()
 	input.position = Vector2(12, 262)
 	input.size = Vector2(824, 28)
-	input.placeholder_text = "god | spawn <gloomling|hollow|lamp_eater|frost_stalker|bog_crawler> | tp <ashen|hush|frost|mire> | time <0-24> | heal | help"
+	input.placeholder_text = "god | spawn <nightling|hollow|lamp_eater|frost_stalker|bog_crawler> | tp <ashen|hush|frost|mire> | time <0-24> | heal | help"
 	input.add_theme_font_size_override("font_size", 11)
 	input.text_submitted.connect(_on_text_submitted)
 	panel.add_child(input)
@@ -127,7 +127,7 @@ func _execute(command: String) -> void:
 			_print_line("health restored to %d" % int(player.health))
 		"spawn":
 			if arg.is_empty():
-				_print_line("usage: spawn <gloomling|hollow|lamp_eater|frost_stalker|bog_crawler>", Color(0.98, 0.72, 0.4))
+				_print_line("usage: spawn <nightling|hollow|lamp_eater|frost_stalker|bog_crawler>", Color(0.98, 0.72, 0.4))
 				return
 			var spawned := director.spawn_named(arg)
 			_print_line("spawned %s" % arg if spawned else "unknown enemy or unloaded ground: %s" % arg, Color(0.5, 0.9, 0.7) if spawned else Color(0.98, 0.45, 0.4))

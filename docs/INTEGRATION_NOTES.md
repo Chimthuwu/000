@@ -3,7 +3,7 @@
 ## Shared files Agent 1 touched
 
 - `scripts/world/biome_manager.gd`: `WORLD_Y = 256`, `SURFACE_LIFT = 168`,
-  `WATER_LEVEL = 189`, two new biomes (Scorchlands, Glowgrove) and heights.
+  `WATER_LEVEL = 189`, two new biomes (Desert, Mushroom) and heights.
 - `scripts/world/world.gd`: 256/16 vertical slab, vertical window streaming,
   palette additions, liquid solids flags, underground-biome query.
 - `scripts/world/main.gd`: enables `world.player_tracking` after spawn (prevents
@@ -73,16 +73,16 @@
 ## Launch fix
 
 Godot picks `project.godot` from its working directory. The Godot exe in the
-parent folder loaded the old `Terraria3D/project.godot` (`Lumenfall`), not this
-project. Hard-linked exes now exist inside `lumen_deepworld/`, and
+parent folder loaded the old `Terraria3D/project.godot` (`Terraria 3D`), not this
+project. Hard-linked exes now exist inside `Terraria3D/`, and
 `PLAY_3D_TERRARIA.cmd` / the parent convenience launcher pass an explicit
 `--path`. Verified with `debug/launch_identity_check.gd`: both routes report
-`Lumen: Deepworld` and `res://scenes/ui/main_menu.tscn`. See `LAUNCH.md`.
+`Terraria 3D` and `res://scenes/ui/main_menu.tscn`. See `LAUNCH.md`.
 
 Menu buttons were fixed this session. `main_menu.gd::_start_world()` now resolves
 `VoxelWorld` by node path before `add_child()` instead of reading the `@onready`
 `instance.world` (which was null), and reports load failures on the status label.
-Minimal edits to `game_hud.gd` defined `ACCENT_LUMEN` / `_show_toast()` and removed
+Minimal edits to `game_hud.gd` defined `ACCENT_MANA` / `_show_toast()` and removed
 duplicate `add_child()` calls. `debug/menu_click_check.gd` passes all seven
 buttons; `scenes/world/main.tscn` preflights to `ready`.
 
@@ -141,7 +141,7 @@ buttons; `scenes/world/main.tscn` preflights to `ready`.
 
 ## Agent 4 — Undercroft canonical port (this integration)
 
-**Canonical project is `lumen_deepworld/`.** The earlier `Terraria3D/` copy was
+**Canonical project is `Terraria3D/`.** The earlier `Terraria3D/` copy was
 Agent 4's initial workspace; its content has been PORTED AND ADAPTED here, not
 copied verbatim.
 
@@ -205,8 +205,8 @@ hints and the arena intro through the existing `GameHUD.show_world_hint()`.
 - No engine files, GameHUD, gameplay scripts, block ids or save schema changed.
 
 **Implementation status:** the engine generates all nine core identities
-(ids 0..10). Forest/Desert/Snow/Mushroom use their core names; Ashen Flats and
-Hushwoods remain variants. Corruption and Crimson are seed-exclusive by default
+(ids 0..10). Forest/Desert/Snow/Mushroom use their core names; Forest and
+Jungle remain variants. Corruption and Crimson are seed-exclusive by default
 (explicit `both` option); The Hallow is zero-weight by default and reserved for
 a future `underworld_vanquished` Underworld event (NOT the Hollow Warden). The
 dev console `hallow on|off` command is the debug override. Ocean exists as

@@ -38,11 +38,11 @@ func _key(code: int) -> void:
 func _run() -> void:
 	while not main.world.is_generated or not main.player.spawned:
 		await process_frame
-	var caster: Lumencaster = main.get_node("Player/Lumencaster") as Lumencaster
-	var viewmodel: LumencasterViewmodel = main.get_node("Player/Camera3D/Viewmodel") as LumencasterViewmodel
+	var caster: ArcaneCaster = main.get_node("Player/ArcaneCaster") as ArcaneCaster
+	var viewmodel: ArcaneCasterViewmodel = main.get_node("Player/Camera3D/Viewmodel") as ArcaneCasterViewmodel
 	var hint: Label = main.get_node("HUD/ContextHint") as Label
 
-	var hud: Label = main.get_node("HUD/LumenReadout") as Label
+	var hud: Label = main.get_node("HUD/ArcaneReadout") as Label
 	var status_label: Label = main.get_node("HUD/StatusLabel") as Label
 	var debug_label: Label = main.get_node("HUD/DebugReadout") as Label
 	_check(not debug_label.visible, "debug readout starts hidden")
@@ -56,7 +56,7 @@ func _run() -> void:
 	_check(prev_events.size() == 1 and prev_events[0] is InputEventMouseButton and (prev_events[0] as InputEventMouseButton).button_index == MOUSE_BUTTON_WHEEL_UP, "wheel up cycles backward")
 
 	var accents: Array[Color] = []
-	for cartridge in Lumencaster.CARTRIDGES:
+	for cartridge in ArcaneCaster.CARTRIDGES:
 		accents.append(cartridge.accent_color)
 	_check(accents.size() == 4 and accents[0] != accents[1] and accents[1] != accents[2] and accents[2] != accents[3], "each cartridge has a distinct accent", str(accents))
 
@@ -76,7 +76,7 @@ func _run() -> void:
 	_check(caster.projector_mode, "wheel up past the first cartridge enters Projector Mode")
 	await _wheel(MOUSE_BUTTON_WHEEL_DOWN)
 	_check(not caster.projector_mode and caster.selected_cartridge == 0, "wheel down leaves Projector Mode on the first cartridge", "index=%d" % caster.selected_cartridge)
-	var accent_ok := viewmodel.indicator_material.emission.is_equal_approx(Lumencaster.CARTRIDGES[0].accent_color)
+	var accent_ok := viewmodel.indicator_material.emission.is_equal_approx(ArcaneCaster.CARTRIDGES[0].accent_color)
 	_check(accent_ok, "viewmodel indicator matches the selected cartridge", str(viewmodel.indicator_material.emission))
 
 	caster._set_projector_mode(true)
@@ -143,7 +143,7 @@ func _run() -> void:
 	caster._fire_selected_cartridge()
 	await process_frame
 	_check(caster.world.get_child_count() > children_before, "photon slug spawns a beam tracer")
-	_check(caster._kick_for(Lumencaster.CARTRIDGES[2]) > caster._kick_for(Lumencaster.CARTRIDGES[1]), "photon kick is stronger than beacon kick")
+	_check(caster._kick_for(ArcaneCaster.CARTRIDGES[2]) > caster._kick_for(ArcaneCaster.CARTRIDGES[1]), "photon kick is stronger than beacon kick")
 
 	# Beacon: plants a lasting temporary light on the aimed face.
 	caster._select_cartridge(1)
@@ -152,18 +152,18 @@ func _run() -> void:
 	caster.world.set_block(wall_cell, stone_id)
 	caster.world.set_block(wall_cell + Vector3i.UP, air_id)
 	var lights_before := caster.temporary_lights.size()
-	var planted := caster._place_temporary_light(Lumencaster.CARTRIDGES[1], {"cell": wall_cell, "face_normal": Vector3i.UP})
+	var planted := caster._place_temporary_light(ArcaneCaster.CARTRIDGES[1], {"cell": wall_cell, "face_normal": Vector3i.UP})
 	_check(planted and caster.world.get_block_id(wall_cell + Vector3i.UP) == beacon_id and caster.temporary_lights.size() == lights_before + 1, "beacon plants a temporary light")
 
 	# Flare: launches a gravity projectile, and landing plants its own light.
 	caster._select_cartridge(3)
 	await process_frame
-	caster._fire_flare(Lumencaster.CARTRIDGES[3])
+	caster._fire_flare(ArcaneCaster.CARTRIDGES[3])
 	_check(caster.projectiles.size() == 1, "flare launches an arcing projectile")
 	var landing := base + Vector3i(-5, 0, 0)
 	caster.world.set_block(landing, air_id)
 	var flare_lights := caster.temporary_lights.size()
-	caster._land_flare({"cartridge": Lumencaster.CARTRIDGES[3]}, Vector3(landing) + Vector3(0.5, 0.5, 0.5))
+	caster._land_flare({"cartridge": ArcaneCaster.CARTRIDGES[3]}, Vector3(landing) + Vector3(0.5, 0.5, 0.5))
 	_check(caster.world.get_block_id(landing) == torch_id and caster.temporary_lights.size() == flare_lights + 1, "flare plants its light where it lands")
 	var steps := 0
 	while not caster.projectiles.is_empty() and steps < 400:

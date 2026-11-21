@@ -1,6 +1,6 @@
 extends SceneTree
 
-# Hollow observation speed, Frost Stalker slow and Bog Crawler Lumen drain.
+# Hollow observation speed, Frost Stalker slow and Bog Crawler Arcane drain.
 
 const COMPLETE := "ENEMY BEHAVIOR CHECK PASS: hollow freeze/sprint, frost slow, bog toxin"
 
@@ -26,11 +26,11 @@ func _run() -> void:
 	while not main.world.is_generated or not main.player.spawned:
 		await process_frame
 	var player: VoxelPlayer = main.player
-	var caster: Lumencaster = player.get_node("Lumencaster")
+	var caster: ArcaneCaster = player.get_node("ArcaneCaster")
 	var director: EnemyDirector = main.enemy_director
 	var config: EnemyConfig = preload("res://data/world/enemy_config.tres")
 	main.get_node("EnemyDirector").set_process(false)
-	main.get_node("GloomManager").set_process(false)
+	main.get_node("NightManager").set_process(false)
 
 	# --- Hollow: observed statue, unobserved sprinter ---
 	_check(is_equal_approx(config.hollow_chase_speed, 7.0), "Hollow chase speed is configured", "speed=%.1f" % config.hollow_chase_speed)
@@ -66,7 +66,7 @@ func _run() -> void:
 	stalker.queue_free()
 	player.slow_time = 0.0
 
-	# --- Bog Crawler: toxic spittle drains Lumen ---
+	# --- Bog Crawler: toxic spittle drains Arcane ---
 	var crawler: BogCrawler = director._make_enemy(EnemyConfig.KIND_BOG_CRAWLER)
 	main.add_child(crawler)
 	caster.reserve = 100.0
@@ -79,7 +79,7 @@ func _run() -> void:
 	_check(projectiles.size() == 1, "Bog Crawler spawns a toxic projectile")
 	if projectiles.size() == 1:
 		projectiles[0]._hit_player()
-		_check(is_equal_approx(caster.reserve, 100.0 - ToxicProjectile.DRAIN), "toxic projectile drains Lumen reserve", "reserve=%.0f" % caster.reserve)
+		_check(is_equal_approx(caster.reserve, 100.0 - ToxicProjectile.DRAIN), "toxic projectile drains Arcane reserve", "reserve=%.0f" % caster.reserve)
 	crawler.queue_free()
 
 	if failures > 0:

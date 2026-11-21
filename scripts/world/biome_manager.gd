@@ -7,7 +7,7 @@ class_name BiomeManager
 #
 # Heights are the weighted sum of four continuous biome height functions, and
 # surface blocks are chosen by a deterministic dither of the same weights. That
-# is what makes "Ashen Flats gradually becoming Frostfall" read as a slope with
+# is what makes "Forest gradually becoming Snow" read as a slope with
 # a patchy treeline rather than a seam.
 
 const ASHEN := 0
@@ -222,7 +222,7 @@ static func find_biome_center(biome: int, seed_value: int, x: int, z: int) -> Ve
 	configure(seed_value)
 	var best := Vector2i(x, z)
 	var best_score := -1.0
-	for radius in [0, 12, 24, 48, 96, 160, 240, 360]:
+	for radius in [0, 12, 24, 48, 96, 160, 240, 360, 720, 1200, 1800]:
 		var samples := maxi(8, radius)
 		for index in range(samples):
 			var angle := TAU * float(index) / float(samples)
@@ -296,7 +296,7 @@ static func hallow_enabled() -> bool:
 static func biome_name(biome: int) -> String:
 	match biome:
 		HUSH:
-			return "Hushwoods"
+			return "Jungle"
 		FROST:
 			return "Snow"
 		MIRE:
@@ -316,7 +316,7 @@ static func biome_name(biome: int) -> String:
 		OCEAN:
 			return "Ocean"
 		_:
-			return "Ashen Flats"
+			return "Forest"
 
 
 # --- Heights ----------------------------------------------------------------
@@ -478,7 +478,7 @@ static func _mire_height(x: int, z: int) -> float:
 	return height_value
 
 
-# Scorchlands: low, hot dunes broken by long ridged sand spines. It reads as a
+# Desert: low, hot dunes broken by long ridged sand spines. It reads as a
 # different landform, not just a different surface colour.
 static func _desert_height(x: int, z: int) -> float:
 	var broad: FastNoiseLite = _noise["desert_broad"]
@@ -491,7 +491,7 @@ static func _desert_height(x: int, z: int) -> float:
 	return height_value
 
 
-# Glowgrove: damp rolling ground under a permanent spore canopy.
+# Mushroom: damp rolling ground under a permanent spore canopy.
 static func _mushroom_height(x: int, z: int) -> float:
 	var broad: FastNoiseLite = _noise["mushroom_broad"]
 	var detail: FastNoiseLite = _noise["mushroom_detail"]

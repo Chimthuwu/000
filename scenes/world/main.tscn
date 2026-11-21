@@ -1,17 +1,16 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/world/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/world/world.gd" id="2_world"]
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="3_player"]
-[ext_resource type="Script" path="res://scripts/player/lumencaster.gd" id="4_lumencaster"]
+[ext_resource type="Script" path="res://scripts/player/arcane_caster.gd" id="4_arcane_caster"]
 [ext_resource type="Script" path="res://scripts/world/day_night_cycle.gd" id="5_cycle"]
-[ext_resource type="Script" path="res://scripts/world/gloom_manager.gd" id="6_gloom"]
+[ext_resource type="Script" path="res://scripts/world/night_manager.gd" id="6_night"]
 [ext_resource type="Script" path="res://scripts/world/enemy_director.gd" id="7_enemies"]
 [ext_resource type="Environment" path="res://data/world/world_environment.tres" id="8_environment"]
-[ext_resource type="Script" path="res://scripts/player/lumencaster_viewmodel.gd" id="9_viewmodel"]
+[ext_resource type="Script" path="res://scripts/player/arcane_caster_viewmodel.gd" id="9_viewmodel"]
 [ext_resource type="Script" path="res://scripts/ui/game_hud.gd" id="10_hud"]
 [ext_resource type="Script" path="res://scripts/ui/screen_grade.gd" id="11_grade"]
-[ext_resource type="Script" path="res://scripts/vehicle/dune_buggy.gd" id="12_buggy"]
 [ext_resource type="Script" path="res://scripts/audio/audio_director.gd" id="13_audio"]
 [ext_resource type="Script" path="res://scripts/ui/dev_console.gd" id="14_console"]
 [ext_resource type="Script" path="res://scripts/fx/blizzard.gd" id="15_blizzard"]
@@ -25,8 +24,8 @@ script = ExtResource("2_world")
 [node name="Player" type="Node3D" parent="."]
 script = ExtResource("3_player")
 
-[node name="Lumencaster" type="Node3D" parent="Player"]
-script = ExtResource("4_lumencaster")
+[node name="ArcaneCaster" type="Node3D" parent="Player"]
+script = ExtResource("4_arcane_caster")
 
 [node name="Camera3D" type="Camera3D" parent="Player"]
 position = Vector3(0, 1.62, 0)
@@ -41,9 +40,6 @@ rotation = Vector3(0.09, 0.26, 0)
 scale = Vector3(0.95, 0.95, 0.95)
 script = ExtResource("9_viewmodel")
 
-[node name="Buggy" type="Node3D" parent="."]
-script = ExtResource("12_buggy")
-
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 rotation = Vector3(-0.785398, -0.610865, 0)
 light_energy = 1.0
@@ -57,8 +53,8 @@ environment = ExtResource("8_environment")
 [node name="DayNightCycle" type="Node" parent="."]
 script = ExtResource("5_cycle")
 
-[node name="GloomManager" type="Node" parent="."]
-script = ExtResource("6_gloom")
+[node name="NightManager" type="Node" parent="."]
+script = ExtResource("6_night")
 
 [node name="EnemyDirector" type="Node" parent="."]
 script = ExtResource("7_enemies")

@@ -129,16 +129,16 @@ func _run() -> void:
 		return
 	print("VFX CHECK PASS: burst node created")
 	var child_count_before := main.get_child_count()
-	director.debug_spawn_gloomlings(1)
-	print("GLOOMLING DEBUG: main children %d -> %d, group=%d, spawned=%s, generated=%s" % [child_count_before, main.get_child_count(), get_nodes_in_group("enemies").size(), main.player.spawned, world.is_generated])
+	director.debug_spawn_nightlings(1)
+	print("NIGHTLING DEBUG: main children %d -> %d, group=%d, spawned=%s, generated=%s" % [child_count_before, main.get_child_count(), get_nodes_in_group("enemies").size(), main.player.spawned, world.is_generated])
 	await process_frame
-	print("GLOOMLING DEBUG after frame: main children=%d group=%d" % [main.get_child_count(), get_nodes_in_group("enemies").size()])
+	print("NIGHTLING DEBUG after frame: main children=%d group=%d" % [main.get_child_count(), get_nodes_in_group("enemies").size()])
 	if get_nodes_in_group("enemies").is_empty():
-		push_error("GLOOMLING CHECK FAIL: debug spawn produced no enemy")
+		push_error("NIGHTLING CHECK FAIL: debug spawn produced no enemy")
 		quit(1)
 		return
-	print("GLOOMLING CHECK PASS: debug spawn produced an enemy")
-	var caster: Lumencaster = main.get_node("Player/Lumencaster") as Lumencaster
+	print("NIGHTLING CHECK PASS: debug spawn produced an enemy")
+	var caster: ArcaneCaster = main.get_node("Player/ArcaneCaster") as ArcaneCaster
 	var fired_calls: Array = []
 	caster.fired.connect(func(_id: StringName, _kick: float) -> void: fired_calls.append(1))
 	caster._fire_selected_cartridge()

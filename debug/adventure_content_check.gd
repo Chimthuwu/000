@@ -1,10 +1,10 @@
 extends SceneTree
 
 # Agent 4 canonical validation. Proves The Undercroft actually generates inside
-# lumen_deepworld: depth-relative levels are buried, the region is connected,
+# Terraria3D: depth-relative levels are buried, the region is connected,
 # deterministic, spans chunks, contains its authored fixtures, and survives
 # unload/reload. Run:
-#   Godot --headless --path lumen_deepworld --script res://debug/adventure_content_check.gd
+#   Godot --headless --path Terraria3D --script res://debug/adventure_content_check.gd
 
 var main: Node
 var failures := 0
@@ -60,7 +60,7 @@ func _run() -> void:
 	# --- Data contract -------------------------------------------------------
 	_check(config.enable_undercroft, "content enabled in canonical data config")
 	_check(WorldLayers.WORLD_Y == 256 and int(levels["min_surface"]) > 150,
-		"canonical deepworld vertical model detected", "world_y=%d min_surface=%d" % [WorldLayers.WORLD_Y, int(levels["min_surface"])])
+		"canonical Terraria 3D vertical model detected", "world_y=%d min_surface=%d" % [WorldLayers.WORLD_Y, int(levels["min_surface"])])
 	_check(upper + config.room_height < int(levels["min_surface"]) and lower > 0,
 		"rooms are buried below the lowest local surface",
 		"upper=%d lower=%d surface=%d" % [upper, lower, int(levels["min_surface"])])

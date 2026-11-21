@@ -1,7 +1,7 @@
 extends GPUParticles3D
 class_name Blizzard
 
-# Camera-attached snow and wind. Only emits inside Frostfall, so the rest of
+# Camera-attached snow and wind. Only emits inside Snow, so the rest of
 # the world keeps its clean silhouette and the particle budget stays bounded.
 
 var world: VoxelWorld

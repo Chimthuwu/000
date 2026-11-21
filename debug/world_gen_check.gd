@@ -3,7 +3,7 @@ extends SceneTree
 # Headless world verification for the 256-block, six-biome world:
 # layers, vertical window, generation, caves/liquids, underground biomes,
 # biome ores, determinism, border continuity, mining/placement, save round-trip.
-#   Godot --headless --path lumen_deepworld --script res://debug/world_gen_check.gd
+#   Godot --headless --path Terraria3D --script res://debug/world_gen_check.gd
 
 const SEED := 139732
 

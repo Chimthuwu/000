@@ -21,7 +21,7 @@ var block_defs: Array[BlockLightDef] = []
 var blocks := PackedByteArray()
 var light_buckets: Array[Array] = []
 var chunk_light_buffers: Array[PackedByteArray] = []
-var gloom_levels := PackedByteArray()
+var night_levels := PackedByteArray()
 var source_cell := Vector3i(15, 15, 15)
 var chunk_root: Node3D
 var world_material: ShaderMaterial
@@ -101,8 +101,8 @@ func _build_test_world() -> void:
 		chunk_light.resize(CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE)
 		chunk_light.fill(0)
 		chunk_light_buffers[chunk_index] = chunk_light
-	gloom_levels.resize(volume)
-	gloom_levels.fill(0)
+	night_levels.resize(volume)
+	night_levels.fill(0)
 
 	# A sealed, fly-through camera bay joined to three isolated light probes.
 	# The probes start at the same source: air (+X), mycelium (+Y), pale bloom (+Z).
@@ -365,13 +365,13 @@ func _update_readout() -> void:
 	var sample_cell := last_air if _inside_world(last_air) else hit
 	var block_label := "none"
 	var level := 0
-	var gloom := 0.0
+	var night := 0.0
 	if _inside_world(sample_cell):
 		block_label = String(block_defs[_block_at(sample_cell)].block_id)
 		level = _light_at(sample_cell)
-		gloom = float(gloom_levels[_index(sample_cell)])
+		night = float(night_levels[_index(sample_cell)])
 	readout.text = "M0 LIGHT + DITHER | FPS %.0f | camera free\n" % Engine.get_frames_per_second()
-	readout.text += "LIGHT_LEVEL %d | GLOOM_LEVEL %.2f | block %s at %s\n" % [level, gloom, block_label, str(sample_cell)]
+	readout.text += "LIGHT_LEVEL %d | NIGHT_LEVEL %.2f | block %s at %s\n" % [level, night, block_label, str(sample_cell)]
 	readout.text += "L: move static torch | flashlight follows camera | WASD move | Space/Ctrl fly | F HUD | Esc mouse"
 
 

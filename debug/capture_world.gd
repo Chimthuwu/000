@@ -2,7 +2,7 @@ extends SceneTree
 
 # Windowed reality check for the canonical game world: boots scenes/world/main.tscn,
 # waits for the expanded world to stream in, and writes a PNG of the viewport.
-#   Godot --path lumen_deepworld --script res://debug/capture_world.gd
+#   Godot --path Terraria3D --script res://debug/capture_world.gd
 
 func _initialize() -> void:
 	var packed: PackedScene = load("res://scenes/world/main.tscn")

@@ -1,4 +1,4 @@
-extends GloomEnemy
+extends NightEnemy
 class_name Hollow
 
 # The Hollow is a Weeping Angel: it advances only while the player is not

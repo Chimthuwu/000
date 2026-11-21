@@ -6,7 +6,7 @@
 script = ExtResource("1")
 item_id = &"mushroom_cap"
 display_name = "Mushroom Cap"
-description = "A broad cap that glows softly. Glowgrover's favourite building material."
+description = "A broad cap that glows softly. Mushroomr's favourite building material."
 category = 0
 stack_limit = 999
 value = 4

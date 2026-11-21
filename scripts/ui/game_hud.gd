@@ -1,21 +1,29 @@
 extends CanvasLayer
 class_name GameHUD
 
-const PANEL_BG := Color(0.035, 0.055, 0.07, 0.86)
-const PANEL_BORDER := Color(0.24, 0.78, 0.70, 0.35)
+# Terraria inventory palette: deep navy panels trimmed with warm gold, cool
+# grey-blue slots and a gold selection, instead of the old teal sci-fi HUD.
+const PANEL_BG := Color(0.055, 0.075, 0.145, 0.92)
+const PANEL_BORDER := Color(0.58, 0.47, 0.26, 0.90)
+const SLOT_BG := Color(0.095, 0.125, 0.195, 0.95)
+const SLOT_BORDER := Color(0.38, 0.33, 0.22, 0.90)
+const SLOT_SELECTED := Color(1.0, 0.86, 0.38, 1.0)
 const TEXT_PALE := Color(0.86, 0.95, 0.91)
 const TEXT_DIM := Color(0.55, 0.72, 0.68)
 const TEXT_WARN := Color(0.98, 0.82, 0.52)
 const ACCENT_PROJECTOR := Color(0.15, 0.90, 1.0)
-const ACCENT_LUMEN := Color(0.32, 0.86, 0.68)
+const ACCENT_MANA := Color(0.32, 0.86, 0.68)
 const RESERVE_SEGMENTS := 6
+const HEART_TEXTURE := preload("res://res/terraria3d/ui/hearts/Heart_Fill.png")
+const HEART_EMPTY_TEXTURE := preload("res://res/terraria3d/ui/hearts/Heart_Middle.png")
+const HEART_COUNT := 10
 # Every refresh rewrites label text, theme overrides and styleboxes, which
 # forces a Control re-layout/re-draw. At 10 Hz the readouts still feel live and
 # the HUD stops burning main-thread time on frames where nothing changed.
 const HUD_REFRESH_SECONDS := 0.1
 
 var player: VoxelPlayer
-var caster: Lumencaster
+var caster: ArcaneCaster
 var world: VoxelWorld
 
 var debug_label: Label
@@ -32,6 +40,7 @@ var cartridge_pips: Array[ColorRect] = []
 var health_bar: Panel
 var health_fill: Panel
 var health_fill_style: StyleBoxFlat
+var heart_icons: Array[TextureRect] = []
 var status_label: Label
 var hint_panel: Panel
 var hint_label: Label
@@ -54,6 +63,7 @@ var hud_refresh := 0.0
 var dialogue_panel: Panel
 var dialogue_name: Label
 var dialogue_text: Label
+var dialogue_footer: Label
 var active_npc: NpcBase = null
 var dialogue_open := false
 var target_label: Label
@@ -71,6 +81,7 @@ var hotbar_labels: Array[Label] = []
 var hotbar_counts: Array[Label] = []
 var hotbar_icons: Array[TextureRect] = []
 var mana_bar: Panel
+var mana_caption: Label
 var mana_fill: Panel
 var mana_fill_style: StyleBoxFlat
 var mana_label: Label
@@ -88,7 +99,19 @@ var status_effects_label: Label
 var toast_label: Label
 
 # Agent 3 — inventory & crafting panels
+var chest_panel: Panel
+var chest_slots: Array[Dictionary] = []
+var chest_inv_slots: Array[Dictionary] = []
+var chest_visible := false
+var chest_cell := Vector3i(-99999, -99999, -99999)
+var house_label: Label
 var inventory_panel: Panel
+var guide_panel: Panel
+var guide_list: VBoxContainer
+var guide_detail: Label
+var guide_visible := false
+var guide_selected: CraftingRecipe = null
+var guide_filter_id: StringName = &""
 var inventory_visible := false
 var crafting_panel: Panel
 var crafting_visible := false
@@ -97,6 +120,7 @@ var inv_slot_panels: Array[Dictionary] = []  # {panel, label, count, area, index
 var equip_slot_panels: Dictionary = {}
 var craft_list: VBoxContainer
 var craft_detail_label: Label
+var craft_station_label: Label
 var selected_recipe: CraftingRecipe = null
 var tooltip_label: Label
 
@@ -107,7 +131,7 @@ func _ready() -> void:
 	player = main.get_node_or_null("Player") as VoxelPlayer
 	world = main.get_node_or_null("VoxelWorld") as VoxelWorld
 	if player != null:
-		caster = player.get_node_or_null("Lumencaster") as Lumencaster
+		caster = player.get_node_or_null("ArcaneCaster") as ArcaneCaster
 	# The Terraria HUD has no projector mode; suppress any leftover gun hint.
 	if caster != null:
 		caster.hint_time = 0.0
@@ -131,7 +155,9 @@ func _ready() -> void:
 	_build_boss()
 	_build_status_effects()
 	_build_inventory_panel()
+	_build_chest_panel()
 	_build_crafting_panel()
+	_build_guide_panel()
 	_build_tooltip()
 	_setup_mining_audio()
 	if world != null and world.has_signal("block_edited"):
@@ -152,6 +178,8 @@ func _ready() -> void:
 			player.inventory.equipment_changed.connect(_refresh_inventory_panel)
 		if player.get("weapons") != null:
 			player.weapons.mana_changed.connect(_on_mana_changed)
+		if player.has_signal("container_requested"):
+			player.container_requested.connect(open_chest)
 	_refresh_hotbar()
 	_layout_for_viewport()
 	_update_loadout()
@@ -290,12 +318,12 @@ func _build_loadout() -> void:
 	loadout_panel.add_child(accent_bar)
 
 	name_label = _label("EXCAVATOR ROUND", 13, TEXT_PALE)
-	name_label.name = "LumenReadout"
+	name_label.name = "ArcaneReadout"
 	name_label.position = Vector2(30, 393)
 	name_label.size = Vector2(226, 18)
 	add_child(name_label)
 
-	mode_label = _label("LUMENCASTER", 9, TEXT_DIM)
+	mode_label = _label("ARCANE CASTER", 9, TEXT_DIM)
 	mode_label.position = Vector2(30, 412)
 	mode_label.size = Vector2(226, 12)
 	add_child(mode_label)
@@ -309,8 +337,8 @@ func _build_loadout() -> void:
 		add_child(pip)
 		cartridge_pips.append(pip)
 
-	var reserve_caption := _label("LUMEN", 9, TEXT_DIM)
-	reserve_caption.name = "LegacyLumenCaption"
+	var reserve_caption := _label("MANA", 9, TEXT_DIM)
+	reserve_caption.name = "LegacyArcaneCaption"
 	reserve_caption.position = Vector2(30, 442)
 	reserve_caption.size = Vector2(40, 12)
 	add_child(reserve_caption)
@@ -342,42 +370,33 @@ func _build_loadout() -> void:
 
 
 func _build_health() -> void:
-	var caption := _label("VITALS", 8, TEXT_DIM)
-	caption.name = "LegacyVitalsCaption"
-	caption.position = Vector2(16, 360)
+	var caption := _label("HEALTH", 8, TEXT_DIM)
+	caption.name = "HealthCaption"
+	caption.position = Vector2(16, 358)
 	caption.size = Vector2(80, 10)
 	add_child(caption)
 
 	var value := _label("100", 8, TEXT_DIM, HORIZONTAL_ALIGNMENT_RIGHT)
 	value.name = "HealthValue"
-	value.position = Vector2(188, 360)
+	value.position = Vector2(188, 358)
 	value.size = Vector2(80, 10)
 	add_child(value)
 
-	health_bar = Panel.new()
-	health_bar.position = Vector2(16, 373)
-	health_bar.size = Vector2(252, 9)
-	health_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	health_bar.add_theme_stylebox_override("panel", _style(Color(0.02, 0.035, 0.04, 0.95), Color(0.18, 0.30, 0.28, 0.9), 1, 2))
-	add_child(health_bar)
-
-	health_fill_style = _style(Color(0.32, 0.86, 0.58, 0.95), Color(0.70, 1.0, 0.86, 0.8), 1, 1)
-	health_fill_style.shadow_color = Color(0.2, 0.9, 0.6, 0.45)
-	health_fill_style.shadow_size = 4
-	health_fill = Panel.new()
-	health_fill.position = Vector2(17, 374)
-	health_fill.size = Vector2(250, 7)
-	health_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	health_fill.add_theme_stylebox_override("panel", health_fill_style)
-	add_child(health_fill)
-
-	for index in range(1, 4):
-		var tick := ColorRect.new()
-		tick.position = Vector2(16 + 63 * index, 373)
-		tick.size = Vector2(1, 9)
-		tick.color = Color(0.01, 0.02, 0.02, 0.85)
-		tick.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(tick)
+	# Terraria-style heart row (harvested from SkyUOI/Terraria3D, MIT).
+	# Each heart is 10 HP; empty hearts stay visible as dark silhouettes.
+	heart_icons.clear()
+	for index in range(HEART_COUNT):
+		var heart := TextureRect.new()
+		heart.name = "Heart%d" % index
+		heart.texture = HEART_TEXTURE
+		heart.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		heart.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		heart.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		heart.position = Vector2(16 + index * 18, 371)
+		heart.size = Vector2(16, 16)
+		heart.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(heart)
+		heart_icons.append(heart)
 
 
 func _build_crosshair() -> void:
@@ -429,6 +448,12 @@ func _build_environment() -> void:
 	layer_label.position = Vector2(96, 348)
 	layer_label.size = Vector2(92, 10)
 	add_child(layer_label)
+	house_label = _label("", 8, TEXT_DIM, HORIZONTAL_ALIGNMENT_LEFT)
+	house_label.name = "HouseState"
+	house_label.position = Vector2(96, 372)
+	house_label.size = Vector2(320, 10)
+	house_label.visible = false
+	add_child(house_label)
 
 
 func _build_world_hint() -> void:
@@ -524,12 +549,12 @@ func _update_environment() -> void:
 	var cell := Vector3i(floori(player.position.x), floori(player.position.y + 0.5), floori(player.position.z))
 	var voxel_light := float(world.get_light_level(cell)) / 15.0
 	var lit := maxf(voxel_light, world.ambient_sky_level)
-	var gloom := world.get_gloom_level(cell)
-	if lit >= 0.35 and gloom < 0.6:
+	var night := world.get_night_level(cell)
+	if lit >= 0.35 and night < 0.6:
 		environment_label.text = "SHELTERED"
 		environment_label.add_theme_color_override("font_color", Color(0.42, 0.92, 0.68))
-	elif gloom >= 0.6:
-		environment_label.text = "GLOOM RISING"
+	elif night >= 0.6:
+		environment_label.text = "NIGHT RISING"
 		environment_label.add_theme_color_override("font_color", Color(0.96, 0.32, 0.26))
 	else:
 		environment_label.text = "EXPOSED"
@@ -643,6 +668,10 @@ func _update_target() -> void:
 		target_label.visible = false
 		return
 	var cell: Vector3i = hit["cell"]
+	# Air cells report "Sky"; only solid blocks deserve a target readout.
+	if world.get_block_id(cell) == world.air_id:
+		target_label.visible = false
+		return
 	var name := MiningSystem.display_name(world, cell)
 	if name == "":
 		target_label.visible = false
@@ -669,10 +698,12 @@ func _build_dialogue() -> void:
 	dialogue_text.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	dialogue_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(dialogue_text)
-	var footer := _label("E  Continue    ESC  Close", 9, TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER)
-	footer.position = Vector2(210, 398)
-	footer.size = Vector2(434, 12)
-	add_child(footer)
+	# This footer belongs to the dialogue panel. When it lived directly on the
+	# CanvasLayer it stayed visible for the whole session with no dialogue open.
+	dialogue_footer = _label("E  Continue    ESC  Close", 9, TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER)
+	dialogue_footer.position = Vector2(13, 98)
+	dialogue_footer.size = Vector2(434, 12)
+	dialogue_panel.add_child(dialogue_footer)
 
 
 func open_dialogue(npc: NpcBase) -> void:
@@ -682,6 +713,8 @@ func open_dialogue(npc: NpcBase) -> void:
 	if npc != null:
 		dialogue_name.text = npc.npc_name.to_upper()
 		dialogue_text.text = npc.get_dialogue_line()
+		if String(npc.npc_name).to_lower().contains("guide"):
+			_show_toast("Press G for the Guide's crafting list")
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 
@@ -786,7 +819,7 @@ func _update_loadout() -> void:
 	var cartridge: CartridgeDef = caster.CARTRIDGES[caster.selected_cartridge]
 	var accent := ACCENT_PROJECTOR if caster.projector_mode else cartridge.accent_color
 	name_label.text = cartridge.display_name
-	mode_label.text = "PROJECTOR MODE" if caster.projector_mode else "LUMENCASTER"
+	mode_label.text = "PROJECTOR MODE" if caster.projector_mode else "ARCANE CASTER"
 	mode_label.add_theme_color_override("font_color", accent)
 	accent_bar.color = accent
 
@@ -823,10 +856,10 @@ func _update_flashlight() -> void:
 
 
 const BIOME_ACCENTS := [
-	Color(0.86, 0.72, 0.45), # Ashen Flats
-	Color(0.55, 0.80, 0.62), # Hushwoods
-	Color(0.62, 0.85, 1.00), # Frostfall
-	Color(0.60, 0.80, 0.35), # The Mire
+	Color(0.86, 0.72, 0.45), # Forest
+	Color(0.55, 0.80, 0.62), # Jungle
+	Color(0.62, 0.85, 1.00), # Snow
+	Color(0.60, 0.80, 0.35), # Forest
 ]
 const BIOME_INTRO_TIME := 3.2
 
@@ -862,16 +895,20 @@ func _update_biome(delta: float) -> void:
 
 func _update_health() -> void:
 	var ratio := clampf(player.health / 100.0, 0.0, 1.0)
-	health_fill.size.x = 250.0 * ratio
-	health_fill.visible = ratio > 0.001
-	if ratio < 0.35:
-		health_fill_style.bg_color = Color(0.88, 0.32, 0.24, 0.95)
-		health_fill_style.border_color = Color(1.0, 0.70, 0.55, 0.85)
-		health_fill_style.shadow_color = Color(1.0, 0.28, 0.15, 0.45)
-	else:
-		health_fill_style.bg_color = Color(0.32, 0.86, 0.58, 0.95)
-		health_fill_style.border_color = Color(0.70, 1.0, 0.86, 0.8)
-		health_fill_style.shadow_color = Color(0.2, 0.9, 0.6, 0.45)
+	var lit := 0 if ratio <= 0.001 else ceili(ratio * float(HEART_COUNT))
+	for index in range(heart_icons.size()):
+		var heart := heart_icons[index]
+		if index < lit:
+			heart.texture = HEART_TEXTURE
+			heart.modulate = Color(1.0, 0.82, 0.82, 1.0) if ratio < 0.35 else Color.WHITE
+		else:
+			heart.texture = HEART_EMPTY_TEXTURE
+			heart.modulate = Color(0.42, 0.42, 0.42, 0.75)
+	# The old bar remains only as a null-safe compatibility path; the heart row
+	# is the visible health display now.
+	if health_fill != null:
+		health_fill.size.x = 250.0 * ratio
+		health_fill.visible = ratio > 0.001
 	var value := get_node_or_null("HealthValue") as Label
 	if value != null:
 		value.text = "%d" % roundi(player.health)
@@ -907,11 +944,27 @@ func _unhandled_input(event: InputEvent) -> void:
 			_on_respawn_pressed()
 			get_viewport().set_input_as_handled()
 		return
+	# An open chest swallows E and ESC: close it instead of re-opening it or
+	# letting the player's door/interact logic run underneath.
+	if chest_visible and event is InputEventKey and event.pressed and not event.echo and (event.keycode == KEY_E or event.keycode == KEY_ESCAPE):
+		close_chest()
+		get_viewport().set_input_as_handled()
+		return
+	if chest_visible and event is InputEventKey and event.pressed and not event.echo and (event.keycode == KEY_I or event.keycode == KEY_C):
+		close_chest()
+		get_viewport().set_input_as_handled()
+		return
 	# NPC interaction: E near an NPC opens dialogue instead of the player's build action.
 	if (not dialogue_open) and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
 		var npc := _nearest_npc()
 		if npc != null:
 			open_dialogue(npc)
+			get_viewport().set_input_as_handled()
+			return
+	if (not dialogue_open) and (not chest_visible) and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
+		var chest_target := _chest_under_crosshair()
+		if chest_target != Vector3i(-1, -1, -1):
+			open_chest(chest_target)
 			get_viewport().set_input_as_handled()
 			return
 	if dialogue_open:
@@ -934,12 +987,18 @@ func _unhandled_input(event: InputEvent) -> void:
 			_toggle_crafting()
 			get_viewport().set_input_as_handled()
 			return
+		if event.keycode == KEY_G:
+			_toggle_guide()
+			get_viewport().set_input_as_handled()
+			return
 		# close panels on ESC
-		if (inventory_visible or crafting_visible) and event.keycode == KEY_ESCAPE:
+		if (inventory_visible or crafting_visible or guide_visible) and event.keycode == KEY_ESCAPE:
 			inventory_visible = false
 			crafting_visible = false
+			guide_visible = false
 			if inventory_panel != null: inventory_panel.visible = false
 			if crafting_panel != null: crafting_panel.visible = false
+			if guide_panel != null: guide_panel.visible = false
 			_set_mouse_captured(true)
 			get_viewport().set_input_as_handled()
 			return
@@ -994,7 +1053,7 @@ func _on_quit_pressed() -> void:
 # --- Terraria layout pass ----------------------------------------------------
 
 ## The HUD was originally authored for an 854x480 viewport. Reposition the key
-## elements for the real 1280x720 root viewport and retire the Lumencaster UI.
+## elements for the real 1280x720 root viewport and retire the ArcaneCaster UI.
 func _layout_for_viewport() -> void:
 	# The HUD is authored against the project's 1280x720 render viewport. Using
 	# get_viewport().size here returned the 1920x1080 window override, which put
@@ -1020,7 +1079,7 @@ func _layout_for_viewport() -> void:
 		pip.visible = false
 	# These captions were added straight to the CanvasLayer, not to the panels
 	# above, so hiding the panels alone left stray text on the screen edge.
-	for legacy_name in ["LegacyLumenCaption", "LegacyVitalsCaption", "HealthValue"]:
+	for legacy_name in ["LegacyArcaneCaption", "LegacyVitalsCaption"]:
 		var legacy_node := get_node_or_null(NodePath(legacy_name))
 		if legacy_node != null:
 			legacy_node.visible = false
@@ -1034,36 +1093,55 @@ func _layout_for_viewport() -> void:
 
 	# Hotbar: bottom centre, above the screen edge.
 	if hotbar_panel != null:
-		hotbar_panel.position = Vector2(cx - 213.0, vp.y - 58.0)
+		hotbar_panel.position = Vector2(cx - 213.0, vp.y - 62.0)
 
-	# Health and mana: bottom left.
+	# Bottom-left vitals stack. The captions originally stayed at their 480p
+	# positions while the bars moved, which left MANA floating mid-screen.
+	if layer_label != null:
+		layer_label.position = Vector2(16.0, vp.y - 146.0)
+		layer_label.size = Vector2(252.0, 10.0)
+		layer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	if environment_label != null:
+		environment_label.position = Vector2(16.0, vp.y - 134.0)
+		environment_label.size = Vector2(252.0, 10.0)
+		environment_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	if house_label != null:
+		house_label.position = Vector2(16.0, vp.y - 122.0)
+		house_label.size = Vector2(360.0, 10.0)
+	if mana_caption != null:
+		mana_caption.position = Vector2(16.0, vp.y - 120.0)
+	if mana_bar != null:
+		mana_bar.position = Vector2(16.0, vp.y - 106.0)
+	if mana_fill != null:
+		mana_fill.position = Vector2(17.0, vp.y - 105.0)
+	if mana_label != null:
+		mana_label.position = Vector2(188.0, vp.y - 120.0)
+		mana_label.visible = true
 	if health_bar != null:
-		health_bar.position = Vector2(16.0, vp.y - 96.0)
+		health_bar.position = Vector2(16.0, vp.y - 64.0)
 	if health_fill != null:
-		health_fill.position = Vector2(17.0, vp.y - 95.0)
+		health_fill.position = Vector2(17.0, vp.y - 63.0)
+	var health_caption := get_node_or_null("HealthCaption") as Label
+	if health_caption != null:
+		health_caption.position = Vector2(16.0, vp.y - 92.0)
 	var health_value := get_node_or_null("HealthValue") as Label
 	if health_value != null:
-		health_value.position = Vector2(188.0, vp.y - 109.0)
-	if mana_bar != null:
-		mana_bar.position = Vector2(16.0, vp.y - 82.0)
-	if mana_fill != null:
-		mana_fill.position = Vector2(17.0, vp.y - 81.0)
-	if mana_label != null:
-		mana_label.position = Vector2(188.0, vp.y - 95.0)
+		health_value.position = Vector2(188.0, vp.y - 92.0)
+		health_value.visible = true
+	for index in range(heart_icons.size()):
+		heart_icons[index].position = Vector2(16.0 + index * 18.0, vp.y - 78.0)
 
 	# Transient text.
 	if status_label != null:
-		status_label.position = Vector2(cx - 300.0, vp.y - 118.0)
+		status_label.position = Vector2(cx - 300.0, vp.y - 142.0)
 	if world_hint_label != null:
 		world_hint_label.position = Vector2(cx - 300.0, 70.0)
 	if interaction_label != null:
-		interaction_label.position = Vector2(cx - 177.0, vp.y - 132.0)
+		interaction_label.position = Vector2(cx - 177.0, vp.y - 154.0)
 	if notification_label != null:
 		notification_label.position = Vector2(cx - 300.0, 120.0)
 	if target_label != null:
 		target_label.position = Vector2(cx - 200.0, vp.y * 0.5 - 90.0)
-	if layer_label != null:
-		layer_label.position = Vector2(cx - 200.0, vp.y * 0.5 - 74.0)
 	if boss_panel != null:
 		boss_panel.position = Vector2(cx - 177.0, 12.0)
 	if biome_label != null:
@@ -1075,34 +1153,43 @@ func _layout_for_viewport() -> void:
 # --- Agent 3: hotbar ---------------------------------------------------------
 
 func _build_hotbar() -> void:
-	hotbar_panel = _panel(Rect2(214, 420, 426, 44), _style(Color(0.02, 0.03, 0.04, 0.88), PANEL_BORDER, 1, 4))
+	hotbar_panel = _panel(Rect2(214, 412, 426, 50), _style(PANEL_BG, PANEL_BORDER, 2, 4))
 	hotbar_panel.name = "HotbarPanel"
 	hotbar_slots.clear()
 	hotbar_labels.clear()
 	hotbar_counts.clear()
 	for i in range(10):
 		var slot := Panel.new()
-		slot.position = Vector2(6 + i * 42, 6)
-		slot.size = Vector2(36, 32)
+		slot.position = Vector2(7 + i * 41, 6)
+		slot.size = Vector2(38, 38)
 		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		slot.add_theme_stylebox_override("panel", _style(Color(0.06, 0.09, 0.10, 0.95), Color(0.22, 0.40, 0.38, 0.7), 1, 2))
+		slot.add_theme_stylebox_override("panel", _style(SLOT_BG, SLOT_BORDER, 1, 2))
 		hotbar_panel.add_child(slot)
 		hotbar_slots.append(slot)
+		# Inset well: a slightly darker inner square reads as a Terraria slot.
+		var well := Panel.new()
+		well.position = Vector2(2, 2)
+		well.size = Vector2(32, 32)
+		well.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		well.add_theme_stylebox_override("panel", _style(Color(0.04, 0.055, 0.095, 0.95), Color(0.20, 0.18, 0.12, 0.85), 1, 1))
+		slot.add_child(well)
 		var icon := TextureRect.new()
-		icon.position = Vector2(10, 1)
-		icon.size = Vector2(16, 16)
+		icon.position = Vector2(1, 1)
+		icon.size = Vector2(30, 30)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		slot.add_child(icon)
+		well.add_child(icon)
 		hotbar_icons.append(icon)
 		var lbl := _label("", 7, TEXT_PALE, HORIZONTAL_ALIGNMENT_CENTER)
-		lbl.position = Vector2(0, 17)
-		lbl.size = Vector2(36, 8)
+		lbl.position = Vector2(0, 18)
+		lbl.size = Vector2(38, 8)
 		slot.add_child(lbl)
 		hotbar_labels.append(lbl)
-		var cnt := _label("", 8, TEXT_DIM, HORIZONTAL_ALIGNMENT_RIGHT)
-		cnt.position = Vector2(2, 22)
-		cnt.size = Vector2(32, 9)
+		var cnt := _label("", 9, Color(1.0, 0.94, 0.78), HORIZONTAL_ALIGNMENT_RIGHT)
+		cnt.position = Vector2(2, 25)
+		cnt.size = Vector2(34, 11)
 		slot.add_child(cnt)
 		hotbar_counts.append(cnt)
 
@@ -1141,7 +1228,7 @@ func _refresh_hotbar(_arg: Variant = null) -> void:
 		var selected := int(inv.selected) == i
 		var style := slot_panel.get_theme_stylebox("panel") as StyleBoxFlat
 		if style != null:
-			style.border_color = ACCENT_PROJECTOR if selected else Color(0.22, 0.40, 0.38, 0.7)
+			style.border_color = SLOT_SELECTED if selected else SLOT_BORDER
 			style.border_width_left = 2 if selected else 1
 			style.border_width_top = 2 if selected else 1
 			style.border_width_right = 2 if selected else 1
@@ -1151,10 +1238,10 @@ func _refresh_hotbar(_arg: Variant = null) -> void:
 # --- Agent 3: mana -----------------------------------------------------------
 
 func _build_mana() -> void:
-	var caption := _label("MANA", 8, TEXT_DIM)
-	caption.position = Vector2(16, 348)
-	caption.size = Vector2(80, 10)
-	add_child(caption)
+	mana_caption = _label("MANA", 8, TEXT_DIM)
+	mana_caption.position = Vector2(16, 348)
+	mana_caption.size = Vector2(80, 10)
+	add_child(mana_caption)
 	mana_bar = Panel.new()
 	mana_bar.position = Vector2(16, 358)
 	mana_bar.size = Vector2(252, 7)
@@ -1278,34 +1365,36 @@ func _build_boss() -> void:
 	boss_panel.name = "BossPanel"
 	boss_panel.visible = false
 	boss_name_label = _label("", 12, Color(0.94, 0.34, 0.28), HORIZONTAL_ALIGNMENT_CENTER)
-	boss_name_label.position = Vector2(260, 16)
+	boss_name_label.position = Vector2(10, 4)
 	boss_name_label.size = Vector2(334, 16)
-	add_child(boss_name_label)
+	boss_panel.add_child(boss_name_label)
 	var bar_bg := _style(Color(0.02, 0.02, 0.03, 0.95), Color(0.4, 0.12, 0.10, 0.8), 1, 2)
-	boss_bg_panel = _panel(Rect2(260, 36, 334, 12), bar_bg)
+	boss_bg_panel = Panel.new()
+	boss_bg_panel.position = Vector2(10, 24)
+	boss_bg_panel.size = Vector2(334, 12)
 	boss_bg_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	boss_bg_panel.add_theme_stylebox_override("panel", bar_bg)
 	boss_bg_panel.visible = false
+	boss_panel.add_child(boss_bg_panel)
 	boss_health_style = _style(Color(0.88, 0.24, 0.18, 0.95), Color(1.0, 0.5, 0.4, 0.8), 1, 1)
 	boss_health_fill = Panel.new()
-	boss_health_fill.position = Vector2(261, 37)
+	boss_health_fill.position = Vector2(11, 25)
 	boss_health_fill.size = Vector2(332, 10)
 	boss_health_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	boss_health_fill.add_theme_stylebox_override("panel", boss_health_style)
-	add_child(boss_health_fill)
+	boss_health_fill.visible = false
+	boss_panel.add_child(boss_health_fill)
 
 func _update_boss() -> void:
 	if boss_panel == null:
 		return
 	if boss_target == null or not is_instance_valid(boss_target):
 		boss_target = null
+		# Only a real boss group entry gets the boss bar. The old fallback to any
+		# 100+ HP enemy showed a nameless health bar during normal play.
 		for node in get_tree().get_nodes_in_group("bosses"):
 			boss_target = node
 			break
-		if boss_target == null:
-			for node in get_tree().get_nodes_in_group("enemies"):
-				if node.get("max_health") != null and float(node.get("max_health")) >= 100.0:
-					boss_target = node
-					break
 	if boss_target == null or not is_instance_valid(boss_target):
 		boss_panel.visible = false
 		boss_bg_panel.visible = false
@@ -1347,11 +1436,11 @@ func _update_status_effects() -> void:
 # --- Agent 3: inventory & crafting panels ------------------------------------
 
 func _build_inventory_panel() -> void:
-	inventory_panel = _panel(Rect2(120, 90, 640, 400), _style(Color(0.02, 0.03, 0.04, 0.94), PANEL_BORDER, 1, 6))
+	inventory_panel = _panel(Rect2(120, 90, 640, 400), _style(PANEL_BG, PANEL_BORDER, 2, 4))
 	inventory_panel.name = "InventoryPanel"
 	inventory_panel.visible = false
 	# _panel() already added this node.
-	var title := _label("INVENTORY", 13, ACCENT_LUMEN)
+	var title := _label("INVENTORY", 13, Color(0.98, 0.86, 0.52))
 	title.position = Vector2(12, 8)
 	title.size = Vector2(200, 18)
 	inventory_panel.add_child(title)
@@ -1365,19 +1454,23 @@ func _build_inventory_panel() -> void:
 		var p := Panel.new()
 		p.position = Vector2(eq_x, eq_y + 14)
 		p.size = Vector2(84, 36)
-		p.add_theme_stylebox_override("panel", _style(Color(0.06, 0.09, 0.10, 0.95), Color(0.22, 0.40, 0.38, 0.7), 1, 2))
+		p.add_theme_stylebox_override("panel", _style(SLOT_BG, SLOT_BORDER, 1, 2))
 		p.mouse_filter = Control.MOUSE_FILTER_STOP
 		p.gui_input.connect(func(ev): _on_inv_slot_input("equipment", InventoryModel.EQUIPMENT_SLOTS.find(slot), ev, p))
 		inventory_panel.add_child(p)
-		var plbl := _label("", 9, TEXT_PALE, HORIZONTAL_ALIGNMENT_CENTER)
-		plbl.position = Vector2(2, 4)
-		plbl.size = Vector2(80, 16)
+		var picon := TextureRect.new()
+		picon.position = Vector2(4, 3)
+		picon.size = Vector2(30, 30)
+		picon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		picon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		picon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		picon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		p.add_child(picon)
+		var plbl := _label("", 9, TEXT_PALE, HORIZONTAL_ALIGNMENT_LEFT)
+		plbl.position = Vector2(38, 12)
+		plbl.size = Vector2(44, 14)
 		p.add_child(plbl)
-		var pcnt := _label("", 8, TEXT_DIM, HORIZONTAL_ALIGNMENT_RIGHT)
-		pcnt.position = Vector2(2, 22)
-		pcnt.size = Vector2(80, 10)
-		p.add_child(pcnt)
-		equip_slot_panels[slot] = {"panel": p, "label": plbl, "count": pcnt, "slot": slot}
+		equip_slot_panels[slot] = {"panel": p, "label": plbl, "icon": picon, "slot": slot}
 		eq_y += 60
 	var grid_x := 110
 	var grid_y := 40
@@ -1388,13 +1481,15 @@ func _build_inventory_panel() -> void:
 		var p := Panel.new()
 		p.position = Vector2(grid_x + col * 44, grid_y + row * 44)
 		p.size = Vector2(40, 40)
-		p.add_theme_stylebox_override("panel", _style(Color(0.06, 0.09, 0.10, 0.95), Color(0.22, 0.40, 0.38, 0.7), 1, 2))
+		p.add_theme_stylebox_override("panel", _style(SLOT_BG, SLOT_BORDER, 1, 2))
 		p.mouse_filter = Control.MOUSE_FILTER_STOP
 		p.gui_input.connect(func(ev): _on_inv_slot_input("main", i, ev, p))
 		inventory_panel.add_child(p)
 		var picon := TextureRect.new()
-		picon.position = Vector2(9, 2)
-		picon.size = Vector2(22, 22)
+		picon.position = Vector2(3, 3)
+		picon.size = Vector2(34, 34)
+		picon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		picon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		picon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		picon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		p.add_child(picon)
@@ -1416,13 +1511,15 @@ func _build_inventory_panel() -> void:
 		var p := Panel.new()
 		p.position = Vector2(grid_x + i * 44, hb_y)
 		p.size = Vector2(40, 40)
-		p.add_theme_stylebox_override("panel", _style(Color(0.06, 0.09, 0.10, 0.95), Color(0.22, 0.40, 0.38, 0.7), 1, 2))
+		p.add_theme_stylebox_override("panel", _style(SLOT_BG, SLOT_BORDER, 1, 2))
 		p.mouse_filter = Control.MOUSE_FILTER_STOP
 		p.gui_input.connect(func(ev): _on_inv_slot_input("hotbar", i, ev, p))
 		inventory_panel.add_child(p)
 		var picon := TextureRect.new()
-		picon.position = Vector2(9, 2)
-		picon.size = Vector2(22, 22)
+		picon.position = Vector2(3, 3)
+		picon.size = Vector2(34, 34)
+		picon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		picon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		picon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		picon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		p.add_child(picon)
@@ -1440,24 +1537,28 @@ func _build_inventory_panel() -> void:
 	hint.size = Vector2(616, 12)
 	inventory_panel.add_child(hint)
 func _build_crafting_panel() -> void:
-	crafting_panel = _panel(Rect2(120, 90, 640, 400), _style(Color(0.02, 0.03, 0.04, 0.94), PANEL_BORDER, 1, 6))
+	crafting_panel = _panel(Rect2(120, 90, 640, 400), _style(PANEL_BG, PANEL_BORDER, 2, 4))
 	crafting_panel.name = "CraftingPanel"
 	crafting_panel.visible = false
 	# _panel() already added this node.
-	var title := _label("CRAFTING", 13, ACCENT_LUMEN)
+	var title := _label("CRAFTING", 13, Color(0.98, 0.86, 0.52))
 	title.position = Vector2(12, 8)
 	title.size = Vector2(200, 18)
 	crafting_panel.add_child(title)
 	var scroll := ScrollContainer.new()
-	scroll.position = Vector2(12, 40)
-	scroll.size = Vector2(260, 340)
+	scroll.position = Vector2(12, 42)
+	scroll.size = Vector2(300, 336)
 	crafting_panel.add_child(scroll)
 	craft_list = VBoxContainer.new()
 	craft_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(craft_list)
+	craft_station_label = _label("", 9, Color(0.74, 0.84, 0.94))
+	craft_station_label.position = Vector2(12, 27)
+	craft_station_label.size = Vector2(616, 12)
+	crafting_panel.add_child(craft_station_label)
 	craft_detail_label = _label("Select a recipe.", 10, TEXT_PALE)
-	craft_detail_label.position = Vector2(290, 40)
-	craft_detail_label.size = Vector2(330, 300)
+	craft_detail_label.position = Vector2(322, 42)
+	craft_detail_label.size = Vector2(300, 296)
 	craft_detail_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	crafting_panel.add_child(craft_detail_label)
 	var craft_btn := Button.new()
@@ -1471,11 +1572,174 @@ func _build_crafting_panel() -> void:
 	hint.size = Vector2(616, 12)
 	crafting_panel.add_child(hint)
 
+## --- Guide -----------------------------------------------------------------
+## The Guide shows what the player's currently selected material can be made
+## into. Recipes come from the same RecipeDatabase the crafting system uses and
+## the "have / need" numbers come from the live inventory.
+func _build_guide_panel() -> void:
+	guide_panel = _panel(Rect2(120, 90, 640, 400), _style(PANEL_BG, PANEL_BORDER, 2, 4))
+	guide_panel.name = "GuidePanel"
+	guide_panel.visible = false
+	var title := _label("GUIDE", 13, Color(0.98, 0.86, 0.52))
+	title.position = Vector2(12, 8)
+	title.size = Vector2(200, 18)
+	guide_panel.add_child(title)
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(12, 40)
+	scroll.size = Vector2(260, 340)
+	guide_panel.add_child(scroll)
+	guide_list = VBoxContainer.new()
+	guide_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(guide_list)
+	guide_detail = _label("Hold a material in a hotbar slot, then ask the Guide.", 10, TEXT_PALE)
+	guide_detail.position = Vector2(290, 40)
+	guide_detail.size = Vector2(330, 300)
+	guide_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	guide_panel.add_child(guide_detail)
+	var hint := _label("G to close   ·   shows recipes that use your selected hotbar item", 9, TEXT_DIM)
+	hint.position = Vector2(12, 378)
+	hint.size = Vector2(616, 12)
+	guide_panel.add_child(hint)
+
+
+func _refresh_guide_list() -> void:
+	if guide_list == null or player == null:
+		return
+	for child in guide_list.get_children():
+		child.queue_free()
+	var inv = player.get("inventory")
+	var filter := &""
+	if inv != null:
+		var stack: Dictionary = inv.get_slot("hotbar", int(inv.selected))
+		filter = StringName(stack.get("id", &""))
+	guide_filter_id = filter
+	var cs = player.get("crafting")
+	var recipes := RecipeDatabase.all()
+	var shown := 0
+	for recipe in recipes:
+		if filter != &"" and not recipe.ingredients.has(String(filter)) and recipe.output_id() != filter:
+			continue
+		shown += 1
+		var btn := Button.new()
+		var can: bool = cs != null and bool(cs.can_craft(recipe))
+		btn.text = recipe.display_name
+		btn.modulate = Color(1.0, 0.95, 0.80) if can else Color(0.72, 0.76, 0.82)
+		btn.tooltip_text = "%s  ·  Station: %s" % ["Ready to craft" if can else "Missing materials", recipe.station if recipe.station != "none" else "hand"]
+		btn.pressed.connect(func(): _select_guide_recipe(recipe))
+		guide_list.add_child(btn)
+	if shown == 0:
+		guide_detail.text = "The Guide has nothing to suggest for that item."
+	elif filter != &"":
+		var def := ItemDatabase.get_item(filter)
+		var item_name := String(filter)
+		if def != null and def.display_name != "":
+			item_name = def.display_name
+		guide_detail.text = "USED IN RECIPES: %s\n\nSelect a recipe on the left to see its ingredients." % item_name.to_upper()
+	else:
+		guide_detail.text = "Select a hotbar item to filter, or pick a recipe on the left."
+
+
+func _item_name(id: StringName) -> String:
+	var def := ItemDatabase.get_item(id)
+	if def != null and def.display_name != "":
+		return def.display_name
+	return String(id)
+
+
+func _select_guide_recipe(recipe: CraftingRecipe) -> void:
+	guide_selected = recipe
+	if guide_detail == null:
+		return
+	var lines: Array[String] = [recipe.display_name.to_upper(), ""]
+	if recipe.description != "":
+		lines.append(recipe.description)
+	lines.append("Station: " + (recipe.station if recipe.station != "none" else "hand"))
+	lines.append("")
+	lines.append("Ingredients:")
+	var ready := true
+	for key in recipe.ingredients.keys():
+		var id := StringName(String(key))
+		var need := int(recipe.ingredients[key])
+		var have := 0
+		if player != null and player.get("inventory") != null:
+			have = player.inventory.count(id)
+		if have < need:
+			ready = false
+		lines.append("  %s   %d/%d" % [_item_name(id), mini(have, need), need])
+	lines.append("")
+	lines.append("Result: %s x%d" % [_item_name(recipe.output_id()), recipe.output_amount()])
+	lines.append("")
+	if ready:
+		lines.append("You have everything needed. Press C to craft it.")
+	else:
+		lines.append("You are missing materials for this recipe.")
+	guide_detail.text = "\n".join(lines)
+
+
+func _toggle_guide() -> void:
+	guide_visible = not guide_visible
+	if guide_panel != null:
+		guide_panel.visible = guide_visible
+	if guide_visible:
+		inventory_visible = false
+		crafting_visible = false
+		if inventory_panel != null:
+			inventory_panel.visible = false
+		if crafting_panel != null:
+			crafting_panel.visible = false
+		_refresh_guide_list()
+		_set_mouse_captured(false)
+	else:
+		_set_mouse_captured(true)
+
+
+## Terraria-style item tooltip: name, stack, category/rarity, the numbers that
+## matter for the item's type, then its flavour description.
+func _tooltip_for(def: ItemDef, id: StringName, amount: int) -> String:
+	var category_names := ["Material", "Tool", "Weapon", "Armor", "Consumable", "Block", "Quest", "Accessory"]
+	var name := String(id)
+	if def != null and def.display_name != "":
+		name = def.display_name
+	var lines: Array[String] = [name]
+	if amount > 1:
+		lines.append("x%d" % amount)
+	if def != null:
+		var header: String = category_names[clampi(int(def.category), 0, category_names.size() - 1)]
+		if def.rarity > 0:
+			header += "   ·   rarity %d" % (def.rarity + 1)
+		lines.append(header)
+		if def.is_tool:
+			lines.append("%s tool · %s tier · power %.1f" % [def.tool_type.capitalize(), def.tier_name(), def.mining_power])
+		if def.is_weapon and def.attack != null:
+			lines.append("%s damage %.0f · range %.1f" % [String(def.attack.kind).capitalize(), def.attack.damage, def.attack.range])
+		if def.armor > 0:
+			lines.append("Armor %d" % def.armor)
+		if def.defense_bonus > 0:
+			lines.append("Defense +%d" % def.defense_bonus)
+		if def.mining_speed_bonus > 0.0:
+			lines.append("Mining speed +%.0f%%" % (def.mining_speed_bonus * 100.0))
+		if def.move_speed_bonus > 0.0:
+			lines.append("Move speed +%.0f%%" % (def.move_speed_bonus * 100.0))
+		if def.max_health_bonus > 0.0:
+			lines.append("Max health +%.0f" % def.max_health_bonus)
+		if def.is_consumable and def.heal_amount > 0.0:
+			lines.append("Restores %.0f health" % def.heal_amount)
+		if def.is_consumable and def.mana_restore > 0.0:
+			lines.append("Restores %.0f mana" % def.mana_restore)
+		if def.description != "":
+			lines.append("")
+			lines.append(def.description)
+		if def.value > 0:
+			lines.append("")
+			lines.append("Value %d" % def.value)
+	return "\n".join(lines)
+
+
 func _build_tooltip() -> void:
 	tooltip_label = _label("", 9, TEXT_PALE)
 	tooltip_label.name = "Tooltip"
 	tooltip_label.position = Vector2(0, 0)
-	tooltip_label.size = Vector2(220, 60)
+	tooltip_label.size = Vector2(260, 60)
 	tooltip_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	tooltip_label.visible = false
 	add_child(tooltip_label)
@@ -1520,26 +1784,28 @@ func _refresh_inventory_panel(_arg: Variant = null) -> void:
 		var is_sel := (area == "hotbar" and int(inv.selected) == idx)
 		var style := p.get_theme_stylebox("panel") as StyleBoxFlat
 		if style != null:
-			style.border_color = ACCENT_PROJECTOR if is_sel else Color(0.22, 0.40, 0.38, 0.7)
+			style.border_color = SLOT_SELECTED if is_sel else SLOT_BORDER
+			style.border_width_left = 2
+			style.border_width_top = 2
+			style.border_width_right = 2
+			style.border_width_bottom = 2
 	for slot in equip_slot_panels.keys():
 		var e: Dictionary = equip_slot_panels[slot]
 		var p: Panel = e["panel"]
 		var lbl: Label = e["label"]
-		var cnt: Label = e["count"]
+		var elev_icon: TextureRect = e.get("icon")
 		var stack: Dictionary = inv.equipment.get(slot, {})
 		var id := StringName(stack.get("id", &""))
 		var amount := int(stack.get("amount", 0))
 		if id == &"" or amount <= 0:
 			lbl.text = ""
-			cnt.text = ""
+			if elev_icon != null:
+				elev_icon.texture = null
 			p.modulate.a = 0.5
 		else:
-			var def := ItemDatabase.get_item(id)
-			var name := String(id)
-			if def != null and def.display_name != "":
-				name = def.display_name
-			lbl.text = name.substr(0, 6)
-			cnt.text = ""
+			lbl.text = _item_name(id).substr(0, 7)
+			if elev_icon != null:
+				elev_icon.texture = ItemIcons.icon_for(id)
 			p.modulate.a = 1.0
 
 func _on_inv_slot_input(area: String, index: int, ev: InputEvent, _p: Panel) -> void:
@@ -1549,13 +1815,7 @@ func _on_inv_slot_input(area: String, index: int, ev: InputEvent, _p: Panel) -> 
 			var id := StringName(stack.get("id", &""))
 			if id != &"":
 				var def := ItemDatabase.get_item(id)
-				var name := String(id)
-				if def != null and def.display_name != "":
-					name = def.display_name
-				var desc := ""
-				if def != null:
-					desc = def.description
-				tooltip_label.text = name + ("\n" + desc if desc != "" else "")
+				tooltip_label.text = _tooltip_for(def, id, int(stack.get("amount", 0)))
 				tooltip_label.visible = true
 				tooltip_label.position = get_viewport().get_mouse_position() + Vector2(12, 12)
 			else:
@@ -1589,19 +1849,51 @@ func _on_inv_slot_input(area: String, index: int, ev: InputEvent, _p: Panel) -> 
 		inv_selected.clear()
 		_refresh_inventory_panel()
 
+## The stations you can actually reach, exactly as CraftingSystem decides it.
+func _station_summary() -> String:
+	var names := ["workbench", "furnace", "anvil"]
+	var found: Array[String] = []
+	var cs = player.get("crafting") if player != null else null
+	if cs != null:
+		for station in names:
+			if bool(cs.station_available(station)):
+				found.append(station.replace("workbench", "work bench").to_upper())
+	if found.is_empty():
+		return "NO STATION IN REACH  ·  craft a Work Bench (10 wood), then stand beside it"
+	return "STATIONS IN REACH: " + "   ·   ".join(found)
+
+
 func _refresh_crafting_list() -> void:
 	if craft_list == null or player == null or player.get("crafting") == null:
 		return
+	if craft_station_label != null:
+		craft_station_label.text = _station_summary()
 	for c in craft_list.get_children():
 		c.queue_free()
 	var cs = player.crafting
 	for r in cs.all_recipes():
 		var btn := Button.new()
 		var can := cs.can_craft(r)
-		btn.text = "%s%s" % [r.display_name, "" if can else " (locked)"]
+		btn.text = "%s%s" % [r.display_name, "" if can else "  ·  " + _craft_suffix(cs.reason(r))]
+		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		btn.disabled = not can
 		btn.pressed.connect(func(): _select_recipe(r))
 		craft_list.add_child(btn)
+
+## Compact failure tags so a list row never clips its own reason.
+func _craft_suffix(reason: String) -> String:
+	if reason.begins_with("STATION REQUIRED:"):
+		var station := reason.substr(17).strip_edges().to_lower()
+		if station == "workbench":
+			return "needs bench"
+		return "needs " + station
+	match reason:
+		"MISSING INGREDIENTS":
+			return "no materials"
+		"LOCKED":
+			return "locked"
+	return reason.to_lower()
+
 
 func _select_recipe(r: CraftingRecipe) -> void:
 	selected_recipe = r
@@ -1635,6 +1927,229 @@ func _on_craft_pressed() -> void:
 		_select_recipe(selected_recipe)
 	else:
 		_show_toast(cs.reason(selected_recipe))
+
+## --- Chests ----------------------------------------------------------------
+## Terraria chests are shared world containers: the panel shows the chest's 20
+## slots beside the player's inventory, and a click moves the whole stack one
+## way. Stacks that do not fit stay where they were, so nothing is ever lost.
+
+func _build_chest_panel() -> void:
+	chest_panel = _panel(Rect2(140, 80, 660, 440), _style(PANEL_BG, PANEL_BORDER, 2, 4))
+	chest_panel.name = "ChestPanel"
+	chest_panel.visible = false
+	var title := _label("CHEST", 13, Color(0.98, 0.86, 0.52))
+	title.position = Vector2(12, 8)
+	title.size = Vector2(200, 18)
+	chest_panel.add_child(title)
+	var hint := _label("Click a stack to move it between the chest and your bag.", 9, TEXT_DIM)
+	hint.position = Vector2(12, 26)
+	hint.size = Vector2(400, 12)
+	chest_panel.add_child(hint)
+	for i in range(ContainerStore.SLOTS):
+		var col := i % 5
+		var row := i / 5
+		var p := Panel.new()
+		p.position = Vector2(12 + col * 44, 44 + row * 44)
+		p.size = Vector2(40, 40)
+		p.add_theme_stylebox_override("panel", _style(SLOT_BG, SLOT_BORDER, 1, 2))
+		p.mouse_filter = Control.MOUSE_FILTER_STOP
+		p.gui_input.connect(func(ev): _on_chest_slot_input(i, ev))
+		chest_panel.add_child(p)
+		var picon := TextureRect.new()
+		picon.position = Vector2(3, 3)
+		picon.size = Vector2(34, 34)
+		picon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		picon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		picon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		picon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		p.add_child(picon)
+		var pcnt := _label("", 8, TEXT_DIM, HORIZONTAL_ALIGNMENT_RIGHT)
+		pcnt.position = Vector2(2, 28)
+		pcnt.size = Vector2(36, 10)
+		p.add_child(pcnt)
+		chest_slots.append({"panel": p, "count": pcnt, "icon": picon})
+	var bag_title := _label("YOUR INVENTORY", 10, Color(0.98, 0.86, 0.52))
+	bag_title.position = Vector2(250, 44)
+	bag_title.size = Vector2(200, 14)
+	chest_panel.add_child(bag_title)
+	for i in range(InventoryModel.MAIN_SIZE):
+		var col := i % 8
+		var row := i / 8
+		var p := Panel.new()
+		p.position = Vector2(250 + col * 44, 62 + row * 44)
+		p.size = Vector2(40, 40)
+		p.add_theme_stylebox_override("panel", _style(SLOT_BG, SLOT_BORDER, 1, 2))
+		p.mouse_filter = Control.MOUSE_FILTER_STOP
+		p.gui_input.connect(func(ev): _on_chest_inv_slot_input("main", i, ev))
+		chest_panel.add_child(p)
+		var picon := TextureRect.new()
+		picon.position = Vector2(3, 3)
+		picon.size = Vector2(34, 34)
+		picon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		picon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		picon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		picon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		p.add_child(picon)
+		var pcnt := _label("", 8, TEXT_DIM, HORIZONTAL_ALIGNMENT_RIGHT)
+		pcnt.position = Vector2(2, 28)
+		pcnt.size = Vector2(36, 10)
+		p.add_child(pcnt)
+		chest_inv_slots.append({"panel": p, "count": pcnt, "icon": picon, "area": "main", "index": i})
+	var hotbar_title := _label("HOTBAR", 9, TEXT_DIM)
+	hotbar_title.position = Vector2(250, 288)
+	hotbar_title.size = Vector2(100, 12)
+	chest_panel.add_child(hotbar_title)
+	for i in range(InventoryModel.HOTBAR_SIZE):
+		var p := Panel.new()
+		p.position = Vector2(250 + i * 40, 302)
+		p.size = Vector2(36, 36)
+		p.add_theme_stylebox_override("panel", _style(SLOT_BG, SLOT_BORDER, 1, 2))
+		p.mouse_filter = Control.MOUSE_FILTER_STOP
+		p.gui_input.connect(func(ev): _on_chest_inv_slot_input("hotbar", i, ev))
+		chest_panel.add_child(p)
+		var picon := TextureRect.new()
+		picon.position = Vector2(2, 2)
+		picon.size = Vector2(32, 32)
+		picon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		picon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		picon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		picon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		p.add_child(picon)
+		var pcnt := _label("", 8, TEXT_DIM, HORIZONTAL_ALIGNMENT_RIGHT)
+		pcnt.position = Vector2(1, 24)
+		pcnt.size = Vector2(33, 10)
+		p.add_child(pcnt)
+		chest_inv_slots.append({"panel": p, "count": pcnt, "icon": picon, "area": "hotbar", "index": i})
+	var footer := _label("E or ESC closes the chest.", 9, TEXT_DIM)
+	footer.position = Vector2(12, 415)
+	footer.size = Vector2(400, 12)
+	chest_panel.add_child(footer)
+
+
+func _chest_under_crosshair() -> Vector3i:
+	if player == null or world == null or not world.is_generated:
+		return Vector3i(-1, -1, -1)
+	var from: Vector3 = player.aim_origin()
+	var direction: Vector3 = player.aim_direction()
+	var hit := MiningSystem.raycast(world, from, direction, 6.0)
+	if hit.is_empty():
+		return Vector3i(-1, -1, -1)
+	var cell: Vector3i = hit["cell"]
+	var chest_id: int = int(world.block_ids.get(&"chest", -1))
+	if chest_id < 0 or world.get_block_id(cell) != chest_id:
+		return Vector3i(-1, -1, -1)
+	return cell
+
+
+func open_chest(cell: Vector3i) -> void:
+	if player == null or player.get("containers") == null:
+		return
+	chest_cell = cell
+	chest_visible = true
+	if chest_panel != null:
+		chest_panel.visible = true
+	inventory_visible = false
+	crafting_visible = false
+	guide_visible = false
+	if inventory_panel != null:
+		inventory_panel.visible = false
+	if crafting_panel != null:
+		crafting_panel.visible = false
+	if guide_panel != null:
+		guide_panel.visible = false
+	_refresh_chest_panel()
+	_set_mouse_captured(false)
+
+
+func close_chest() -> void:
+	chest_visible = false
+	if chest_panel != null:
+		chest_panel.visible = false
+	chest_cell = Vector3i(-99999, -99999, -99999)
+	_set_mouse_captured(true)
+
+
+func _refresh_chest_panel() -> void:
+	if player == null or player.get("containers") == null:
+		return
+	var store: ContainerStore = player.containers
+	var stacks: Array[Dictionary] = store.slots(chest_cell)
+	for i in range(chest_slots.size()):
+		var entry: Dictionary = chest_slots[i]
+		var stack: Dictionary = stacks[i] if i < stacks.size() else {}
+		_fill_slot_entry(entry, StringName(stack.get("id", &"")), int(stack.get("amount", 0)))
+	for entry in chest_inv_slots:
+		var stack: Dictionary = player.inventory.get_slot(entry["area"], entry["index"])
+		_fill_slot_entry(entry, StringName(stack.get("id", &"")), int(stack.get("amount", 0)))
+
+
+func _fill_slot_entry(entry: Dictionary, id: StringName, amount: int) -> void:
+	var icon: TextureRect = entry.get("icon")
+	var cnt: Label = entry.get("count")
+	var p: Panel = entry.get("panel")
+	if id == &"" or amount <= 0:
+		if icon != null:
+			icon.texture = null
+		if cnt != null:
+			cnt.text = ""
+		p.modulate.a = 0.45
+		p.tooltip_text = ""
+		return
+	if icon != null:
+		icon.texture = ItemIcons.icon_for(id)
+	if cnt != null:
+		cnt.text = "%d" % amount if amount > 1 else ""
+	p.modulate.a = 1.0
+	p.tooltip_text = _item_name(id)
+
+
+func _on_chest_slot_input(index: int, ev: InputEvent) -> void:
+	if not (ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT):
+		return
+	if player == null or player.get("containers") == null:
+		return
+	var store: ContainerStore = player.containers
+	var stack: Dictionary = store.slots(chest_cell)[index]
+	var id := StringName(stack.get("id", &""))
+	var amount := int(stack.get("amount", 0))
+	if id == &"" or amount <= 0:
+		return
+	var taken: Dictionary = store.take(chest_cell, index, amount)
+	var left := player.inventory.add_item(StringName(taken.get("id", &"")), int(taken.get("amount", 0)))
+	if left > 0:
+		store.deposit(chest_cell, StringName(taken.get("id", &"")), left)
+	_refresh_chest_panel()
+	_refresh_inventory_panel()
+
+
+func _on_chest_inv_slot_input(area: String, index: int, ev: InputEvent) -> void:
+	if not (ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT):
+		return
+	if player == null or player.get("containers") == null:
+		return
+	var stack: Dictionary = player.inventory.get_slot(area, index)
+	var id := StringName(stack.get("id", &""))
+	var amount := int(stack.get("amount", 0))
+	if id == &"" or amount <= 0:
+		return
+	var store: ContainerStore = player.containers
+	var left := store.deposit(chest_cell, id, amount, stack.get("metadata", {}))
+	var moved := amount - left
+	if moved > 0:
+		var remaining := {"id": id, "amount": amount - moved, "metadata": stack.get("metadata", {}).duplicate(true)}
+		player.inventory.set_slot(area, index, remaining)
+	_refresh_chest_panel()
+	_refresh_inventory_panel()
+
+
+## Housing readout: how close the room around the player is to a valid home.
+func set_house_status(text: String, valid: bool) -> void:
+	if house_label == null:
+		return
+	house_label.visible = text != ""
+	house_label.text = text
+	house_label.add_theme_color_override("font_color", Color(0.42, 0.92, 0.68) if valid else Color(0.96, 0.72, 0.36))
+
 
 func _toggle_inventory() -> void:
 	inventory_visible = not inventory_visible

@@ -50,7 +50,7 @@ const GOVERNOR_SPEED_PER_METRE := 2.2
 
 var world: VoxelWorld
 var player: VoxelPlayer
-var caster: Lumencaster
+var caster: ArcaneCaster
 var camera: Camera3D
 var model: Node3D
 var wheel_pivots: Array[Node3D] = []
@@ -97,7 +97,7 @@ const CAMERA_EXIT := 3
 func _ready() -> void:
 	world = get_parent().get_node("VoxelWorld") as VoxelWorld
 	player = get_parent().get_node("Player") as VoxelPlayer
-	caster = player.get_node_or_null("Lumencaster") as Lumencaster
+	caster = player.get_node_or_null("ArcaneCaster") as ArcaneCaster
 	wheel_ground.resize(4)
 	wheel_contact.resize(4)
 	wheel_compression.resize(4)
