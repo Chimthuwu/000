@@ -13,16 +13,16 @@ const ICE_PALE := Color(0.78, 0.90, 1.0)
 const ICE_DEEP := Color(0.32, 0.54, 0.78)
 const ROOT_DARK := Color(0.14, 0.19, 0.09)
 const ROOT_LIGHT := Color(0.38, 0.46, 0.20)
-const BARK_DARK := Color(0.16, 0.12, 0.11)
-const BARK_LIGHT := Color(0.58, 0.49, 0.40)
+const BARK_DARK := Color(0.28, 0.20, 0.15)
+const BARK_LIGHT := Color(0.64, 0.52, 0.40)
 const GRASS_DARK := Color(0.16, 0.17, 0.12)
 const GRASS_LIGHT := Color(0.30, 0.40, 0.20)
 # Terraria-style blocky leaf canopies. The old archetypes were bare dead
 # branches from the horror build; every surface tree now carries foliage.
-const LEAF_DARK := Color(0.10, 0.32, 0.09)
-const LEAF_LIGHT := Color(0.36, 0.76, 0.24)
-const JUNGLE_LEAF_DARK := Color(0.08, 0.30, 0.08)
-const JUNGLE_LEAF_LIGHT := Color(0.28, 0.72, 0.18)
+const LEAF_DARK := Color(0.13, 0.40, 0.10)
+const LEAF_LIGHT := Color(0.44, 0.84, 0.28)
+const JUNGLE_LEAF_DARK := Color(0.10, 0.36, 0.09)
+const JUNGLE_LEAF_LIGHT := Color(0.36, 0.80, 0.20)
 
 var tree_meshes: Array[ArrayMesh] = []
 var tree_materials: Array[ShaderMaterial] = []
@@ -42,6 +42,26 @@ var spire_instance: MultiMeshInstance3D
 var root_instance: MultiMeshInstance3D
 var tree_sites: Array = []
 var site_slots: Dictionary = {}
+# Sites the player has felled. Kept across streaming rebuilds so a tree that is
+# gone stays gone when the region around it is regenerated.
+var felled_sites: Dictionary = {}
+# Trees the player is chopping: lean grows with progress and the shake impulse
+# decays, so damage is visible before the tree goes over.
+var tree_states: Dictionary = {}
+# Trees currently tumbling over. Each entry is one animated MultiMesh instance.
+var tree_falls: Array = []
+## Emitted when a felled tree reaches the ground (or vanishes to a rebuild),
+## with the cell, the landing point and how long the tumble took.
+signal tree_landed(cell: Vector3i, at: Vector3, fall_seconds: float)
+## Bumped whenever the batches are rebuilt from a new region.
+var sites_generation := 0
+const TREE_FALL_SECONDS := 1.05
+## Just past vertical, so a finished tree lies on the grass instead of hovering.
+const TREE_FALL_RADIANS := 1.64
+## How far a fully chopped tree leans before it is felled.
+const TREE_LEAN_RADIANS := 0.11
+# Approximate trunk height per archetype, used only for hit-testing the trunk.
+const TRUNK_HIT_HEIGHT := [5.2, 5.0, 5.6, 4.0, 5.0, 4.6]
 var tree_count := 0
 var grass_count := 0
 var region_center := Vector2i(1 << 30, 1 << 30)
@@ -50,6 +70,7 @@ var region_radius := 0
 
 
 func configure(world_bounds: AABB) -> void:
+	set_process(true)
 	tree_texture = TreeAtlas.texture()
 	for index in range(ARCHETYPE_COUNT):
 		tree_meshes.append(_build_archetype(index))
@@ -139,6 +160,18 @@ func update_region(world_seed: int, center: Vector2i, radius: int) -> void:
 
 
 func _apply_sites(sites: Array) -> void:
+	if not felled_sites.is_empty():
+		var live: Array = []
+		for site in sites:
+			if felled_sites.has(Vector3i(int(site["x"]), int(site["y"]), int(site["z"]))):
+				continue
+			live.append(site)
+		sites = live
+	# Instance indices are rebuilt, so damage recorded against the old batch no
+	# longer refers to the same trees. In-flight tumbles notice through the
+	# generation stamp instead of being cleared here.
+	tree_states.clear()
+	sites_generation += 1
 	tree_sites = sites
 	var per_archetype: Array = []
 	for index in range(ARCHETYPE_COUNT):
@@ -162,10 +195,15 @@ func _apply_sites(sites: Array) -> void:
 		# each streaming region rebuild arrives with the previous instances live.
 		multimesh.instance_count = 0
 		multimesh.transform_format = MultiMesh.TRANSFORM_3D
+		# Per-instance colour carries chop damage (a scuffed, darker tree) without
+		# needing a second material or a shader change.
+		multimesh.use_colors = true
 		multimesh.mesh = tree_meshes[archetype]
 		multimesh.instance_count = transforms.size()
 		for index in range(transforms.size()):
 			multimesh.set_instance_transform(index, transforms[index])
+			# Untouched trees are untinted.
+			multimesh.set_instance_color(index, Color(1.0, 1.0, 1.0))
 
 	# Site slots are built in the same order as each archetype's transforms so a
 	# mined stump can hide its own tree without touching the rest of the batch.
@@ -177,9 +215,17 @@ func _apply_sites(sites: Array) -> void:
 		var rng := RandomNumberGenerator.new()
 		rng.seed = int(site["seed"])
 		var archetype := rng.randi_range(0, ARCHETYPE_COUNT - 1)
+		# Same draws as the transform pass above, so the stored scale is the one
+		# the instance was actually placed with.
+		var landmark := bool(site["landmark"])
+		var scale_value := rng.randf_range(1.5, 1.9) if landmark else rng.randf_range(1.0, 1.32)
 		site_slots[Vector3i(int(site["x"]), int(site["y"]), int(site["z"]))] = {
 			"archetype": archetype,
-			"index": archetype_cursor[archetype]
+			"index": archetype_cursor[archetype],
+			"scale": scale_value,
+			# Kept so a damaged or falling tree can be posed relative to where it
+			# actually stands; instances may be rebuilt between hits.
+			"transform": per_archetype[archetype][archetype_cursor[archetype]] if archetype_cursor[archetype] < per_archetype[archetype].size() else Transform3D(),
 		}
 		archetype_cursor[archetype] += 1
 		tree_count += 1
@@ -197,15 +243,213 @@ func set_ambient_level(level: float) -> void:
 		material.set_shader_parameter("ambient_sky_level", clampf(level, 0.0, 1.0))
 
 
-func hide_tree_at(stump_cell: Vector3i) -> void:
-	if not site_slots.has(stump_cell):
+## A tree the player is chopping leans over a little and shudders, and keeps
+## leaning as the swing builds, so damage is readable before it falls.
+## `progress` is 0..1 from the player's swing; `from` is the direction the axe
+## comes from, which is the way the tree would go over.
+func damage_tree(cell: Vector3i, progress: float, from := Vector3.ZERO) -> void:
+	if not site_slots.has(cell):
 		return
-	var slot: Dictionary = site_slots[stump_cell]
+	var state: Dictionary = tree_states.get(cell, {})
+	if state.is_empty():
+		var push := Vector3(from.x, 0.0, from.z)
+		if push.length() < 0.01:
+			push = Vector3(0.6, 0.0, 0.8)
+		push = push.normalized()
+		# Rotating about UP x push tips the top of the trunk along push.
+		state = {"shake": 0.0, "lean": 0.0, "time": 0.0, "axis": Vector3.UP.cross(push).normalized()}
+	state["lean"] = clampf(progress, 0.0, 1.0)
+	state["damage"] = maxf(float(state.get("damage", 0.0)), clampf(progress, 0.0, 1.0))
+	state["shake"] = maxf(float(state.get("shake", 0.0)), 0.55)
+	tree_states[cell] = state
+	_refresh_tree(cell)
+
+
+## Removes one tree from its batch and remembers it, so the streaming rebuild
+## that follows does not put it back. The instance is not deleted outright: it
+## tumbles over for about a second and is hidden once it lands.
+## Returns false if there was no tree there.
+func fell_tree(cell: Vector3i, from := Vector3.ZERO) -> bool:
+	if not site_slots.has(cell):
+		return false
+	var slot: Dictionary = site_slots[cell]
+	felled_sites[cell] = true
+	site_slots.erase(cell)
+	tree_states.erase(cell)
 	var multimesh: MultiMesh = tree_multimeshes[int(slot["archetype"])]
 	var index := int(slot["index"])
 	if index < 0 or index >= multimesh.instance_count:
+		return true
+	var push := Vector3(from.x, 0.0, from.z)
+	if push.length() < 0.01:
+		push = Vector3(0.6, 0.0, 0.8)
+	push = push.normalized()
+	var base: Transform3D = slot.get("transform", multimesh.get_instance_transform(index))
+	tree_falls.append({
+		"cell": cell,
+		"archetype": int(slot["archetype"]),
+		"index": index,
+		"base": base,
+		"axis": Vector3.UP.cross(push).normalized(),
+		"push": push,
+		"time": 0.0,
+		"duration": TREE_FALL_SECONDS,
+		"angle": 0.0,
+		"generation": sites_generation,
+		"written": base,
+	})
+	return true
+
+
+func hide_tree_at(stump_cell: Vector3i) -> void:
+	fell_tree(stump_cell)
+
+
+## Advances tree damage and fallen trees. Every tree here is one MultiMesh
+## instance, so posing it is a single transform write per frame.
+func _process(delta: float) -> void:
+	_advance_damage(delta)
+	_advance_falls(delta)
+
+
+func _advance_damage(delta: float) -> void:
+	if tree_states.is_empty():
 		return
-	multimesh.set_instance_transform(index, Transform3D(Basis().scaled(Vector3.ZERO), Vector3(0.0, -1000.0, 0.0)))
+	for cell_variant in tree_states.keys():
+		var cell: Vector3i = cell_variant
+		var state: Dictionary = tree_states[cell]
+		state["time"] = float(state.get("time", 0.0)) + delta
+		state["shake"] = maxf(0.0, float(state.get("shake", 0.0)) - delta * 2.4)
+		if float(state["shake"]) <= 0.0:
+			# Once the axe stops the trunk eases back upright, so a tree that was
+			# only half chopped does not stay bent over for the rest of the game.
+			state["lean"] = maxf(0.0, float(state.get("lean", 0.0)) - delta * 0.3)
+		if float(state["shake"]) <= 0.0 and float(state.get("lean", 0.0)) <= 0.0:
+			# A tree that was only glanced keeps its natural pose.
+			_refresh_tree(cell, 0.0)
+			if _pose_is_upright(cell):
+				tree_states.erase(cell)
+			continue
+		_refresh_tree(cell)
+
+
+func _advance_falls(delta: float) -> void:
+	if tree_falls.is_empty():
+		return
+	for index in range(tree_falls.size() - 1, -1, -1):
+		var fall: Dictionary = tree_falls[index]
+		var multimesh: MultiMesh = tree_multimeshes[int(fall["archetype"])]
+		var instance := int(fall["index"])
+		# A streaming rebuild rewrites the whole batch, so the index may now point
+		# at a different tree. Stop rather than animate the wrong one. (Instance
+		# data is not readable on the headless dummy renderer, so this compares the
+		# batch generation rather than the transforms.)
+		if instance < 0 or instance >= multimesh.instance_count \
+				or int(fall["generation"]) != sites_generation:
+			# The region rebuilt under the tumble, so the instance is gone before it
+			# could land. Still report it, otherwise the wood for that tree is lost.
+			tree_falls.remove_at(index)
+			tree_landed.emit(Vector3i(fall["cell"]), (fall["base"] as Transform3D).origin, TREE_FALL_SECONDS)
+			continue
+		fall["time"] = float(fall["time"]) + delta
+		var t := clampf(float(fall["time"]) / float(fall["duration"]), 0.0, 1.0)
+		var base: Transform3D = fall["base"]
+		var axis: Vector3 = fall["axis"]
+		if t >= 1.0:
+			# Landed: dust where the crown hit, then the instance is dropped out of
+			# the batch. The stump block in the voxel world stays, so no pit is left.
+			var push: Vector3 = fall["push"]
+			var at := base.origin + push * 2.4
+			Vfx.burst(self, base.origin + push * 3.0 + Vector3.UP * 0.4,
+				Color(0.42, 0.40, 0.28), Vector3.UP, 10, 1.6, 0.05, 0.55)
+			multimesh.set_instance_transform(instance, Transform3D(Basis().scaled(Vector3.ZERO), Vector3(0.0, -1000.0, 0.0)))
+			tree_falls.remove_at(index)
+			# Loot is handed out here rather than when the axe finished, so the wood
+			# appears where the trunk actually came down.
+			tree_landed.emit(Vector3i(fall["cell"]), at, float(fall["time"]))
+			continue
+		# Gravity: the trunk creeps, then whips over and settles just past level.
+		var angle := TREE_FALL_RADIANS * (t * t)
+		var posed := Transform3D(Basis(axis, angle) * base.basis, base.origin)
+		multimesh.set_instance_transform(instance, posed)
+		fall["written"] = posed
+		fall["angle"] = angle
+
+
+## Poses one damaged tree: a lean that grows with swing progress plus a decaying
+## shudder, so a hit reads even when the lean alone is subtle.
+func _refresh_tree(cell: Vector3i, shake_override := -1.0) -> void:
+	if not site_slots.has(cell):
+		return
+	var slot: Dictionary = site_slots[cell]
+	var multimesh: MultiMesh = tree_multimeshes[int(slot["archetype"])]
+	var instance := int(slot["index"])
+	if instance < 0 or instance >= multimesh.instance_count:
+		return
+	var base: Transform3D = slot.get("transform", multimesh.get_instance_transform(instance))
+	var state: Dictionary = tree_states.get(cell, {})
+	var lean := float(state.get("lean", 0.0))
+	var shake := shake_override if shake_override >= 0.0 else float(state.get("shake", 0.0))
+	var time := float(state.get("time", 0.0))
+	var axis: Vector3 = state.get("axis", Vector3.RIGHT)
+	var angle := TREE_LEAN_RADIANS * lean + sin(time * 34.0) * 0.028 * shake
+	var posed := Transform3D(Basis(axis, angle) * base.basis, base.origin)
+	multimesh.set_instance_transform(instance, posed)
+	# Damage stays on the trunk after the swing stops, so a half-chopped tree
+	# still looks chopped when the player comes back to it.
+	var damage := clampf(float(state.get("damage", 0.0)), 0.0, 1.0)
+	multimesh.set_instance_color(instance, Color(1.0, 1.0, 1.0).lerp(Color(0.62, 0.52, 0.42), damage * 0.85))
+	state["pose"] = posed
+	state["angle"] = angle
+	tree_states[cell] = state
+
+
+## True when a damaged tree has been posed back to exactly how it grew, so a
+## finished shake can be forgotten without leaving a lean behind.
+func _pose_is_upright(cell: Vector3i) -> bool:
+	if not site_slots.has(cell):
+		return true
+	var slot: Dictionary = site_slots[cell]
+	var base: Transform3D = slot.get("transform", Transform3D())
+	var current: Transform3D = tree_states.get(cell, {}).get("pose", base)
+	return current.is_equal_approx(base)
+
+
+## Nearest tree trunk the ray passes through, as {cell, distance, height}. The
+## trunk is treated as a vertical cylinder, so aiming at the wood between the
+## ground and the canopy is what counts, the same as Terraria.
+func raycast_tree(origin: Vector3, direction: Vector3, max_distance: float) -> Dictionary:
+	if site_slots.is_empty():
+		return {}
+	var flat := Vector2(direction.x, direction.z)
+	var flat_len := flat.length()
+	if flat_len < 0.0001:
+		return {}
+	flat = flat / flat_len
+	var best := {}
+	var best_distance := max_distance
+	for cell_variant in site_slots.keys():
+		var cell: Vector3i = cell_variant
+		var slot: Dictionary = site_slots[cell]
+		var scale_value := float(slot.get("scale", 1.0))
+		var to_site := Vector2(float(cell.x) + 0.5 - origin.x, float(cell.z) + 0.5 - origin.z)
+		var along := to_site.dot(flat)
+		if along <= 0.0:
+			continue
+		var reach := along / flat_len
+		if reach >= best_distance:
+			continue
+		if (to_site - flat * along).length() > 0.62 * scale_value:
+			continue
+		var aim_y := origin.y + direction.y * reach
+		var bottom := float(cell.y) + 0.4
+		var archetype := clampi(int(slot.get("archetype", 0)), 0, TRUNK_HIT_HEIGHT.size() - 1)
+		var top: float = float(cell.y) + 1.0 + float(TRUNK_HIT_HEIGHT[archetype]) * scale_value
+		if aim_y < bottom or aim_y > top:
+			continue
+		best_distance = reach
+		best = {"cell": cell, "distance": reach, "height": top - bottom}
+	return best
 
 
 # --- Tree archetypes --------------------------------------------------------
@@ -246,7 +490,7 @@ func _build_tall_tree(st: SurfaceTool, rng: RandomNumberGenerator) -> void:
 		_add_branch(st, rng, origin, direction, rng.randf_range(1.2, 1.9), 0.14, height)
 		var tip := origin + direction.normalized() * rng.randf_range(1.1, 1.7) + Vector3.UP * 0.45
 		_add_leaf_cards(st, tip, Vector3(1.30, 0.80, 1.30), rng, LEAF_DARK, LEAF_LIGHT, TreeAtlas.Tile.LEAF)
-	_add_canopy(st, rng, points[points.size() - 1], 2.9, LEAF_DARK, LEAF_LIGHT, TreeAtlas.Tile.LEAF)
+	_add_canopy(st, rng, points[points.size() - 1], 3.5, LEAF_DARK, LEAF_LIGHT, TreeAtlas.Tile.LEAF)
 
 
 func _build_leaning_tree(st: SurfaceTool, rng: RandomNumberGenerator) -> void:
@@ -259,7 +503,7 @@ func _build_leaning_tree(st: SurfaceTool, rng: RandomNumberGenerator) -> void:
 		_add_branch(st, rng, origin, direction, rng.randf_range(1.4, 2.1), 0.13, height)
 		var tip := origin + direction.normalized() * 1.5 + Vector3.UP * 0.4
 		_add_leaf_cards(st, tip, Vector3(1.25, 0.78, 1.25), rng, LEAF_DARK, LEAF_LIGHT, TreeAtlas.Tile.LEAF)
-	_add_canopy(st, rng, points[points.size() - 1], 2.7, LEAF_DARK, LEAF_LIGHT, TreeAtlas.Tile.LEAF)
+	_add_canopy(st, rng, points[points.size() - 1], 3.2, LEAF_DARK, LEAF_LIGHT, TreeAtlas.Tile.LEAF)
 
 
 func _build_gnarled_tree(st: SurfaceTool, rng: RandomNumberGenerator) -> void:
@@ -271,7 +515,7 @@ func _build_gnarled_tree(st: SurfaceTool, rng: RandomNumberGenerator) -> void:
 		var angle := TAU * float(branch) / 5.0 + rng.randf_range(-0.4, 0.4)
 		var direction := Vector3(cos(angle), rng.randf_range(0.30, 0.85), sin(angle))
 		_add_branch(st, rng, origin, direction, rng.randf_range(1.1, 1.9), 0.12, height, true)
-	_add_canopy(st, rng, points[points.size() - 1], 3.1, LEAF_DARK, LEAF_LIGHT, TreeAtlas.Tile.LEAF)
+	_add_canopy(st, rng, points[points.size() - 1], 3.7, LEAF_DARK, LEAF_LIGHT, TreeAtlas.Tile.LEAF)
 
 
 func _build_snag(st: SurfaceTool, rng: RandomNumberGenerator) -> void:
@@ -286,7 +530,7 @@ func _build_snag(st: SurfaceTool, rng: RandomNumberGenerator) -> void:
 		var origin: Vector3 = points[rng.randi_range(1, points.size() - 1)]
 		var angle := rng.randf_range(0.0, TAU)
 		_add_limb(st, origin, origin + Vector3(cos(angle), 0.25, sin(angle)) * rng.randf_range(0.5, 1.0), 0.14, 0.04, 4, 0.5, 0.7)
-	_add_canopy(st, rng, points[points.size() - 1], 1.9, LEAF_DARK.lerp(Color(0.34, 0.30, 0.10), 0.35), LEAF_LIGHT.lerp(Color(0.72, 0.62, 0.24), 0.35), TreeAtlas.Tile.LEAF)
+	_add_canopy(st, rng, points[points.size() - 1], 2.4, LEAF_DARK.lerp(Color(0.34, 0.30, 0.10), 0.35), LEAF_LIGHT.lerp(Color(0.72, 0.62, 0.24), 0.35), TreeAtlas.Tile.LEAF)
 
 
 func _build_forked_tree(st: SurfaceTool, rng: RandomNumberGenerator) -> void:
@@ -299,7 +543,7 @@ func _build_forked_tree(st: SurfaceTool, rng: RandomNumberGenerator) -> void:
 		var origin: Vector3 = points[rng.randi_range(1, points.size() - 2)]
 		var angle := rng.randf_range(-1.0, 1.0)
 		_add_branch(st, rng, origin, Vector3(cos(angle), rng.randf_range(0.35, 0.8), sin(angle)), rng.randf_range(1.2, 1.9), 0.11, 6.0)
-		_add_canopy(st, rng, points[points.size() - 1], 2.5, LEAF_DARK, LEAF_LIGHT, TreeAtlas.Tile.LEAF)
+		_add_canopy(st, rng, points[points.size() - 1], 3.0, LEAF_DARK, LEAF_LIGHT, TreeAtlas.Tile.LEAF)
 
 
 func _build_sparse_tree(st: SurfaceTool, rng: RandomNumberGenerator) -> void:
@@ -313,29 +557,77 @@ func _build_sparse_tree(st: SurfaceTool, rng: RandomNumberGenerator) -> void:
 		_add_branch(st, rng, origin, direction, rng.randf_range(1.2, 1.9), 0.09, height)
 		var tip := origin + direction.normalized() * 1.2 + Vector3.UP * 0.3
 		_add_leaf_cards(st, tip, Vector3(1.0, 0.65, 1.0), rng, LEAF_DARK, LEAF_LIGHT, TreeAtlas.Tile.LEAF)
-	_add_canopy(st, rng, points[points.size() - 1], 2.1, LEAF_DARK, LEAF_LIGHT, TreeAtlas.Tile.LEAF)
+	_add_canopy(st, rng, points[points.size() - 1], 2.6, LEAF_DARK, LEAF_LIGHT, TreeAtlas.Tile.LEAF)
 
 
-## Wide, layered crown in the Terraria read: several flat ragged leaf decks
-## stacked with shrinking radius, each ringed by satellite lobes, topped by a
-## crown cluster. Keeps a stepped pixel silhouette rather than a single blob.
+## Terraria canopies read as one solid stepped mass, not as a handful of
+## see-through planes. The crown is therefore built twice: a dense core of leaf
+## boxes on a shrinking disc grid (opaque from every angle) and a ragged card
+## fringe that gives the pixel-art outline its broken silhouette.
 func _add_canopy(st: SurfaceTool, rng: RandomNumberGenerator, top: Vector3, radius: float, dark: Color, light: Color, tile := TreeAtlas.Tile.LEAF) -> void:
-	var tiers := 3
-	for tier in range(tiers):
-		var t := float(tier) / float(tiers - 1)
-		var center := Vector3(top.x, top.y - 0.60 + t * 1.55, top.z)
-		var reach_radius := radius * (1.12 - 0.40 * t)
-		var lobes := 7
-		for lobe in range(lobes):
-			var angle := TAU * float(lobe) / float(lobes) + rng.randf_range(-0.16, 0.16) + t * 0.62
-			var reach := reach_radius * rng.randf_range(0.52, 0.90)
-			var lobe_center := center + Vector3(cos(angle) * reach, rng.randf_range(-0.12, 0.22), sin(angle) * reach)
-			var lobe_dark := dark.lerp(light, rng.randf_range(0.0, 0.16))
-			var lobe_light := light.lerp(dark, rng.randf_range(0.0, 0.24))
-			_add_leaf_cards(st, lobe_center, Vector3(reach_radius * 0.56, reach_radius * 0.34, reach_radius * 0.56), rng, lobe_dark, lobe_light, tile)
-		# A flatter deck plate per tier produces the stepped horizontal canopy edge.
-		_add_leaf_cards(st, center, Vector3(reach_radius * 0.95, reach_radius * 0.15, reach_radius * 0.95), rng, dark.darkened(0.10), light, tile)
-	_add_leaf_cluster(st, rng, top + Vector3.UP * 0.55, radius * 0.52, 3, dark, light, tile)
+	var layers := 4
+	var box := 0.62
+	for layer in range(layers):
+		var t := float(layer) / float(layers - 1)
+		var layer_y := top.y - 0.62 + t * 1.72
+		var layer_radius := radius * (1.02 - 0.52 * t)
+		var steps := int(ceil(layer_radius / box))
+		for ix in range(-steps, steps + 1):
+			for iz in range(-steps, steps + 1):
+				var dx := float(ix) * box
+				var dz := float(iz) * box
+				var distance := dx * dx + dz * dz
+				if distance > layer_radius * layer_radius:
+					continue
+				# Ragged edge: only the outer ring drops the odd box.
+				if distance > pow(layer_radius - box, 2.0) and rng.randf() < 0.30:
+					continue
+				var shade := clampf(0.20 + 0.62 * t + rng.randf_range(-0.14, 0.14), 0.0, 1.0)
+				var box_dark := dark.lerp(light, shade * 0.55)
+				var box_light := light.lerp(dark, (1.0 - shade) * 0.35)
+				_add_leaf_box(st, Vector3(top.x + dx, layer_y, top.z + dz), box, box_dark, box_light, tile)
+	# Card fringe breaks the dome into stepped pixel clusters.
+	var lobes := 6
+	for lobe in range(lobes):
+		var angle := TAU * float(lobe) / float(lobes) + rng.randf_range(-0.35, 0.35)
+		var reach := radius * rng.randf_range(0.72, 1.02)
+		var center := top + Vector3(cos(angle) * reach, rng.randf_range(-0.15, 0.55), sin(angle) * reach)
+		_add_leaf_cards(st, center, Vector3(radius * 0.36, radius * 0.24, radius * 0.36), rng, dark, light, tile)
+	_add_leaf_cluster(st, rng, top + Vector3.UP * 0.72, radius * 0.46, 3, dark, light, tile)
+
+
+## One dense leaf cell: a horizontal plate plus two crossed vertical plates.
+## The vegetation shader is double sided, so three planes read as a solid box
+## from any camera angle while keeping the pixel-art leaf texture.
+func _add_leaf_box(st: SurfaceTool, center: Vector3, size: float, dark: Color, light: Color, tile: int) -> void:
+	var half := size * 0.5
+	var uv0 := TreeAtlas.uv(tile, Vector2(0.0, 1.0))
+	var uv1 := TreeAtlas.uv(tile, Vector2(1.0, 1.0))
+	var uv2 := TreeAtlas.uv(tile, Vector2(1.0, 0.0))
+	var uv3 := TreeAtlas.uv(tile, Vector2(0.0, 0.0))
+	var top_color := light.lerp(dark, 0.15)
+	var side_color := dark.lerp(light, 0.55)
+	var low_color := dark
+	# Horizontal plate (top of the cell).
+	var a := center + Vector3(-half, half * 0.8, -half)
+	var b := center + Vector3(half, half * 0.8, -half)
+	var c := center + Vector3(half, half * 0.8, half)
+	var d := center + Vector3(-half, half * 0.8, half)
+	_add_textured_triangle(st, a, b, c, top_color, top_color, top_color, uv0, uv1, uv2)
+	_add_textured_triangle(st, a, c, d, top_color, top_color, top_color, uv0, uv2, uv3)
+	# Crossed vertical plates.
+	var e := center + Vector3(-half, -half * 0.8, 0.0)
+	var f := center + Vector3(half, -half * 0.8, 0.0)
+	var g := center + Vector3(half, half * 0.8, 0.0)
+	var h := center + Vector3(-half, half * 0.8, 0.0)
+	_add_textured_triangle(st, e, f, g, low_color, low_color, side_color, uv0, uv1, uv2)
+	_add_textured_triangle(st, e, g, h, low_color, side_color, side_color, uv0, uv2, uv3)
+	var i2 := center + Vector3(0.0, -half * 0.8, -half)
+	var j2 := center + Vector3(0.0, -half * 0.8, half)
+	var k2 := center + Vector3(0.0, half * 0.8, half)
+	var l2 := center + Vector3(0.0, half * 0.8, -half)
+	_add_textured_triangle(st, j2, i2, l2, low_color, low_color, side_color, uv0, uv1, uv2)
+	_add_textured_triangle(st, j2, l2, k2, low_color, side_color, side_color, uv0, uv2, uv3)
 
 
 # --- Mesh construction helpers ----------------------------------------------
@@ -731,7 +1023,7 @@ func _build_hallow_tree(st: SurfaceTool) -> void:
 		_add_branch(st, rng, origin, direction, rng.randf_range(2.0, 3.0), 0.10, height, true)
 		var tip := origin + direction.normalized() * 2.3
 		_add_leaf_cluster(st, rng, tip, rng.randf_range(1.5, 2.1), 4, Color(0.72, 0.34, 0.72), Color(1.0, 0.82, 1.0), TreeAtlas.Tile.LEAF_HALLOW)
-	_add_canopy(st, rng, points[points.size() - 1], 2.5, Color(0.78, 0.42, 0.78), Color(1.0, 0.90, 1.0), TreeAtlas.Tile.LEAF_HALLOW)
+	_add_canopy(st, rng, points[points.size() - 1], 3.0, Color(0.78, 0.42, 0.78), Color(1.0, 0.90, 1.0), TreeAtlas.Tile.LEAF_HALLOW)
 	for shard in range(3):
 		var angle := TAU * float(shard) / 3.0
 		var start := points[rng.randi_range(2, points.size() - 1)]

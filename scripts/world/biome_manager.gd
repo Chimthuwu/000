@@ -44,8 +44,19 @@ const SPAWN_BLEND_RADIUS := 8.0
 # The starting region is the green, lowland biome. It is presented to the player
 # as "Overworld" even though its internal id remains MIRE (3).
 const SPAWN_BIOME := MIRE
-const SPAWN_BIOME_RADIUS := 150.0
-const SPAWN_BIOME_BLEND := 240.0
+# The starting forest is a region, not a cap: until SPAWN_BIOME_RADIUS the
+# weights are pure Forest, then they cross-fade to the climate field by
+# SPAWN_BIOME_BLEND. Anything shorter puts Jungle or Mushroom a few seconds'
+# walk from the player's feet.
+const SPAWN_BIOME_RADIUS := 300.0
+const SPAWN_BIOME_BLEND := 700.0
+# The evil biome is a landmark you travel to, not the next-door neighbour. In
+# Terraria it sits a good third of a world away from spawn; here the spread is
+# radial, so the evil weights fade out inside EVIL_CLEAR_RADIUS and only reach
+# full strength past EVIL_FULL_RADIUS. The mass they give up becomes Forest, so
+# the ring around spawn reads as continuous woods instead of an abrupt edge.
+const EVIL_CLEAR_RADIUS := 900.0
+const EVIL_FULL_RADIUS := 1350.0
 
 const SURFACE_BASE_HEIGHT := 23.0
 const MESA_HEIGHT := 34.0
@@ -172,6 +183,15 @@ static func get_weights(x: int, z: int) -> PackedFloat32Array:
 	else:
 		weights.fill(0.25)
 	_apply_biome_policy(weights)
+	var spawn_distance := Vector2(float(x - SPAWN_X), float(z - SPAWN_Z)).length()
+	# Spawn safety: keep the evil biome out of the starting region.
+	if spawn_distance < EVIL_FULL_RADIUS:
+		var evil_ramp := clampf((spawn_distance - EVIL_CLEAR_RADIUS) / (EVIL_FULL_RADIUS - EVIL_CLEAR_RADIUS), 0.0, 1.0)
+		evil_ramp = evil_ramp * evil_ramp * (3.0 - 2.0 * evil_ramp)
+		var trimmed := weights[CORRUPTION] * (1.0 - evil_ramp) + weights[CRIMSON] * (1.0 - evil_ramp)
+		weights[CORRUPTION] *= evil_ramp
+		weights[CRIMSON] *= evil_ramp
+		weights[MIRE] += trimmed
 	# World-edge oceans: blend Ocean in toward the east/west limits so the map
 	# reads like a Terraria world instead of endless inland climate.
 	var edge := absf(float(x))
@@ -181,7 +201,6 @@ static func get_weights(x: int, z: int) -> PackedFloat32Array:
 			weights[index] *= 1.0 - ramp
 		weights[OCEAN] += ramp
 	# Spawn bias: the starting area is always the green Forest (MIRE id).
-	var spawn_distance := Vector2(float(x - SPAWN_X), float(z - SPAWN_Z)).length()
 	if spawn_distance < SPAWN_BIOME_BLEND:
 		var blend := clampf((spawn_distance - SPAWN_BIOME_RADIUS) / (SPAWN_BIOME_BLEND - SPAWN_BIOME_RADIUS), 0.0, 1.0)
 		blend = blend * blend * (3.0 - 2.0 * blend)

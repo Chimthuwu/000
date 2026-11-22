@@ -219,12 +219,14 @@ static func _paint_tile(image: Image, tile: int) -> void:
 				Tile.PLAIN:
 					value = 0.97 + rng.randf() * 0.06
 				Tile.GRASS_TOP:
-					value = 0.72 + rng.randf() * 0.14
+					# Terraria grass is a bright, fairly even green; the old range
+					# (0.72-0.86) multiplied the albedo down into dark moss.
+					value = 0.86 + rng.randf() * 0.10
 					# Upright blades in the top two thirds.
 					if y < 9 and (x + tile) % 3 == 0:
-						value += 0.26
+						value += 0.14
 					elif y < 5 and (x * 3 + y) % 5 == 0:
-						value += 0.16
+						value += 0.08
 				Tile.DIRT:
 					value = 0.72 + rng.randf() * 0.18
 					if rng.randf() < 0.10:
@@ -485,18 +487,19 @@ static func _material_detail(tile: int, x: int, y: int, value: float, rng: Rando
 	match tile:
 		Tile.GRASS_TOP:
 			var clump := 0.5 + 0.5 * sin(float(x) * 1.65 + float(y) * 0.55)
-			value = 0.66 + clump * 0.24 + rng.randf() * 0.07
+			# Grass is a bright, even green in Terraria. The old detail pass ran
+			# 0.55-0.79 average with scattered 0.40 pixels, which multiplied the
+			# palette down into dark moss and stamped a dot lattice on open
+			# ground at every block seam.
+			value = 0.90 + clump * 0.12 + rng.randf() * 0.05
 			if y < 9 and x % 4 == 0:
-				value += 0.18
+				value += 0.10
 			if y > 9 and x % 3 == 1:
-				value -= 0.10
+				value -= 0.05
 			if (x * 7 + y * 11) % 41 == 0:
-				value = 1.24
+				value = 1.15
 			if (x * 5 + y * 3) % 29 == 0:
-				value = 0.40
-			# Grass is visibly softer and darker than rock; this keeps the
-			# material read distinct even after palette tinting.
-			value *= 0.84
+				value = 0.72
 		Tile.DIRT:
 			var clod := float((x / 4) * 3 + (y / 3) * 5)
 			value = 0.62 + fposmod(sin(clod * 1.7) * 0.5 + 0.5, 1.0) * 0.26 + rng.randf() * 0.06

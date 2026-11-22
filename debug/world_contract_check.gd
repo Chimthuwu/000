@@ -62,6 +62,9 @@ func _run() -> void:
 	# 3. is_chunk_ready(chunk_cell) by CHUNK coordinate
 	var spawn_chunk := world._chunk_of(Vector3i(64, world.get_surface_height(64, 64), 64))
 	var ready_chunk := Vector3i(9999, 1, 9999)
+	# The edit above invalidates this chunk (and its neighbours) for remeshing, so
+	# readiness is pending on the worker thread rather than already true.
+	await _wait_for(func() -> bool: return world.is_chunk_ready(spawn_chunk), 240)
 	_check(world.is_chunk_ready(spawn_chunk), "is_chunk_ready true for a loaded, lit, meshed chunk")
 	_check(not world.is_chunk_ready(ready_chunk), "is_chunk_ready false for a distant chunk")
 

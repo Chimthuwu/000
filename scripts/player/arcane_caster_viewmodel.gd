@@ -27,10 +27,9 @@ func _ready() -> void:
 	if caster != null:
 		caster.fired.connect(_on_fired)
 		caster.cartridge_changed.connect(_on_cartridge_changed)
-		caster.projector_toggled.connect(_on_projector_toggled)
 	_build_model()
 	if caster != null:
-		_apply_cartridge(caster.CARTRIDGES[caster.selected_cartridge], caster.projector_mode)
+		_apply_cartridge(caster.CARTRIDGES[caster.selected_cartridge])
 
 
 func _build_model() -> void:
@@ -219,15 +218,15 @@ func _make_indicator_material() -> StandardMaterial3D:
 	return material
 
 
-func _apply_cartridge(cartridge: CartridgeDef, projector: bool) -> void:
+func _apply_cartridge(cartridge: CartridgeDef) -> void:
 	if indicator_material == null:
 		return
-	var tint := Color(0.15, 0.9, 1.0) if projector else cartridge.accent_color
+	var tint := cartridge.accent_color
 	indicator_material.albedo_color = tint
 	indicator_material.emission = tint
-	indicator_material.emission_energy_multiplier = 1.6 if projector else 1.35
+	indicator_material.emission_energy_multiplier = 1.35
 	if cartridge_stripe != null:
-		cartridge_stripe.visible = not projector
+		cartridge_stripe.visible = true
 	if muzzle_ring != null:
 		muzzle_ring.visible = true
 	if flash_material != null:
@@ -281,13 +280,7 @@ func _update_body_light() -> void:
 
 
 func _on_cartridge_changed(_index: int, cartridge: CartridgeDef) -> void:
-	_apply_cartridge(cartridge, false)
-
-
-func _on_projector_toggled(active: bool) -> void:
-	if caster == null or indicator_material == null:
-		return
-	_apply_cartridge(caster.CARTRIDGES[caster.selected_cartridge], active)
+	_apply_cartridge(cartridge)
 
 
 func _on_fired(_cartridge_id: StringName, kick: float) -> void:

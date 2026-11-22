@@ -40,14 +40,6 @@ func _run() -> void:
 	camera.look_at(Vector3(75.0, 22.0, 66.0), Vector3.UP)
 	await _capture("res://debug/evidence/audit_ground.png")
 
-	var caster: ArcaneCaster = main.get_node("Player/ArcaneCaster") as ArcaneCaster
-	caster._set_projector_mode(true)
-	await process_frame
-	main.get_node("Player/Camera3D/Viewmodel").visible = false
-	await _capture("res://debug/evidence/ui_projector.png")
-	main.get_node("Player/Camera3D/Viewmodel").visible = true
-	caster._set_projector_mode(false)
-
 	var game_hud: GameHUD = main.get_node("HUD") as GameHUD
 	game_hud.pause_game()
 	await process_frame

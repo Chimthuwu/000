@@ -100,11 +100,11 @@ pause_mouse={
 		toggle_flashlight={"deadzone": 0.2,"events": [Object(InputEventKey,"physical_keycode":70)]}
 
 
-cartridge_next={
+hotbar_next={
 "deadzone": 0.2,
 "events": [Object(InputEventMouseButton,"button_index":5)]
 }
-cartridge_prev={
+hotbar_prev={
 "deadzone": 0.2,
 "events": [Object(InputEventMouseButton,"button_index":4)]
 }

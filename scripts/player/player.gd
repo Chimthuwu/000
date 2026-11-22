@@ -61,8 +61,11 @@ var status_message := ""
 var status_time := 0.0
 var mining_target := Vector3i(-1, -1, -1)
 var mining_progress := 0.0
+## Which quarter of a tree chop was last shown, so chips fly once per stage.
+var tree_damage_stage := 0
 var camera_mode := 1  # 0 = first person, 1 = third person (default)
 var avatar: Node3D
+var viewmodel: HeldItemViewmodel
 var _fall_start_y := 0.0
 var _interact_cooldown := 0.0
 var _discovery_check_time := 0.0
@@ -72,6 +75,8 @@ var _discovery_check_time := 0.0
 var mining_tier := 0
 # Agent 1's collection sink. Drained into the real InventoryModel each frame.
 var collected_blocks: Dictionary = {}
+## Wood owed for trees that are still falling, keyed by the stump cell.
+var _pending_tree_loot: Dictionary = {}
 # Target readout for Agent 3's HUD and for player-facing feedback.
 var target_block_name := ""
 var target_mining_tier := 0
@@ -102,15 +107,16 @@ func _ready() -> void:
 	_refresh_mining_tier()
 	_fall_start_y = position.y
 	# Terraria-style game: the ArcaneCaster is gone from gameplay. The node is
-	# kept only as a data source for Agent 3's legacy HUD, fully disabled and
-	# with no visible weapon. The first-person hands are hidden as well.
+	# kept only as a data source for Agent 3's legacy HUD, fully disabled.
 	var legacy := get_node_or_null("ArcaneCaster")
 	if legacy != null:
 		legacy.set("disabled", true)
-	var viewmodel := camera.get_node_or_null("Viewmodel")
+	# The first-person viewmodel shows whatever the hotbar has selected, so an
+	# axe in hand is visible before you swing it.
+	viewmodel = camera.get_node_or_null("Viewmodel") as HeldItemViewmodel
 	if viewmodel != null:
-		viewmodel.visible = false
-		viewmodel.set_process_mode(Node.PROCESS_MODE_DISABLED)
+		viewmodel.set_first_person(camera_mode == 0)
+		viewmodel.set_item(inventory.held_item())
 	_build_avatar()
 
 	# Starter kit: real tools/weapons, granted once so reloads never duplicate.
@@ -159,6 +165,8 @@ func _process(delta: float) -> void:
 		return
 	_update_camera(delta)
 	_update_item_use(delta)
+	if viewmodel != null:
+		viewmodel.tick(delta, Input.is_action_pressed("break_block"))
 	_drain_collected_blocks()
 	_discovery_check_time -= delta
 	if _discovery_check_time <= 0.0:
@@ -189,10 +197,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			_try_interact()
 			get_viewport().set_input_as_handled()
 	if event is InputEventMouseButton and event.pressed:
-		if event.is_action_pressed("cartridge_next"):
+		if event.is_action_pressed("hotbar_next"):
 			inventory.cycle_selection(1)
 			get_viewport().set_input_as_handled()
-		elif event.is_action_pressed("cartridge_prev"):
+		elif event.is_action_pressed("hotbar_prev"):
 			inventory.cycle_selection(-1)
 			get_viewport().set_input_as_handled()
 
@@ -350,6 +358,8 @@ func _toggle_camera_mode() -> void:
 	camera_mode = 1 - camera_mode
 	if avatar != null:
 		avatar.visible = camera_mode == 1
+	if viewmodel != null:
+		viewmodel.set_first_person(camera_mode == 0)
 	if camera_mode == 0:
 		camera.position = Vector3(0.0, 1.62, 0.0)
 	camera_mode_changed.emit(camera_mode)
@@ -399,6 +409,7 @@ func _update_item_use(delta: float) -> void:
 
 func _reset_mining() -> void:
 	mining_target = Vector3i(-1, -1, -1)
+	tree_damage_stage = 0
 	if mining_progress > 0.0:
 		mining_progress = 0.0
 		mining_progress_changed.emit(0.0, mining_target)
@@ -408,6 +419,14 @@ func _reset_mining() -> void:
 func _update_mining(delta: float, def: ItemDef) -> void:
 	if not gateway.ready():
 		return
+	# Trees are meshes, not voxels, so they need their own hit test; otherwise
+	# the ray goes straight through the trunk and hits whatever is behind it.
+	var vegetation: WorldVegetation = world.get("vegetation")
+	if vegetation != null:
+		var tree := vegetation.raycast_tree(aim_origin(), aim_direction(), REACH)
+		if not tree.is_empty():
+			_chop_tree(delta, def, tree)
+			return
 	var hit := _voxel_raycast(REACH)
 	if hit.is_empty():
 		target_block_name = ""
@@ -438,8 +457,84 @@ func _update_mining(delta: float, def: ItemDef) -> void:
 		_complete_mining(cell)
 
 
+## Chopping a trunk needs an axe, the way Terraria does, and fells the whole
+## tree instead of one block at a time.
+func _chop_tree(delta: float, def: ItemDef, tree: Dictionary) -> void:
+	var cell: Vector3i = tree["cell"]
+	target_block_name = "Tree"
+	target_mining_tier = 0
+	var has_axe := def != null and def.is_tool and def.tool_type == "axe"
+	target_can_mine = has_axe
+	if cell != mining_target:
+		mining_target = cell
+		mining_progress = 0.0
+		tree_damage_stage = 0
+	if not has_axe:
+		mining_progress = 0.0
+		mining_progress_changed.emit(0.0, cell)
+		set_status("AXE REQUIRED TO FELL A TREE")
+		return
+	var rate := 0.30 + def.mining_speed * 0.16
+	mining_progress += rate * delta
+	mining_progress_changed.emit(clampf(mining_progress, 0.0, 1.0), cell)
+	# The tree leans a little further with every swing and shakes on each hit, so
+	# the damage is visible well before it goes over.
+	var push := (Vector3(cell) + Vector3(0.5, 0.0, 0.5) - global_position)
+	push.y = 0.0
+	if push.length() < 0.05:
+		push = (-global_basis.z)
+	world.vegetation.damage_tree(cell, clampf(mining_progress, 0.0, 1.0), push)
+	var stage := clampi(int(mining_progress * 4.0), 0, 4)
+	if stage > tree_damage_stage:
+		tree_damage_stage = stage
+		Vfx.burst(world, Vector3(cell) + Vector3(0.5, 1.2, 0.5), Color(0.55, 0.37, 0.29),
+			Vector3.UP, 8, 3.2, 0.05, 0.45)
+	if mining_progress < 1.0:
+		return
+	var wood := maxi(3, roundi(2.0 + float(tree.get("height", 5.0))))
+	if not world.vegetation.fell_tree(cell, push):
+		_reset_mining()
+		return
+	# The stump block stays behind: it is still mineable, and leaving the voxels
+	# alone means a felled tree never leaves a pit in the ground. The wood is not
+	# handed over yet: the trunk has to hit the ground, and the logs land where it
+	# comes down so they can be walked over and picked up.
+	if not world.vegetation.tree_landed.is_connected(_on_tree_landed):
+		world.vegetation.tree_landed.connect(_on_tree_landed)
+	_pending_tree_loot[cell] = wood
+	progression.discover(&"wood")
+	progression.add_stat(&"trees_felled", 1.0)
+	gateway.emit_noise(Vector3(cell), 4.0)
+	Vfx.burst(world, Vector3(cell) + Vector3(0.5, 1.4, 0.5), Color(0.55, 0.37, 0.29), Vector3.UP, 14, 3.0, 0.06, 0.4)
+	set_status("TREE FELLING")
+	_reset_mining()
+
+
+## A felled tree hit the ground: drop its wood as real pickups at the landing
+## point, split into a few logs so it reads like lumber rather than one cube.
+func _on_tree_landed(cell: Vector3i, at: Vector3, _fall_seconds: float) -> void:
+	var wood := int(_pending_tree_loot.get(cell, 0))
+	if wood <= 0:
+		return
+	_pending_tree_loot.erase(cell)
+	const SCATTER := [
+		Vector3(0.0, 0.0, 0.0), Vector3(0.55, 0.0, 0.25), Vector3(-0.45, 0.0, 0.4),
+		Vector3(0.2, 0.0, -0.5),
+	]
+	var stacks := clampi(int(ceil(float(wood) / 3.0)), 1, SCATTER.size())
+	var remaining := wood
+	for index in range(stacks):
+		var amount := int(ceil(float(remaining) / float(stacks - index)))
+		remaining -= amount
+		var offset: Vector3 = SCATTER[index]
+		ItemEntity.spawn(get_parent(), at + offset + Vector3.UP * 0.45, &"wood", amount)
+	set_status("FELLED TREE  ·  %d WOOD DROPPED" % wood)
+
+
 ## One place derives the tier from the equipped tool. No per-tool logic exists.
 func _refresh_mining_tier(_a: Variant = null, _b: Variant = null) -> void:
+	if viewmodel != null:
+		viewmodel.set_item(inventory.held_item())
 	var def := ItemDatabase.get_item(inventory.held_item())
 	mining_tier = def.tool_tier if def != null and def.is_tool and def.tool_type == "pickaxe" else 0
 	max_health = MAX_HEALTH + inventory.bonus_max_health()

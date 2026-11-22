@@ -70,6 +70,7 @@ static func generate_chunk(chunk: Vector3i, world_seed: int, block_ids: Dictiona
 	var air_id := int(block_ids[&"air"])
 	var stone_id := int(block_ids[&"stone"])
 	var ashen_soil_id := int(block_ids[&"ashen_soil"])
+	var dirt_id := int(block_ids.get(&"dirt", ashen_soil_id))
 	var gravel_id := int(block_ids.get(&"canyon_gravel", ashen_soil_id))
 	var mycelium_id := int(block_ids.get(&"mycelium", ashen_soil_id))
 	var rotted_id := int(block_ids.get(&"rotted_ashen_soil", ashen_soil_id))
@@ -117,8 +118,10 @@ static func generate_chunk(chunk: Vector3i, world_seed: int, block_ids: Dictiona
 			var canyon_floor := BiomeManager.is_canyon_floor(world_x, world_z)
 			var rocky := slope >= 2 or BiomeManager.rock_noise(world_x, world_z) > 0.62
 			# Per-biome surface/subsurface recipe.
+			# Forest is green grass over brown dirt, as in Terraria; the old
+			# build reused the grey ashen soil for both and read as olive mud.
 			var top_id := ashen_soil_id
-			var sub_id := ashen_soil_id
+			var sub_id := dirt_id
 			var sub_depth := 3
 			match biome:
 				BiomeManager.HUSH:
@@ -132,8 +135,12 @@ static func generate_chunk(chunk: Vector3i, world_seed: int, block_ids: Dictiona
 					sub_id = frost_ice_id
 					sub_depth = 3
 				BiomeManager.MIRE:
-					top_id = mire_mud_id
-					sub_id = mire_mud_id
+					# Forest ground is Terraria's bright grass over brown dirt. It
+					# used to be mire_mud here, whose albedo (0.16,0.24,0.13) and
+					# DEEP_MUD tile are the swamp material, which is what made the
+					# forest floor read as near-black moss.
+					top_id = ashen_soil_id
+					sub_id = dirt_id
 					sub_depth = 4
 				BiomeManager.DESERT:
 					top_id = desert_sand_id

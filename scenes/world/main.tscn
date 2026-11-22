@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://scripts/world/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/world/world.gd" id="2_world"]
@@ -8,12 +8,14 @@
 [ext_resource type="Script" path="res://scripts/world/night_manager.gd" id="6_night"]
 [ext_resource type="Script" path="res://scripts/world/enemy_director.gd" id="7_enemies"]
 [ext_resource type="Environment" path="res://data/world/world_environment.tres" id="8_environment"]
-[ext_resource type="Script" path="res://scripts/player/arcane_caster_viewmodel.gd" id="9_viewmodel"]
+[ext_resource type="Script" path="res://scripts/player/held_item_viewmodel.gd" id="9_viewmodel"]
 [ext_resource type="Script" path="res://scripts/ui/game_hud.gd" id="10_hud"]
 [ext_resource type="Script" path="res://scripts/ui/screen_grade.gd" id="11_grade"]
 [ext_resource type="Script" path="res://scripts/audio/audio_director.gd" id="13_audio"]
 [ext_resource type="Script" path="res://scripts/ui/dev_console.gd" id="14_console"]
 [ext_resource type="Script" path="res://scripts/fx/blizzard.gd" id="15_blizzard"]
+[ext_resource type="Script" path="res://scripts/audio/music_manager.gd" id="16_music"]
+[ext_resource type="Script" path="res://scripts/audio/ambience_manager.gd" id="17_ambience"]
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_main")
@@ -35,9 +37,9 @@ current = true
 script = ExtResource("15_blizzard")
 
 [node name="Viewmodel" type="Node3D" parent="Player/Camera3D"]
-position = Vector3(0.36, -0.34, -0.55)
-rotation = Vector3(0.09, 0.26, 0)
-scale = Vector3(0.95, 0.95, 0.95)
+position = Vector3(0.31, -0.26, -0.50)
+rotation = Vector3(0.06, 0.30, 0.12)
+scale = Vector3(0.62, 0.62, 0.62)
 script = ExtResource("9_viewmodel")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
@@ -61,6 +63,12 @@ script = ExtResource("7_enemies")
 
 [node name="AudioDirector" type="Node" parent="."]
 script = ExtResource("13_audio")
+
+[node name="MusicManager" type="Node" parent="."]
+script = ExtResource("16_music")
+
+[node name="AmbienceManager" type="Node" parent="."]
+script = ExtResource("17_ambience")
 
 [node name="ScreenGrade" type="CanvasLayer" parent="."]
 layer = 0

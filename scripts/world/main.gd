@@ -237,7 +237,6 @@ func _survival_save_data() -> Dictionary:
 		"god_mode": player.god_mode,
 		"reserve": caster.reserve if caster != null else 0.0,
 		"selected_cartridge": caster.selected_cartridge if caster != null else 0,
-		"projector_block": String(caster.selected_projector_block) if caster != null else "",
 		"temporary_lights": caster.serialize_temporary_lights() if caster != null else []
 	}
 	return {
@@ -246,7 +245,6 @@ func _survival_save_data() -> Dictionary:
 			"god_mode": data["god_mode"],
 			"reserve": data["reserve"],
 			"selected_cartridge": data["selected_cartridge"],
-			"projector_block": data["projector_block"]
 		},
 		"inventory": caster.inventory.duplicate() if caster != null else {},
 		"survival": data,
@@ -310,9 +308,6 @@ func _restore_survival_state(metadata: Dictionary, m4_data: Dictionary) -> void:
 		if caster != null:
 			caster.reserve = clampf(float(survival.get("reserve", caster.reserve)), 0.0, caster.CONFIG.reserve_capacity)
 			caster.selected_cartridge = clampi(int(survival.get("selected_cartridge", 0)), 0, caster.CARTRIDGES.size() - 1)
-			var block_name := String(survival.get("projector_block", ""))
-			if block_name != "" and world.block_ids.has(StringName(block_name)):
-				caster.selected_projector_block = StringName(block_name)
 			caster.restore_temporary_lights(survival.get("temporary_lights", []))
 	var saved_inventory: Dictionary = metadata.get("inventory", {})
 	if caster != null and not saved_inventory.is_empty():
@@ -335,7 +330,7 @@ func _debug_text() -> String:
 	var night_level := world.get_night_level(light_cell)
 	var chunk_coords: Vector3i = world._chunk_of(light_cell)
 	var biome_name := BiomeManager.biome_name(world.get_biome_at(light_cell))
-	return "TERRARIA 3D M4 | FPS %d | Draw %d | HP %d | %s | %s | LIGHT %d | NIGHT %.2f\nChunks %d loaded, %d generated, %d meshed, %d lit | blocks %d\nNight chunk %s | enemies %d | static lights %d | WASD move | 1–4 cartridges | WHEEL cartridges/projector | K save | J load | F3 HUD | F flashlight %s | F6 nightlings | F7 lamp eater | F8 local night" % [Engine.get_frames_per_second(), draw_calls, roundi(player.health), cycle.phase_name.to_upper(), biome_name, light_level, night_level, loaded, generated, meshed, world.initialized_light_chunks, block_total, str(chunk_coords), get_tree().get_nodes_in_group("enemies").size(), world.static_light_sources.size(), "ON" if world.flashlight_enabled else "OFF"]
+	return "TERRARIA 3D M4 | FPS %d | Draw %d | HP %d | %s | %s | LIGHT %d | NIGHT %.2f\nChunks %d loaded, %d generated, %d meshed, %d lit | blocks %d\nNight chunk %s | enemies %d | static lights %d | WASD move | 1–0 or WHEEL hotbar | K save | J load | F3 HUD | F flashlight %s | F6 nightlings | F7 lamp eater | F8 local night" % [Engine.get_frames_per_second(), draw_calls, roundi(player.health), cycle.phase_name.to_upper(), biome_name, light_level, night_level, loaded, generated, meshed, world.initialized_light_chunks, block_total, str(chunk_coords), get_tree().get_nodes_in_group("enemies").size(), world.static_light_sources.size(), "ON" if world.flashlight_enabled else "OFF"]
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:

@@ -5,18 +5,28 @@ class_name GameHUD
 # grey-blue slots and a gold selection, instead of the old teal sci-fi HUD.
 const PANEL_BG := Color(0.055, 0.075, 0.145, 0.92)
 const PANEL_BORDER := Color(0.58, 0.47, 0.26, 0.90)
-const SLOT_BG := Color(0.095, 0.125, 0.195, 0.95)
+const SLOT_BG := Color(0.16, 0.18, 0.31, 0.95)
 const SLOT_BORDER := Color(0.38, 0.33, 0.22, 0.90)
 const SLOT_SELECTED := Color(1.0, 0.86, 0.38, 1.0)
 const TEXT_PALE := Color(0.86, 0.95, 0.91)
 const TEXT_DIM := Color(0.55, 0.72, 0.68)
 const TEXT_WARN := Color(0.98, 0.82, 0.52)
-const ACCENT_PROJECTOR := Color(0.15, 0.90, 1.0)
+const ACCENT_CYAN := Color(0.15, 0.90, 1.0)
 const ACCENT_MANA := Color(0.32, 0.86, 0.68)
-const RESERVE_SEGMENTS := 6
 const HEART_TEXTURE := preload("res://res/terraria3d/ui/hearts/Heart_Fill.png")
 const HEART_EMPTY_TEXTURE := preload("res://res/terraria3d/ui/hearts/Heart_Middle.png")
 const HEART_COUNT := 10
+const MAX_HEART_ICONS := 20
+const HEART_SIZE := 22.0
+const HEART_SPACING := 22.0
+const MAX_MANA_STARS := 10
+const STAR_SIZE_MANA := 18.0
+const STAR_SPACING := 20.0
+const MANA_PER_STAR := 20.0
+const HOTBAR_SLOT := 42.0
+const HOTBAR_PAD := 4.0
+## Authored HUD resolution; the project stretches this to the window.
+const VP := Vector2(1280.0, 720.0)
 # Every refresh rewrites label text, theme overrides and styleboxes, which
 # forces a Control re-layout/re-draw. At 10 Hz the readouts still feel live and
 # the HUD stops burning main-thread time on frames where nothing changed.
@@ -28,19 +38,17 @@ var world: VoxelWorld
 
 var debug_label: Label
 var flashlight_label: Label
-var loadout_panel: Panel
-var accent_bar: ColorRect
-var name_label: Label
-var mode_label: Label
-var build_label: Label
-var reserve_label: Label
-var reserve_segments: Array[Panel] = []
-var reserve_styles: Array[StyleBoxFlat] = []
-var cartridge_pips: Array[ColorRect] = []
 var health_bar: Panel
 var health_fill: Panel
 var health_fill_style: StyleBoxFlat
 var heart_icons: Array[TextureRect] = []
+var mana_stars: Array[ManaStar] = []
+var heart_rows := 1
+var held_label: Label
+var held_time := 0.0
+var _held_shown := &""
+var inv_hover_label: Label
+var inv_craft_list: VBoxContainer
 var status_label: Label
 var hint_panel: Panel
 var hint_label: Label
@@ -132,13 +140,12 @@ func _ready() -> void:
 	world = main.get_node_or_null("VoxelWorld") as VoxelWorld
 	if player != null:
 		caster = player.get_node_or_null("ArcaneCaster") as ArcaneCaster
-	# The Terraria HUD has no projector mode; suppress any leftover gun hint.
+	# Drop any leftover legacy gun hint so the world hint owns the slot.
 	if caster != null:
 		caster.hint_time = 0.0
 		caster.hint_text = ""
 	_build_status()
 	_build_biome()
-	_build_loadout()
 	_build_health()
 	_build_crosshair()
 	_build_hint()
@@ -182,7 +189,6 @@ func _ready() -> void:
 			player.container_requested.connect(open_chest)
 	_refresh_hotbar()
 	_layout_for_viewport()
-	_update_loadout()
 	# Onboarding: first hint after a short delay
 	_show_onboarding(0)
 
@@ -190,13 +196,13 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if not is_instance_valid(caster) or not is_instance_valid(player):
 		return
-	# The crossing banner fades per frame; the textual/theme work is throttled.
+	# These fade per frame; the textual/theme work is throttled.
 	_update_biome(delta)
+	_update_held(delta)
 	hud_refresh += delta
 	if hud_refresh < HUD_REFRESH_SECONDS:
 		return
 	hud_refresh = 0.0
-	_update_loadout()
 	_update_health()
 	_update_status()
 	_update_hint()
@@ -306,95 +312,21 @@ func _build_biome() -> void:
 	add_child(biome_intro_label)
 
 
-func _build_loadout() -> void:
-	loadout_panel = _panel(Rect2(16, 388, 252, 78), _style(Color(0.018, 0.028, 0.032, 0.94), Color(0.38, 0.68, 0.60, 0.50), 1, 2))
-	loadout_panel.name = "LoadoutPanel"
-
-	accent_bar = ColorRect.new()
-	accent_bar.color = Color(0.25, 1.0, 0.78)
-	accent_bar.position = Vector2(0, 0)
-	accent_bar.size = Vector2(3, 78)
-	accent_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	loadout_panel.add_child(accent_bar)
-
-	name_label = _label("EXCAVATOR ROUND", 13, TEXT_PALE)
-	name_label.name = "ArcaneReadout"
-	name_label.position = Vector2(30, 393)
-	name_label.size = Vector2(226, 18)
-	add_child(name_label)
-
-	mode_label = _label("ARCANE CASTER", 9, TEXT_DIM)
-	mode_label.position = Vector2(30, 412)
-	mode_label.size = Vector2(226, 12)
-	add_child(mode_label)
-
-	for index in range(4):
-		var pip := ColorRect.new()
-		pip.position = Vector2(30 + index * 18, 430)
-		pip.size = Vector2(14, 4)
-		pip.color = Color(1, 1, 1, 0.25)
-		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(pip)
-		cartridge_pips.append(pip)
-
-	var reserve_caption := _label("MANA", 9, TEXT_DIM)
-	reserve_caption.name = "LegacyArcaneCaption"
-	reserve_caption.position = Vector2(30, 442)
-	reserve_caption.size = Vector2(40, 12)
-	add_child(reserve_caption)
-
-	for index in range(RESERVE_SEGMENTS):
-		var segment_style := _style(Color(0.05, 0.10, 0.09, 1.0), Color(0.14, 0.24, 0.22, 0.9), 1, 1)
-		segment_style.content_margin_left = 0.0
-		segment_style.content_margin_right = 0.0
-		segment_style.content_margin_top = 0.0
-		segment_style.content_margin_bottom = 0.0
-		var segment := Panel.new()
-		segment.position = Vector2(74 + index * 14, 443)
-		segment.size = Vector2(11, 7)
-		segment.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		segment.add_theme_stylebox_override("panel", segment_style)
-		add_child(segment)
-		reserve_segments.append(segment)
-		reserve_styles.append(segment_style)
-
-	reserve_label = _label("100", 9, TEXT_DIM, HORIZONTAL_ALIGNMENT_RIGHT)
-	reserve_label.position = Vector2(166, 440)
-	reserve_label.size = Vector2(88, 12)
-	add_child(reserve_label)
-
-	build_label = _label("BUILD  ASHEN SOIL ×0   DEPTH 1", 9, TEXT_DIM)
-	build_label.position = Vector2(30, 454)
-	build_label.size = Vector2(226, 12)
-	add_child(build_label)
-
-
 func _build_health() -> void:
-	var caption := _label("HEALTH", 8, TEXT_DIM)
-	caption.name = "HealthCaption"
-	caption.position = Vector2(16, 358)
-	caption.size = Vector2(80, 10)
-	add_child(caption)
-
-	var value := _label("100", 8, TEXT_DIM, HORIZONTAL_ALIGNMENT_RIGHT)
-	value.name = "HealthValue"
-	value.position = Vector2(188, 358)
-	value.size = Vector2(80, 10)
-	add_child(value)
-
-	# Terraria-style heart row (harvested from SkyUOI/Terraria3D, MIT).
-	# Each heart is 10 HP; empty hearts stay visible as dark silhouettes.
+	# Terraria draws no HEALTH caption and no numeric readout: the heart row is
+	# the health bar, top-right of the screen. Each heart is 10 HP here, so a
+	# 100 HP player sees ten hearts and a 200 HP player sees two rows of ten.
 	heart_icons.clear()
-	for index in range(HEART_COUNT):
+	for index in range(MAX_HEART_ICONS):
 		var heart := TextureRect.new()
 		heart.name = "Heart%d" % index
-		heart.texture = HEART_TEXTURE
+		heart.texture = HEART_EMPTY_TEXTURE
 		heart.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		heart.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		heart.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		heart.position = Vector2(16 + index * 18, 371)
-		heart.size = Vector2(16, 16)
+		heart.size = Vector2(HEART_SIZE, HEART_SIZE)
 		heart.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		heart.visible = false
 		add_child(heart)
 		heart_icons.append(heart)
 
@@ -574,7 +506,7 @@ func _button(text: String) -> Button:
 	button.add_theme_color_override("font_hover_color", Color.WHITE)
 	button.add_theme_stylebox_override("normal", _style(Color(0.07, 0.10, 0.12, 0.95), Color(0.2, 0.45, 0.42, 0.7), 1, 3))
 	button.add_theme_stylebox_override("hover", _style(Color(0.10, 0.22, 0.21, 0.98), Color(0.3, 0.9, 0.78, 0.9), 1, 3))
-	button.add_theme_stylebox_override("pressed", _style(Color(0.06, 0.15, 0.14, 1.0), ACCENT_PROJECTOR, 1, 3))
+	button.add_theme_stylebox_override("pressed", _style(Color(0.06, 0.15, 0.14, 1.0), ACCENT_CYAN, 1, 3))
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	return button
 
@@ -755,7 +687,7 @@ func advance_dialogue() -> void:
 
 func _on_block_edited(cell: Vector3i, _block_id: int) -> void:
 	# block_edited fires for every edit including placement; spawn a burst at
-	# the cell centre for break feedback. Placement is handled by the projector.
+	# the cell centre for break feedback.
 	if not is_instance_valid(world):
 		return
 	var main := get_parent()
@@ -806,7 +738,7 @@ func _show_onboarding(step: int) -> void:
 	var lines := [
 		"WASD to move  ·  Mouse to look  ·  SPACE to jump",
 		"1-9 / wheel selects a hotbar item  ·  LMB uses it",
-		"Hold LMB with a pickaxe to mine  ·  blocks drop into your inventory",
+		"Hold LMB with a pickaxe to mine  ·  an axe on a trunk fells the whole tree",
 		"RMB places a block  ·  B opens inventory  ·  C opens crafting  ·  ESC pauses",
 	]
 	if step < lines.size() and not onboarding_done[step]:
@@ -814,40 +746,6 @@ func _show_onboarding(step: int) -> void:
 
 
 # --- Live updates -----------------------------------------------------------
-
-func _update_loadout() -> void:
-	var cartridge: CartridgeDef = caster.CARTRIDGES[caster.selected_cartridge]
-	var accent := ACCENT_PROJECTOR if caster.projector_mode else cartridge.accent_color
-	name_label.text = cartridge.display_name
-	mode_label.text = "PROJECTOR MODE" if caster.projector_mode else "ARCANE CASTER"
-	mode_label.add_theme_color_override("font_color", accent)
-	accent_bar.color = accent
-
-	for index in range(cartridge_pips.size()):
-		var pip: ColorRect = cartridge_pips[index]
-		var pip_color: Color = caster.CARTRIDGES[index].accent_color
-		var selected := index == caster.selected_cartridge and not caster.projector_mode
-		pip.color = Color(pip_color.r, pip_color.g, pip_color.b, 1.0 if selected else 0.28)
-		pip.size = Vector2(14, 6) if selected else Vector2(14, 3)
-		pip.position.y = 429 if selected else 431
-
-	var ratio := clampf(caster.reserve / caster.CONFIG.reserve_capacity, 0.0, 1.0)
-	var lit := 0 if ratio <= 0.001 else ceili(ratio * float(RESERVE_SEGMENTS))
-	for index in range(reserve_segments.size()):
-		var style := reserve_styles[index]
-		var on := index < lit
-		style.bg_color = Color(0.20, 0.98, 0.74, 0.95) if on else Color(0.04, 0.08, 0.07, 1.0)
-		style.border_color = Color(0.75, 1.0, 0.92, 0.85) if on else Color(0.12, 0.21, 0.19, 0.9)
-		style.shadow_color = Color(0.16, 0.95, 0.68, 0.55 if on else 0.0)
-		style.shadow_size = 3 if on else 0
-	reserve_label.text = "%d" % roundi(caster.reserve)
-	reserve_label.add_theme_color_override("font_color", TEXT_WARN if ratio < 0.2 else TEXT_DIM)
-
-	var stock := int(caster.inventory.get(caster.selected_projector_block, 0))
-	var block_name := String(caster.selected_projector_block).replace("_", " ").to_upper()
-	build_label.text = "BUILD  %s ×%d    DEPTH %d" % [block_name, stock, caster.extrusion_depth]
-	build_label.add_theme_color_override("font_color", Color(0.95, 0.55, 0.45) if stock <= 0 else TEXT_DIM)
-
 
 func _update_flashlight() -> void:
 	var on := is_instance_valid(world) and world.flashlight_enabled
@@ -894,25 +792,22 @@ func _update_biome(delta: float) -> void:
 
 
 func _update_health() -> void:
-	var ratio := clampf(player.health / 100.0, 0.0, 1.0)
-	var lit := 0 if ratio <= 0.001 else ceili(ratio * float(HEART_COUNT))
+	var max_health := maxf(player.max_health, 1.0)
+	var ratio := clampf(player.health / max_health, 0.0, 1.0)
+	var needed := clampi(ceili(max_health / 10.0), 1, MAX_HEART_ICONS)
+	var lit := 0 if ratio <= 0.001 else ceili(ratio * float(needed))
 	for index in range(heart_icons.size()):
 		var heart := heart_icons[index]
+		heart.visible = index < needed
+		if not heart.visible:
+			continue
 		if index < lit:
 			heart.texture = HEART_TEXTURE
 			heart.modulate = Color(1.0, 0.82, 0.82, 1.0) if ratio < 0.35 else Color.WHITE
 		else:
 			heart.texture = HEART_EMPTY_TEXTURE
-			heart.modulate = Color(0.42, 0.42, 0.42, 0.75)
-	# The old bar remains only as a null-safe compatibility path; the heart row
-	# is the visible health display now.
-	if health_fill != null:
-		health_fill.size.x = 250.0 * ratio
-		health_fill.visible = ratio > 0.001
-	var value := get_node_or_null("HealthValue") as Label
-	if value != null:
-		value.text = "%d" % roundi(player.health)
-		value.add_theme_color_override("font_color", Color(0.90, 0.45, 0.38) if ratio < 0.35 else TEXT_DIM)
+			heart.modulate = Color(0.55, 0.55, 0.55, 0.85)
+	_layout_hearts(needed)
 
 
 func _update_status() -> void:
@@ -991,25 +886,30 @@ func _unhandled_input(event: InputEvent) -> void:
 			_toggle_guide()
 			get_viewport().set_input_as_handled()
 			return
-		# close panels on ESC
+		# Terraria's ESC opens and closes the inventory over the running world.
+		# It does not pause the game and does not open a pause menu.
 		if (inventory_visible or crafting_visible or guide_visible) and event.keycode == KEY_ESCAPE:
-			inventory_visible = false
-			crafting_visible = false
-			guide_visible = false
-			if inventory_panel != null: inventory_panel.visible = false
-			if crafting_panel != null: crafting_panel.visible = false
-			if guide_panel != null: guide_panel.visible = false
-			_set_mouse_captured(true)
+			close_panels()
+			get_viewport().set_input_as_handled()
+			return
+		# The save/load/quit menu moved to F1 so ESC can behave like Terraria.
+		if paused and event.keycode == KEY_ESCAPE:
+			resume_game()
+			get_viewport().set_input_as_handled()
+			return
+		if event.keycode == KEY_F1:
+			if paused:
+				resume_game()
+			else:
+				pause_game()
 			get_viewport().set_input_as_handled()
 			return
 	if not (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE):
 		return
 	if paused:
 		resume_game()
-	elif is_instance_valid(caster) and (caster.dragging or caster.projector_mode):
-		return
 	else:
-		pause_game()
+		_toggle_inventory()
 	get_viewport().set_input_as_handled()
 
 
@@ -1061,75 +961,53 @@ func _layout_for_viewport() -> void:
 	var vp := Vector2(1280.0, 720.0)
 	var cx: float = vp.x * 0.5
 
-	# Retire every legacy gun/cartridge/reserve element. Gameplay no longer
-	# uses them; they are kept only so _update_loadout() stays valid.
-	if loadout_panel != null:
-		loadout_panel.visible = false
-	if name_label != null:
-		name_label.visible = false
-	if mode_label != null:
-		mode_label.visible = false
-	if build_label != null:
-		build_label.visible = false
-	if reserve_label != null:
-		reserve_label.visible = false
-	for segment in reserve_segments:
-		segment.visible = false
-	for pip in cartridge_pips:
-		pip.visible = false
 	# These captions were added straight to the CanvasLayer, not to the panels
 	# above, so hiding the panels alone left stray text on the screen edge.
 	for legacy_name in ["LegacyArcaneCaption", "LegacyVitalsCaption"]:
 		var legacy_node := get_node_or_null(NodePath(legacy_name))
 		if legacy_node != null:
 			legacy_node.visible = false
+	# Terraria prints no torch or biome text over the world; the continuous
+	# biome tag and torch state remain available in the F3 debug readout.
 	if flashlight_label != null:
-		flashlight_label.position = Vector2(vp.x - 254.0, 8.0)
+		flashlight_label.visible = false
+	if biome_label != null:
+		biome_label.visible = false
 
 	# Centred crosshair.
 	var crosshair := get_node_or_null("Crosshair") as Control
 	if crosshair != null:
 		crosshair.position = Vector2(cx - 6.0, vp.y * 0.5 - 6.0)
 
-	# Hotbar: bottom centre, above the screen edge.
+	# Hotbar: top-left corner, flush with the screen edge as in Terraria.
 	if hotbar_panel != null:
-		hotbar_panel.position = Vector2(cx - 213.0, vp.y - 62.0)
+		hotbar_panel.position = Vector2(12.0, 12.0)
+	if held_label != null:
+		held_label.position = Vector2(14.0, 12.0 + HOTBAR_SLOT + HOTBAR_PAD * 2.0 + 5.0)
+		held_label.size = Vector2(360.0, 16.0)
 
-	# Bottom-left vitals stack. The captions originally stayed at their 480p
-	# positions while the bars moved, which left MANA floating mid-screen.
+	# Depth/layer/environment/house readouts are genuine world state but are not
+	# part of Terraria's HUD, so they are kept small and out of the corner the
+	# heart row occupies.
 	if layer_label != null:
-		layer_label.position = Vector2(16.0, vp.y - 146.0)
+		layer_label.position = Vector2(16.0, vp.y - 40.0)
 		layer_label.size = Vector2(252.0, 10.0)
 		layer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	if environment_label != null:
-		environment_label.position = Vector2(16.0, vp.y - 134.0)
+		environment_label.position = Vector2(16.0, vp.y - 30.0)
 		environment_label.size = Vector2(252.0, 10.0)
 		environment_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	if house_label != null:
-		house_label.position = Vector2(16.0, vp.y - 122.0)
+		house_label.position = Vector2(16.0, vp.y - 20.0)
 		house_label.size = Vector2(360.0, 10.0)
-	if mana_caption != null:
-		mana_caption.position = Vector2(16.0, vp.y - 120.0)
-	if mana_bar != null:
-		mana_bar.position = Vector2(16.0, vp.y - 106.0)
-	if mana_fill != null:
-		mana_fill.position = Vector2(17.0, vp.y - 105.0)
-	if mana_label != null:
-		mana_label.position = Vector2(188.0, vp.y - 120.0)
-		mana_label.visible = true
 	if health_bar != null:
-		health_bar.position = Vector2(16.0, vp.y - 64.0)
+		health_bar.visible = false
 	if health_fill != null:
-		health_fill.position = Vector2(17.0, vp.y - 63.0)
-	var health_caption := get_node_or_null("HealthCaption") as Label
-	if health_caption != null:
-		health_caption.position = Vector2(16.0, vp.y - 92.0)
-	var health_value := get_node_or_null("HealthValue") as Label
-	if health_value != null:
-		health_value.position = Vector2(188.0, vp.y - 92.0)
-		health_value.visible = true
-	for index in range(heart_icons.size()):
-		heart_icons[index].position = Vector2(16.0 + index * 18.0, vp.y - 78.0)
+		health_fill.visible = false
+	# Hearts and stars lay themselves out from the live max health/mana.
+	if is_instance_valid(player):
+		_update_health()
+	_update_mana()
 
 	# Transient text.
 	if status_label != null:
@@ -1144,54 +1022,81 @@ func _layout_for_viewport() -> void:
 		target_label.position = Vector2(cx - 200.0, vp.y * 0.5 - 90.0)
 	if boss_panel != null:
 		boss_panel.position = Vector2(cx - 177.0, 12.0)
-	if biome_label != null:
-		biome_label.position = Vector2(vp.x - 254.0, 26.0)
 	if biome_intro_label != null:
 		biome_intro_label.position = Vector2(cx - 300.0, 96.0)
+
+
+## Right-aligned rows of ten hearts, exactly like Terraria's health display.
+func _layout_hearts(needed: int) -> void:
+	heart_rows = int(ceil(float(needed) / 10.0))
+	for index in range(mini(needed, heart_icons.size())):
+		var row := index / 10
+		var col := index % 10
+		var in_row := mini(10, needed - row * 10)
+		var x := VP.x - 14.0 - float(in_row - col) * HEART_SPACING
+		heart_icons[index].position = Vector2(x, 12.0 + float(row) * (HEART_SIZE + 1.0))
+
+
+## Mana stars sit directly under the hearts, right-aligned, one per 20 mana.
+func _layout_mana(needed: int) -> void:
+	var top := 12.0 + float(heart_rows) * (HEART_SIZE + 1.0) + 2.0
+	for index in range(mini(needed, mana_stars.size())):
+		var x := VP.x - 14.0 - float(needed - index) * STAR_SPACING + 2.0
+		mana_stars[index].position = Vector2(x, top)
 
 
 # --- Agent 3: hotbar ---------------------------------------------------------
 
 func _build_hotbar() -> void:
-	hotbar_panel = _panel(Rect2(214, 412, 426, 50), _style(PANEL_BG, PANEL_BORDER, 2, 4))
+	# Terraria's hotbar is the top-left row of ten slots, flush against the
+	# screen corner. It doubles as the top row of the inventory when that opens.
+	var width := 10.0 * HOTBAR_SLOT + HOTBAR_PAD * 2.0
+	var height := HOTBAR_SLOT + HOTBAR_PAD * 2.0
+	hotbar_panel = _panel(Rect2(12, 12, width, height), _style(PANEL_BG, PANEL_BORDER, 2, 3))
 	hotbar_panel.name = "HotbarPanel"
 	hotbar_slots.clear()
 	hotbar_labels.clear()
 	hotbar_counts.clear()
+	hotbar_icons.clear()
 	for i in range(10):
 		var slot := Panel.new()
-		slot.position = Vector2(7 + i * 41, 6)
-		slot.size = Vector2(38, 38)
+		slot.position = Vector2(HOTBAR_PAD + float(i) * HOTBAR_SLOT, HOTBAR_PAD)
+		slot.size = Vector2(HOTBAR_SLOT, HOTBAR_SLOT)
 		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		slot.add_theme_stylebox_override("panel", _style(SLOT_BG, SLOT_BORDER, 1, 2))
+		slot.add_theme_stylebox_override("panel", _style(SLOT_BG, SLOT_BORDER, 2, 2))
 		hotbar_panel.add_child(slot)
 		hotbar_slots.append(slot)
-		# Inset well: a slightly darker inner square reads as a Terraria slot.
-		var well := Panel.new()
-		well.position = Vector2(2, 2)
-		well.size = Vector2(32, 32)
-		well.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		well.add_theme_stylebox_override("panel", _style(Color(0.04, 0.055, 0.095, 0.95), Color(0.20, 0.18, 0.12, 0.85), 1, 1))
-		slot.add_child(well)
 		var icon := TextureRect.new()
-		icon.position = Vector2(1, 1)
-		icon.size = Vector2(30, 30)
+		icon.position = Vector2(4, 4)
+		icon.size = Vector2(HOTBAR_SLOT - 12.0, HOTBAR_SLOT - 12.0)
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		well.add_child(icon)
+		slot.add_child(icon)
 		hotbar_icons.append(icon)
+		# Name labels are kept for compatibility but never shown: Terraria
+		# does not print item names inside hotbar slots.
 		var lbl := _label("", 7, TEXT_PALE, HORIZONTAL_ALIGNMENT_CENTER)
-		lbl.position = Vector2(0, 18)
-		lbl.size = Vector2(38, 8)
+		lbl.position = Vector2(0, 20)
+		lbl.size = Vector2(HOTBAR_SLOT, 8)
+		lbl.visible = false
 		slot.add_child(lbl)
 		hotbar_labels.append(lbl)
-		var cnt := _label("", 9, Color(1.0, 0.94, 0.78), HORIZONTAL_ALIGNMENT_RIGHT)
-		cnt.position = Vector2(2, 25)
-		cnt.size = Vector2(34, 11)
+		var cnt := _label("", 12, Color(1.0, 0.97, 0.86), HORIZONTAL_ALIGNMENT_RIGHT)
+		cnt.position = Vector2(2, HOTBAR_SLOT - 17.0)
+		cnt.size = Vector2(HOTBAR_SLOT - 6.0, 14)
+		cnt.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.06, 1.0))
+		cnt.add_theme_constant_override("outline_size", 3)
 		slot.add_child(cnt)
 		hotbar_counts.append(cnt)
+	# Terraria names the item you just selected, above the hotbar, then fades it.
+	held_label = _label("", 12, Color(1.0, 0.95, 0.80))
+	held_label.name = "HeldItemName"
+	held_label.position = Vector2(14, 66)
+	held_label.size = Vector2(320, 16)
+	held_label.modulate.a = 0.0
+	add_child(held_label)
 
 func _refresh_hotbar(_arg: Variant = null) -> void:
 	if not is_instance_valid(player) or player.get("inventory") == null:
@@ -1224,6 +1129,11 @@ func _refresh_hotbar(_arg: Variant = null) -> void:
 			cnt.text = "%d" % amount if amount > 1 else ""
 			slot_panel.modulate.a = 1.0
 			slot_panel.tooltip_text = name
+			# Terraria flashes the selected item's name above the hotbar.
+			if held_label != null and i == int(inv.selected) and id != _held_shown:
+				_held_shown = id
+				held_label.text = name
+				held_time = 1.8
 		# Selected highlight
 		var selected := int(inv.selected) == i
 		var style := slot_panel.get_theme_stylebox("panel") as StyleBoxFlat
@@ -1238,42 +1148,36 @@ func _refresh_hotbar(_arg: Variant = null) -> void:
 # --- Agent 3: mana -----------------------------------------------------------
 
 func _build_mana() -> void:
-	mana_caption = _label("MANA", 8, TEXT_DIM)
-	mana_caption.position = Vector2(16, 348)
-	mana_caption.size = Vector2(80, 10)
-	add_child(mana_caption)
-	mana_bar = Panel.new()
-	mana_bar.position = Vector2(16, 358)
-	mana_bar.size = Vector2(252, 7)
-	mana_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	mana_bar.add_theme_stylebox_override("panel", _style(Color(0.02, 0.035, 0.04, 0.95), Color(0.18, 0.30, 0.40, 0.9), 1, 2))
-	add_child(mana_bar)
-	mana_fill_style = _style(Color(0.30, 0.55, 0.95, 0.95), Color(0.60, 0.80, 1.0, 0.8), 1, 1)
-	mana_fill = Panel.new()
-	mana_fill.position = Vector2(17, 359)
-	mana_fill.size = Vector2(250, 5)
-	mana_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	mana_fill.add_theme_stylebox_override("panel", mana_fill_style)
-	add_child(mana_fill)
-	mana_label = _label("100", 8, TEXT_DIM, HORIZONTAL_ALIGNMENT_RIGHT)
-	mana_label.position = Vector2(188, 348)
-	mana_label.size = Vector2(80, 10)
-	add_child(mana_label)
+	# Terraria's mana display is a row of blue stars under the hearts, one star
+	# per 20 mana, with the last star partially filled. There is no bar and no
+	# caption, so neither is created.
+	mana_stars.clear()
+	for index in range(MAX_MANA_STARS):
+		var star := ManaStar.new()
+		star.name = "ManaStar%d" % index
+		star.size = Vector2(STAR_SIZE_MANA, STAR_SIZE_MANA)
+		star.visible = false
+		add_child(star)
+		mana_stars.append(star)
 
 func _update_mana() -> void:
 	if not is_instance_valid(player) or player.get("weapons") == null:
 		return
 	var w = player.weapons
-	var ratio := 0.0
-	if w.max_mana > 0.0:
-		ratio = clampf(w.mana / w.max_mana, 0.0, 1.0)
-	if mana_fill != null:
-		mana_fill.size.x = 250.0 * ratio
-	mana_label.text = "%d" % roundi(w.mana)
+	var maximum := float(w.max_mana)
+	var current := clampf(float(w.mana), 0.0, maximum)
+	var needed := clampi(ceili(maximum / MANA_PER_STAR), 1, MAX_MANA_STARS)
+	for index in range(mana_stars.size()):
+		var star := mana_stars[index]
+		star.visible = index < needed
+		if not star.visible:
+			continue
+		var star_floor := float(index) * MANA_PER_STAR
+		star.ratio = clampf((current - star_floor) / MANA_PER_STAR, 0.0, 1.0)
+	_layout_mana(needed)
 
-func _on_mana_changed(current: float, maximum: float) -> void:
-	if mana_label != null:
-		mana_label.text = "%d" % roundi(current)
+func _on_mana_changed(_current: float, _maximum: float) -> void:
+	_update_mana()
 
 
 # --- Agent 3: interaction prompt --------------------------------------------
@@ -1436,106 +1340,125 @@ func _update_status_effects() -> void:
 # --- Agent 3: inventory & crafting panels ------------------------------------
 
 func _build_inventory_panel() -> void:
-	inventory_panel = _panel(Rect2(120, 90, 640, 400), _style(PANEL_BG, PANEL_BORDER, 2, 4))
+	# Terraria's expanded inventory: the hotbar row on top, four rows of ten
+	# main slots under it, the equipment column to the right, and the crafting
+	# list below that, all on the same navy/bronze panel treatment. Pressing ESC
+	# opens it over a running world; it never pauses the game.
+	var panel_w := 700.0
+	var panel_h := 470.0
+	var pad := 8.0
+	var slot := HOTBAR_SLOT
+	inventory_panel = _panel(Rect2(12, 12, panel_w, panel_h), _style(PANEL_BG, PANEL_BORDER, 2, 3))
 	inventory_panel.name = "InventoryPanel"
 	inventory_panel.visible = false
-	# _panel() already added this node.
-	var title := _label("INVENTORY", 13, Color(0.98, 0.86, 0.52))
-	title.position = Vector2(12, 8)
-	title.size = Vector2(200, 18)
-	inventory_panel.add_child(title)
-	var eq_x := 12
-	var eq_y := 40
-	for slot in ["head", "chest", "legs", "accessory"]:
-		var lbl := _label(slot.to_upper(), 9, TEXT_DIM)
-		lbl.position = Vector2(eq_x, eq_y)
-		lbl.size = Vector2(90, 12)
-		inventory_panel.add_child(lbl)
-		var p := Panel.new()
-		p.position = Vector2(eq_x, eq_y + 14)
-		p.size = Vector2(84, 36)
-		p.add_theme_stylebox_override("panel", _style(SLOT_BG, SLOT_BORDER, 1, 2))
-		p.mouse_filter = Control.MOUSE_FILTER_STOP
-		p.gui_input.connect(func(ev): _on_inv_slot_input("equipment", InventoryModel.EQUIPMENT_SLOTS.find(slot), ev, p))
-		inventory_panel.add_child(p)
-		var picon := TextureRect.new()
-		picon.position = Vector2(4, 3)
-		picon.size = Vector2(30, 30)
-		picon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		picon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		picon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		picon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		p.add_child(picon)
-		var plbl := _label("", 9, TEXT_PALE, HORIZONTAL_ALIGNMENT_LEFT)
-		plbl.position = Vector2(38, 12)
-		plbl.size = Vector2(44, 14)
-		p.add_child(plbl)
-		equip_slot_panels[slot] = {"panel": p, "label": plbl, "icon": picon, "slot": slot}
-		eq_y += 60
-	var grid_x := 110
-	var grid_y := 40
-	var grid_cols := 8
+	inv_slot_panels.clear()
+	equip_slot_panels.clear()
+
+	var hotbar_y := pad
+	for i in range(InventoryModel.HOTBAR_SIZE):
+		_add_inventory_slot(inventory_panel, "hotbar", i, Vector2(pad + float(i) * slot, hotbar_y), slot)
+
+	var grid_x := pad
+	var grid_y := hotbar_y + slot + 2.0
+	var grid_cols := 10
 	for i in range(InventoryModel.MAIN_SIZE):
 		var col := i % grid_cols
 		var row := i / grid_cols
+		_add_inventory_slot(inventory_panel, "main", i, Vector2(grid_x + float(col) * slot, grid_y + float(row) * slot), slot)
+
+	# Equipment column, right of the grid, in Terraria's armour order.
+	var eq_x := grid_x + float(grid_cols) * slot + 12.0
+	var eq_labels := {"head": "HELMET", "chest": "SHIRT", "legs": "PANTS", "accessory": "ACCESSORY"}
+	var eq_y := pad
+	for name in InventoryModel.EQUIPMENT_SLOTS:
+		var caption := _label(eq_labels.get(name, name.to_upper()), 8, TEXT_DIM)
+		caption.position = Vector2(eq_x, eq_y)
+		caption.size = Vector2(200, 10)
+		inventory_panel.add_child(caption)
 		var p := Panel.new()
-		p.position = Vector2(grid_x + col * 44, grid_y + row * 44)
-		p.size = Vector2(40, 40)
-		p.add_theme_stylebox_override("panel", _style(SLOT_BG, SLOT_BORDER, 1, 2))
+		p.position = Vector2(eq_x, eq_y + 11.0)
+		p.size = Vector2(slot, slot)
+		p.add_theme_stylebox_override("panel", _style(SLOT_BG, SLOT_BORDER, 2, 2))
 		p.mouse_filter = Control.MOUSE_FILTER_STOP
-		p.gui_input.connect(func(ev): _on_inv_slot_input("main", i, ev, p))
+		var index := InventoryModel.EQUIPMENT_SLOTS.find(name)
+		p.gui_input.connect(func(ev): _on_inv_slot_input("equipment", index, ev, p))
+		p.mouse_exited.connect(func(): _hide_tooltip())
 		inventory_panel.add_child(p)
 		var picon := TextureRect.new()
-		picon.position = Vector2(3, 3)
-		picon.size = Vector2(34, 34)
+		picon.position = Vector2(4, 4)
+		picon.size = Vector2(slot - 8.0, slot - 8.0)
 		picon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		picon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		picon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		picon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		p.add_child(picon)
-		var plbl := _label("", 8, TEXT_PALE, HORIZONTAL_ALIGNMENT_CENTER)
-		plbl.position = Vector2(2, 24)
-		plbl.size = Vector2(36, 10)
-		p.add_child(plbl)
-		var pcnt := _label("", 8, TEXT_DIM, HORIZONTAL_ALIGNMENT_RIGHT)
-		pcnt.position = Vector2(2, 28)
-		pcnt.size = Vector2(36, 10)
-		p.add_child(pcnt)
-		inv_slot_panels.append({"panel": p, "label": plbl, "count": pcnt, "icon": picon, "area": "main", "index": i})
-	var hb_y := grid_y + (InventoryModel.MAIN_SIZE / grid_cols + 1) * 44
-	var hb_title := _label("HOTBAR", 9, TEXT_DIM)
-	hb_title.position = Vector2(grid_x, hb_y - 12)
-	hb_title.size = Vector2(100, 12)
-	inventory_panel.add_child(hb_title)
-	for i in range(InventoryModel.HOTBAR_SIZE):
-		var p := Panel.new()
-		p.position = Vector2(grid_x + i * 44, hb_y)
-		p.size = Vector2(40, 40)
-		p.add_theme_stylebox_override("panel", _style(SLOT_BG, SLOT_BORDER, 1, 2))
-		p.mouse_filter = Control.MOUSE_FILTER_STOP
-		p.gui_input.connect(func(ev): _on_inv_slot_input("hotbar", i, ev, p))
-		inventory_panel.add_child(p)
-		var picon := TextureRect.new()
-		picon.position = Vector2(3, 3)
-		picon.size = Vector2(34, 34)
-		picon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		picon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		picon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		picon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		p.add_child(picon)
-		var plbl := _label("", 8, TEXT_PALE, HORIZONTAL_ALIGNMENT_CENTER)
-		plbl.position = Vector2(2, 24)
-		plbl.size = Vector2(36, 10)
-		p.add_child(plbl)
-		var pcnt := _label("", 8, TEXT_DIM, HORIZONTAL_ALIGNMENT_RIGHT)
-		pcnt.position = Vector2(2, 28)
-		pcnt.size = Vector2(36, 10)
-		p.add_child(pcnt)
-		inv_slot_panels.append({"panel": p, "label": plbl, "count": pcnt, "icon": picon, "area": "hotbar", "index": i})
-	var hint := _label("Click two slots to move/swap. I to close.", 8, TEXT_DIM)
-	hint.position = Vector2(12, 378)
-	hint.size = Vector2(616, 12)
+		equip_slot_panels[name] = {"panel": p, "label": null, "icon": picon, "slot": name}
+		eq_y += 54.0
+
+	# Crafting list, bottom-left, where Terraria grows it when a station or the
+	# player's materials make something available.
+	var craft_top := grid_y + 4.0 * slot + 26.0
+	var craft_title := _label("CRAFTING", 9, Color(0.86, 0.76, 0.52))
+	craft_title.position = Vector2(pad, craft_top)
+	craft_title.size = Vector2(240, 12)
+	inventory_panel.add_child(craft_title)
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(pad, craft_top + 15.0)
+	scroll.size = Vector2(float(grid_cols) * slot, panel_h - craft_top - 58.0)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	inventory_panel.add_child(scroll)
+	inv_craft_list = VBoxContainer.new()
+	inv_craft_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(inv_craft_list)
+
+	# Terraria shows the hovered item's name under the grid.
+	inv_hover_label = _label("", 10, Color(0.92, 0.88, 0.70))
+	inv_hover_label.name = "InventoryItemName"
+	inv_hover_label.position = Vector2(eq_x, 4.0 + 54.0 * float(InventoryModel.EQUIPMENT_SLOTS.size()) + 4.0)
+	inv_hover_label.size = Vector2(panel_w - eq_x - pad, 14)
+	inventory_panel.add_child(inv_hover_label)
+
+	var hint := _label("ESC closes  ·  click two slots to move or swap  ·  F1 save/load/quit", 9, TEXT_DIM)
+	hint.position = Vector2(pad, panel_h - 20.0)
+	hint.size = Vector2(panel_w - pad * 2.0, 12)
 	inventory_panel.add_child(hint)
+
+
+## One inventory slot: panel, icon and stack count, wired to the shared click
+## handler. Used for every area so the hotbar row, grid and chest rows match.
+func _add_inventory_slot(parent: Control, area: String, index: int, pos: Vector2, slot_size: float) -> void:
+	var p := Panel.new()
+	p.position = pos
+	p.size = Vector2(slot_size, slot_size)
+	p.add_theme_stylebox_override("panel", _style(SLOT_BG, SLOT_BORDER, 2, 2))
+	p.mouse_filter = Control.MOUSE_FILTER_STOP
+	p.gui_input.connect(func(ev): _on_inv_slot_input(area, index, ev, p))
+	p.mouse_exited.connect(func(): _hide_tooltip())
+	parent.add_child(p)
+	var picon := TextureRect.new()
+	picon.position = Vector2(4, 4)
+	picon.size = Vector2(slot_size - 8.0, slot_size - 8.0)
+	picon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	picon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	picon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	picon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(picon)
+	var pcnt := _label("", 11, Color(1.0, 0.97, 0.86), HORIZONTAL_ALIGNMENT_RIGHT)
+	pcnt.position = Vector2(2, slot_size - 16.0)
+	pcnt.size = Vector2(slot_size - 6.0, 13)
+	pcnt.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.06, 1.0))
+	pcnt.add_theme_constant_override("outline_size", 3)
+	p.add_child(pcnt)
+	inv_slot_panels.append({"panel": p, "label": null, "count": pcnt, "icon": picon, "area": area, "index": index})
+
+
+func _hide_tooltip() -> void:
+	if tooltip_label != null:
+		tooltip_label.visible = false
+	if inv_hover_label != null:
+		inv_hover_label.text = ""
+
+
 func _build_crafting_panel() -> void:
 	crafting_panel = _panel(Rect2(120, 90, 640, 400), _style(PANEL_BG, PANEL_BORDER, 2, 4))
 	crafting_panel.name = "CraftingPanel"
@@ -1760,57 +1683,100 @@ func _refresh_inventory_panel(_arg: Variant = null) -> void:
 		var stack: Dictionary = inv.get_slot(area, idx)
 		var id := StringName(stack.get("id", &""))
 		var amount := int(stack.get("amount", 0))
-		var lbl: Label = entry["label"]
-		var cnt: Label = entry["count"]
+		var cnt: Label = entry.get("count")
 		var p: Panel = entry["panel"]
 		var icon: TextureRect = entry.get("icon")
 		if id == &"" or amount <= 0:
-			lbl.text = ""
-			cnt.text = ""
+			if cnt != null:
+				cnt.text = ""
 			if icon != null:
 				icon.texture = null
-			p.modulate.a = 0.5
+			p.modulate.a = 0.55
+			p.tooltip_text = ""
 		else:
-			var def := ItemDatabase.get_item(id)
-			var name := String(id)
-			if def != null and def.display_name != "":
-				name = def.display_name
-			lbl.text = ""
 			if icon != null:
 				icon.texture = ItemIcons.icon_for(id)
-			cnt.text = "%d" % amount if amount > 1 else ""
+			if cnt != null:
+				cnt.text = "%d" % amount if amount > 1 else ""
 			p.modulate.a = 1.0
-			p.tooltip_text = name
+			p.tooltip_text = _item_name(id)
+		# Terraria highlights the selected hotbar slot even inside the inventory.
 		var is_sel := (area == "hotbar" and int(inv.selected) == idx)
 		var style := p.get_theme_stylebox("panel") as StyleBoxFlat
 		if style != null:
 			style.border_color = SLOT_SELECTED if is_sel else SLOT_BORDER
-			style.border_width_left = 2
-			style.border_width_top = 2
-			style.border_width_right = 2
-			style.border_width_bottom = 2
+			var width := 2 if is_sel else 1
+			style.border_width_left = width
+			style.border_width_top = width
+			style.border_width_right = width
+			style.border_width_bottom = width
 	for slot in equip_slot_panels.keys():
 		var e: Dictionary = equip_slot_panels[slot]
 		var p: Panel = e["panel"]
-		var lbl: Label = e["label"]
-		var elev_icon: TextureRect = e.get("icon")
+		var label: Label = e.get("label")
+		var icon: TextureRect = e.get("icon")
 		var stack: Dictionary = inv.equipment.get(slot, {})
 		var id := StringName(stack.get("id", &""))
 		var amount := int(stack.get("amount", 0))
 		if id == &"" or amount <= 0:
-			lbl.text = ""
-			if elev_icon != null:
-				elev_icon.texture = null
-			p.modulate.a = 0.5
+			if icon != null:
+				icon.texture = null
+			p.modulate.a = 0.55
+			p.tooltip_text = ""
 		else:
-			lbl.text = _item_name(id).substr(0, 7)
-			if elev_icon != null:
-				elev_icon.texture = ItemIcons.icon_for(id)
+			if icon != null:
+				icon.texture = ItemIcons.icon_for(id)
 			p.modulate.a = 1.0
+			p.tooltip_text = _item_name(id)
+			# Legacy label kept null-safe; armour slots are icon-only in Terraria.
+			if label != null:
+				label.text = _item_name(id).substr(0, 7)
+
+
+## The recipe list shared by the C panel (select, then Craft) and the expanded
+## inventory (Terraria crafts on click).
+func _fill_recipe_list(container: VBoxContainer, craft_on_click: bool) -> void:
+	for child in container.get_children():
+		child.queue_free()
+	if player == null or player.get("crafting") == null:
+		return
+	var cs = player.crafting
+	for recipe in cs.all_recipes():
+		var btn := Button.new()
+		var can := cs.can_craft(recipe)
+		btn.text = "%s%s" % [recipe.display_name, "" if can else "  ·  " + _craft_suffix(cs.reason(recipe))]
+		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		btn.disabled = not can
+		btn.clip_text = true
+		btn.add_theme_font_size_override("font_size", 11)
+		if craft_on_click:
+			btn.pressed.connect(func(): _craft_recipe_now(recipe))
+		else:
+			btn.pressed.connect(func(): _select_recipe(recipe))
+		container.add_child(btn)
+
+
+func _refresh_inv_craft_list() -> void:
+	if inv_craft_list == null:
+		return
+	_fill_recipe_list(inv_craft_list, true)
+
+
+## Terraria crafting lists fire the recipe directly when clicked.
+func _craft_recipe_now(recipe: CraftingRecipe) -> void:
+	if player == null or player.get("crafting") == null:
+		return
+	var cs = player.crafting
+	if cs.craft(recipe):
+		_show_toast("Crafted %s" % recipe.display_name)
+		_refresh_inventory_panel()
+		_refresh_inv_craft_list()
+	else:
+		_show_toast(cs.reason(recipe))
+
 
 func _on_inv_slot_input(area: String, index: int, ev: InputEvent, _p: Panel) -> void:
-	if not (ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT):
-		if ev is InputEventMouseMotion:
+	if not (ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT):		if ev is InputEventMouseMotion:
 			var stack := _inv_stack(area, index)
 			var id := StringName(stack.get("id", &""))
 			if id != &"":
@@ -1818,9 +1784,11 @@ func _on_inv_slot_input(area: String, index: int, ev: InputEvent, _p: Panel) -> 
 				tooltip_label.text = _tooltip_for(def, id, int(stack.get("amount", 0)))
 				tooltip_label.visible = true
 				tooltip_label.position = get_viewport().get_mouse_position() + Vector2(12, 12)
+				if inv_hover_label != null:
+					inv_hover_label.text = _item_name(id)
 			else:
-				tooltip_label.visible = false
-		return
+				_hide_tooltip()
+			return
 	if inv_selected.is_empty():
 		inv_selected = {"area": area, "index": index, "slot": ""}
 		if area == "equipment":
@@ -1868,17 +1836,8 @@ func _refresh_crafting_list() -> void:
 		return
 	if craft_station_label != null:
 		craft_station_label.text = _station_summary()
-	for c in craft_list.get_children():
-		c.queue_free()
-	var cs = player.crafting
-	for r in cs.all_recipes():
-		var btn := Button.new()
-		var can := cs.can_craft(r)
-		btn.text = "%s%s" % [r.display_name, "" if can else "  ·  " + _craft_suffix(cs.reason(r))]
-		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		btn.disabled = not can
-		btn.pressed.connect(func(): _select_recipe(r))
-		craft_list.add_child(btn)
+	_fill_recipe_list(craft_list, false)
+
 
 ## Compact failure tags so a list row never clips its own reason.
 func _craft_suffix(reason: String) -> String:
@@ -2151,19 +2110,56 @@ func set_house_status(text: String, valid: bool) -> void:
 	house_label.add_theme_color_override("font_color", Color(0.42, 0.92, 0.68) if valid else Color(0.96, 0.72, 0.36))
 
 
+## Opens/closes the Terraria expanded inventory. The world keeps simulating: the
+## inventory is an overlay, not a pause screen.
 func _toggle_inventory() -> void:
 	inventory_visible = not inventory_visible
 	if inventory_panel != null:
 		inventory_panel.visible = inventory_visible
+	# The inventory lays out its own hotbar row, so the corner hotbar hides
+	# while it is open instead of being drawn twice.
+	if hotbar_panel != null:
+		hotbar_panel.visible = not inventory_visible
 	if inventory_visible:
 		crafting_visible = false
+		guide_visible = false
 		if crafting_panel != null:
 			crafting_panel.visible = false
+		if guide_panel != null:
+			guide_panel.visible = false
+		if held_label != null:
+			held_label.visible = false
 		_refresh_inventory_panel()
-		_refresh_crafting_list()
+		_refresh_inv_craft_list()
 		_set_mouse_captured(false)
 	else:
+		if tooltip_label != null:
+			tooltip_label.visible = false
+		if held_label != null:
+			held_label.visible = true
 		_set_mouse_captured(true)
+
+
+## Closes every overlay panel and gives the mouse back to the camera.
+func close_panels() -> void:
+	inventory_visible = false
+	crafting_visible = false
+	guide_visible = false
+	if inventory_panel != null: inventory_panel.visible = false
+	if crafting_panel != null: crafting_panel.visible = false
+	if guide_panel != null: guide_panel.visible = false
+	if tooltip_label != null: tooltip_label.visible = false
+	if hotbar_panel != null: hotbar_panel.visible = true
+	if held_label != null: held_label.visible = true
+	_set_mouse_captured(true)
+
+
+## Terraria names the item you just selected above the hotbar for a moment.
+func _update_held(delta: float) -> void:
+	if held_label == null:
+		return
+	held_time = maxf(held_time - delta, 0.0)
+	held_label.modulate.a = clampf(held_time / 0.5, 0.0, 1.0)
 
 func _toggle_crafting() -> void:
 	crafting_visible = not crafting_visible

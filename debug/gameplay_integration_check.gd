@@ -83,8 +83,10 @@ func _run() -> void:
 	_check(not main.player.driving, "player starts on foot, not in a vehicle")
 	_check(not hud.dialogue_footer.is_visible_in_tree(), "dialogue footer stays hidden with no dialogue open")
 	_check(not hud.boss_panel.visible and not hud.boss_health_fill.visible, "boss bar stays hidden with no boss")
-	_check(hud.mana_caption.position.y > 560.0 and hud.heart_icons.size() == 10 and hud.heart_icons[0].position.y > 560.0, "vitals stack is anchored at the bottom left", "mana_y=%.0f heart_y=%.0f" % [hud.mana_caption.position.y, hud.heart_icons[0].position.y if hud.heart_icons.size() > 0 else -1.0])
-	_check(hud.hotbar_panel.position.y > 600.0, "hotbar is anchored at the bottom", "y=%.0f" % hud.hotbar_panel.position.y)
+	_check(hud.heart_icons.size() == 20 and hud.heart_icons[0].visible and hud.heart_icons[0].position.y < 40.0, "hearts use the top-right Terraria row", "visible=%d y=%.0f" % [hud.heart_icons.filter(func(h): return h.visible).size(), hud.heart_icons[0].position.y])
+	_check(hud.heart_icons[9].position.x > 1000.0, "hearts are right-aligned against the screen edge", "x=%.0f" % hud.heart_icons[9].position.x)
+	_check(hud.mana_stars.size() == 10 and hud.mana_stars[0].visible and hud.mana_stars[0].position.y > hud.heart_icons[0].position.y, "mana stars sit under the hearts")
+	_check(hud.hotbar_panel.position.x < 20.0 and hud.hotbar_panel.position.y < 20.0, "hotbar is anchored at the top left", "pos=%s" % hud.hotbar_panel.position)
 
 	# --- HUD biome indicator ---
 	hud._update_biome(0.016)

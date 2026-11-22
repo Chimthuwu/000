@@ -50,6 +50,10 @@ const FACE_CORNER_SIGNS := [
 	[Vector2i(-1, -1), Vector2i(-1, 1), Vector2i(1, 1), Vector2i(1, -1)]
 ]
 const AO_SHADE := [1.0, 0.82, 0.66, 0.46]
+# Top faces carry the ground the player walks on. Terraria's lighting is flat
+# there, so a concave dip must not go black; side faces keep the firm ramp that
+# gives cliffs and caves their shape.
+const TOP_AO_SHADE := [1.0, 0.93, 0.86, 0.78]
 # Coloured light cast: torches warm, radiant crystals cool.
 # UV2.x gates sky fill, UV2.y scales the sun. Canopy columns get no sky fill
 # and a heavily cut sun term, which is what keeps the Jungle dark at noon.
@@ -105,13 +109,15 @@ static func build(snapshot: PackedByteArray, light_snapshot: PackedByteArray, sk
 				var cell := Vector3i(x, y, z)
 				var hash_value := (x * 73856093) ^ (y * 19349663) ^ (z * 83492791)
 				var tone := float(hash_value & 0xFF) / 255.0
-				var variation := 0.94 + tone * 0.12
+				# Gentle block-to-block toning. The old +/-6% range read as a
+				# checkerboard on open grass; Terraria surfaces are even.
+				var variation := 0.975 + tone * 0.05
 				# Deterministic per-cell hue jitter so a large flat surface reads as
 				# individual pixel-art blocks instead of one tinted plane.
 				var hue_jitter := Color(
-					1.0 + (tone - 0.5) * 0.07,
-					1.0 + (fposmod(tone * 3.7, 1.0) - 0.5) * 0.07,
-					1.0 + (fposmod(tone * 7.3, 1.0) - 0.5) * 0.07,
+					1.0 + (tone - 0.5) * 0.03,
+					1.0 + (fposmod(tone * 3.7, 1.0) - 0.5) * 0.03,
+					1.0 + (fposmod(tone * 7.3, 1.0) - 0.5) * 0.03,
 					1.0
 				)
 				var base_color: Color = palette[block_id]
@@ -192,7 +198,10 @@ static func _calculate_corner_ao(snapshot: PackedByteArray, cell_index: int, fac
 			occluders += 1
 		if int(snapshot[side_a + v_offset * sign.y]) != air_id:
 			occluders += 1
-		result[corner_index] = AO_SHADE[occluders]
+		if face == 2:
+			result[corner_index] = TOP_AO_SHADE[occluders]
+		else:
+			result[corner_index] = AO_SHADE[occluders]
 
 
 # Nearest-source colour blend for cells reached by static light. Intensity still

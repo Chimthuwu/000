@@ -66,7 +66,8 @@ func _run() -> void:
 	for biome in range(11):
 		centers[biome] = _find_center(biome)
 	var required := {
-		BiomeManager.MIRE: &"mire_mud",
+		# Forest lays green grass over dirt; mire_mud is the swamp/Jungle floor.
+		BiomeManager.MIRE: &"ashen_soil",
 		BiomeManager.DESERT: &"desert_sand",
 		BiomeManager.JUNGLE: &"jungle_grass",
 		BiomeManager.CORRUPTION: &"corrupted_grass",

@@ -6,8 +6,8 @@
 script = ExtResource("1")
 block_id = &"ashen_soil"
 attenuation = 1
-albedo = Color(0.55, 0.51, 0.45, 1)
-display_name = "Ashen Soil"
+albedo = Color(0.30, 0.60, 0.37, 1)
+display_name = "Grass"
 hardness = 0.7
 mining_tier = 0
 rotted_variant_id = &"rotted_ashen_soil"

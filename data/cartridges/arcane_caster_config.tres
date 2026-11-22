@@ -7,5 +7,3 @@ script = ExtResource("1_script")
 reserve_capacity = 100.0
 starting_reserve = 100.0
 recharge_per_second_at_full_light = 6.0
-mana_cost_per_projector_block = 1.0
-projector_default_block = &"ashen_soil"

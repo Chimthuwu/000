@@ -40,7 +40,17 @@ func _apply_visual() -> void:
 		return
 	var def := ItemDatabase.get_item(item_id)
 	var tint := Color(0.85, 0.85, 0.85)
-	if def != null:
+	var block_tinted := false
+	if def != null and def.place_block != &"":
+		# Blocks drop in their own colour, so a pile of logs reads as wood instead
+		# of another anonymous white cube.
+		var block_path := "res://data/blocks/%s.tres" % String(def.place_block)
+		if ResourceLoader.exists(block_path):
+			var block := load(block_path) as BlockLightDef
+			if block != null:
+				tint = block.albedo
+				block_tinted = true
+	if def != null and not block_tinted:
 		var rarities := [
 			Color(0.86, 0.87, 0.84), Color(0.42, 0.86, 0.46), Color(0.36, 0.62, 1.0),
 			Color(0.78, 0.42, 0.96), Color(1.0, 0.72, 0.24)
@@ -50,7 +60,7 @@ func _apply_visual() -> void:
 	material.albedo_color = tint
 	material.emission_enabled = true
 	material.emission = tint
-	material.emission_energy_multiplier = 0.7
+	material.emission_energy_multiplier = 0.3 if block_tinted else 0.7
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_visual.material_override = material
 
