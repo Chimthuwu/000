@@ -490,7 +490,7 @@ func _build_tall_tree(st: SurfaceTool, rng: RandomNumberGenerator) -> void:
 		_add_branch(st, rng, origin, direction, rng.randf_range(1.2, 1.9), 0.14, height)
 		var tip := origin + direction.normalized() * rng.randf_range(1.1, 1.7) + Vector3.UP * 0.45
 		_add_leaf_cards(st, tip, Vector3(1.30, 0.80, 1.30), rng, LEAF_DARK, LEAF_LIGHT, TreeAtlas.Tile.LEAF)
-	_add_canopy(st, rng, points[points.size() - 1], 3.5, LEAF_DARK, LEAF_LIGHT, TreeAtlas.Tile.LEAF)
+	_add_canopy(st, rng, points[points.size() - 1], 2.5, LEAF_DARK, LEAF_LIGHT, TreeAtlas.Tile.LEAF)
 
 
 func _build_leaning_tree(st: SurfaceTool, rng: RandomNumberGenerator) -> void:
@@ -503,7 +503,7 @@ func _build_leaning_tree(st: SurfaceTool, rng: RandomNumberGenerator) -> void:
 		_add_branch(st, rng, origin, direction, rng.randf_range(1.4, 2.1), 0.13, height)
 		var tip := origin + direction.normalized() * 1.5 + Vector3.UP * 0.4
 		_add_leaf_cards(st, tip, Vector3(1.25, 0.78, 1.25), rng, LEAF_DARK, LEAF_LIGHT, TreeAtlas.Tile.LEAF)
-	_add_canopy(st, rng, points[points.size() - 1], 3.2, LEAF_DARK, LEAF_LIGHT, TreeAtlas.Tile.LEAF)
+	_add_canopy(st, rng, points[points.size() - 1], 2.3, LEAF_DARK, LEAF_LIGHT, TreeAtlas.Tile.LEAF)
 
 
 func _build_gnarled_tree(st: SurfaceTool, rng: RandomNumberGenerator) -> void:
@@ -515,7 +515,7 @@ func _build_gnarled_tree(st: SurfaceTool, rng: RandomNumberGenerator) -> void:
 		var angle := TAU * float(branch) / 5.0 + rng.randf_range(-0.4, 0.4)
 		var direction := Vector3(cos(angle), rng.randf_range(0.30, 0.85), sin(angle))
 		_add_branch(st, rng, origin, direction, rng.randf_range(1.1, 1.9), 0.12, height, true)
-	_add_canopy(st, rng, points[points.size() - 1], 3.7, LEAF_DARK, LEAF_LIGHT, TreeAtlas.Tile.LEAF)
+	_add_canopy(st, rng, points[points.size() - 1], 2.8, LEAF_DARK, LEAF_LIGHT, TreeAtlas.Tile.LEAF)
 
 
 func _build_snag(st: SurfaceTool, rng: RandomNumberGenerator) -> void:
@@ -539,16 +539,16 @@ func _build_forked_tree(st: SurfaceTool, rng: RandomNumberGenerator) -> void:
 	for side_index in range(2):
 		var side := -1.0 if side_index == 0 else 1.0
 		var direction := Vector3(0.75 * side, 0.0, rng.randf_range(-0.3, 0.3))
-		var points := _add_trunk(st, rng, 6.0, 0.40, 0.13, direction * 1.2, 4, 6, base + Vector3(0.12 * side, 0.0, 0.0))
+		var points := _add_trunk(st, rng, 6.0, 0.45, 0.13, direction * 1.2, 4, 6, base + Vector3(0.12 * side, 0.0, 0.0))
 		var origin: Vector3 = points[rng.randi_range(1, points.size() - 2)]
 		var angle := rng.randf_range(-1.0, 1.0)
 		_add_branch(st, rng, origin, Vector3(cos(angle), rng.randf_range(0.35, 0.8), sin(angle)), rng.randf_range(1.2, 1.9), 0.11, 6.0)
-		_add_canopy(st, rng, points[points.size() - 1], 3.0, LEAF_DARK, LEAF_LIGHT, TreeAtlas.Tile.LEAF)
+		_add_canopy(st, rng, points[points.size() - 1], 2.0, LEAF_DARK, LEAF_LIGHT, TreeAtlas.Tile.LEAF)
 
 
 func _build_sparse_tree(st: SurfaceTool, rng: RandomNumberGenerator) -> void:
 	var height := 5.4
-	var points := _add_trunk(st, rng, height, 0.34, 0.10, Vector3(-0.45, 0.0, 0.35), 4, 5)
+	var points := _add_trunk(st, rng, height, 0.40, 0.10, Vector3(-0.45, 0.0, 0.35), 4, 5)
 	_add_roots(st, rng, 0.38)
 	for branch in range(2):
 		var origin: Vector3 = points[rng.randi_range(1, points.size() - 2)]
@@ -557,7 +557,7 @@ func _build_sparse_tree(st: SurfaceTool, rng: RandomNumberGenerator) -> void:
 		_add_branch(st, rng, origin, direction, rng.randf_range(1.2, 1.9), 0.09, height)
 		var tip := origin + direction.normalized() * 1.2 + Vector3.UP * 0.3
 		_add_leaf_cards(st, tip, Vector3(1.0, 0.65, 1.0), rng, LEAF_DARK, LEAF_LIGHT, TreeAtlas.Tile.LEAF)
-	_add_canopy(st, rng, points[points.size() - 1], 2.6, LEAF_DARK, LEAF_LIGHT, TreeAtlas.Tile.LEAF)
+	_add_canopy(st, rng, points[points.size() - 1], 1.8, LEAF_DARK, LEAF_LIGHT, TreeAtlas.Tile.LEAF)
 
 
 ## Terraria canopies read as one solid stepped mass, not as a handful of
@@ -834,7 +834,7 @@ func _build_jungle_tree(index: int) -> ArrayMesh:
 	st.set_smooth_group(-1)
 	var height := 8.4 + float(index) * 1.1
 	var lean := Vector3(rng.randf_range(-1.2, 1.2), 0.0, rng.randf_range(-1.0, 1.0))
-	var points := _add_trunk(st, rng, height, 0.58, 0.13, lean, 5, 6)
+	var points := _add_trunk(st, rng, height, 0.64, 0.14, lean, 5, 6)
 	_add_roots(st, rng, 0.72)
 	# Buttress fins make the base read as a jungle tree rather than a pole.
 	for fin in range(3):
@@ -849,9 +849,9 @@ func _build_jungle_tree(index: int) -> ArrayMesh:
 		var length := rng.randf_range(2.2, 3.8)
 		_add_branch(st, rng, origin, direction, length, 0.17, height, true)
 		var tip := origin + direction.normalized() * length * 0.9 + Vector3.UP * length * 0.2
-		_add_leaf_cluster(st, rng, tip, rng.randf_range(1.7, 2.3), 5, JUNGLE_LEAF_DARK, JUNGLE_LEAF_LIGHT, TreeAtlas.Tile.LEAF_JUNGLE)
+		_add_leaf_cluster(st, rng, tip, rng.randf_range(1.5, 2.0), 5, JUNGLE_LEAF_DARK, JUNGLE_LEAF_LIGHT, TreeAtlas.Tile.LEAF_JUNGLE)
 	var top: Vector3 = points[points.size() - 1]
-	_add_canopy(st, rng, top, 3.2, JUNGLE_LEAF_DARK, JUNGLE_LEAF_LIGHT, TreeAtlas.Tile.LEAF_JUNGLE)
+	_add_canopy(st, rng, top, 2.5, JUNGLE_LEAF_DARK, JUNGLE_LEAF_LIGHT, TreeAtlas.Tile.LEAF_JUNGLE)
 	# Short hanging vines under the upper crown.
 	for vine in range(4):
 		var origin: Vector3 = points[rng.randi_range(2, points.size() - 1)]
@@ -962,14 +962,14 @@ func _build_biome_tree(style: String) -> ArrayMesh:
 func _build_snow_tree(st: SurfaceTool) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 22031
-	var points := _add_trunk(st, rng, 7.6, 0.36, 0.10, Vector3(0.2, 0.0, 0.15), 5, 5)
+	var points := _add_trunk(st, rng, 7.6, 0.42, 0.12, Vector3(0.2, 0.0, 0.15), 5, 5)
 	_add_roots(st, rng, 0.42)
 	for tier in range(4):
 		var center := Vector3(0.0, 2.8 + float(tier) * 1.65, 0.0)
-		var radius := 2.70 - float(tier) * 0.46
+		var radius := 2.10 - float(tier) * 0.36
 		_add_leaf_cluster(st, rng, center, radius, 3, Color(0.24, 0.43, 0.40), Color(0.67, 0.90, 0.82), TreeAtlas.Tile.NEEDLE)
 		_add_leaf_cluster(st, rng, center + Vector3.UP * 0.28, radius * 0.72, 2, Color(0.82, 0.94, 1.0), Color(1.0, 1.0, 1.0), TreeAtlas.Tile.NEEDLE)
-	_add_leaf_cluster(st, rng, points[points.size() - 1] + Vector3.UP * 0.5, 0.9, 3, Color(0.30, 0.50, 0.46), Color(0.82, 0.96, 1.0), TreeAtlas.Tile.NEEDLE)
+	_add_leaf_cluster(st, rng, points[points.size() - 1] + Vector3.UP * 0.5, 0.8, 3, Color(0.30, 0.50, 0.46), Color(0.82, 0.96, 1.0), TreeAtlas.Tile.NEEDLE)
 
 
 func _build_desert_palm(st: SurfaceTool) -> void:
@@ -993,7 +993,7 @@ func _build_evil_tree(st: SurfaceTool) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 44009
 	var height := 8.2
-	var points := _add_trunk(st, rng, height, 0.34, 0.08, Vector3(1.0, 0.0, 0.55), 5, 4)
+	var points := _add_trunk(st, rng, height, 0.38, 0.09, Vector3(1.0, 0.0, 0.55), 5, 4)
 	_add_roots(st, rng, 0.55)
 	for branch in range(6):
 		var origin: Vector3 = points[rng.randi_range(2, points.size() - 1)]
@@ -1002,7 +1002,7 @@ func _build_evil_tree(st: SurfaceTool) -> void:
 		_add_branch(st, rng, origin, direction, rng.randf_range(1.8, 3.2), 0.12, height, true)
 		var tip := origin + direction.normalized() * rng.randf_range(1.5, 2.6)
 		_add_leaf_cluster(st, rng, tip, rng.randf_range(1.1, 1.6), 3, Color(0.14, 0.03, 0.18), Color(0.48, 0.13, 0.40), TreeAtlas.Tile.LEAF_EVIL)
-	_add_canopy(st, rng, points[points.size() - 1], 2.3, Color(0.14, 0.03, 0.18), Color(0.48, 0.13, 0.40), TreeAtlas.Tile.LEAF_EVIL)
+	_add_canopy(st, rng, points[points.size() - 1], 1.8, Color(0.14, 0.03, 0.18), Color(0.48, 0.13, 0.40), TreeAtlas.Tile.LEAF_EVIL)
 	# Bare thorn tips keep the corrupted silhouette hostile without horror props.
 	for thorn in range(5):
 		var origin: Vector3 = points[rng.randi_range(2, points.size() - 1)]
@@ -1014,7 +1014,7 @@ func _build_hallow_tree(st: SurfaceTool) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 55021
 	var height := 8.4
-	var points := _add_trunk(st, rng, height, 0.30, 0.07, Vector3(0.5, 0.0, -0.3), 4, 5)
+	var points := _add_trunk(st, rng, height, 0.36, 0.09, Vector3(0.5, 0.0, -0.3), 4, 5)
 	_add_roots(st, rng, 0.44)
 	for branch in range(5):
 		var origin: Vector3 = points[rng.randi_range(2, points.size() - 1)]
@@ -1023,7 +1023,7 @@ func _build_hallow_tree(st: SurfaceTool) -> void:
 		_add_branch(st, rng, origin, direction, rng.randf_range(2.0, 3.0), 0.10, height, true)
 		var tip := origin + direction.normalized() * 2.3
 		_add_leaf_cluster(st, rng, tip, rng.randf_range(1.5, 2.1), 4, Color(0.72, 0.34, 0.72), Color(1.0, 0.82, 1.0), TreeAtlas.Tile.LEAF_HALLOW)
-	_add_canopy(st, rng, points[points.size() - 1], 3.0, Color(0.78, 0.42, 0.78), Color(1.0, 0.90, 1.0), TreeAtlas.Tile.LEAF_HALLOW)
+	_add_canopy(st, rng, points[points.size() - 1], 2.0, Color(0.78, 0.42, 0.78), Color(1.0, 0.90, 1.0), TreeAtlas.Tile.LEAF_HALLOW)
 	for shard in range(3):
 		var angle := TAU * float(shard) / 3.0
 		var start := points[rng.randi_range(2, points.size() - 1)]
