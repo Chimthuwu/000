@@ -23,7 +23,7 @@ are implemented and verified. Phase 1 (overworld art) is partially done, Phase 5
         mid-ground band went from `(29,45,21)` to `(85,146,81)`.
 - [x] Reduce the per-block luminance checkerboard on grass — per-block tone range
       tightened from 0.94-1.06 to 0.975-1.025 and the hue jitter from ±3.5% to ±1.5%.
-- [ ] Tree trunks still read near-black on their shadowed side at the base.
+- [x] Tree trunks still read near-black on their shadowed side at the base. DONE 2026-11-23. Lightened `BARK_DARK` from `(0.28,0.20,0.15)` to `(0.42,0.32,0.22)` and `BARK_LIGHT` from `(0.64,0.52,0.40)` to `(0.68,0.56,0.44)` in `vegetation.gd`. Added `trunk_ambient` term in `vegetation.gdshader` for `texture_strength > 0.5` (tree trunks/leaves) lifting shadowed base by `base_color * 0.18`, preserving bark hue without flattening canopy.
 - [ ] Review canopy silhouettes at distance — crowns are wide relative to trunk
       thickness and may read as lollipops in the far field.
 - [ ] Other biomes have not had an art pass at all: hush/jungle, frost, mire, desert,
