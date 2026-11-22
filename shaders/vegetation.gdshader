@@ -49,7 +49,17 @@ void fragment() {
 	SPECULAR = 0.0;
 	// Unshadowed sky/ambient term; sunlight arrives through the light() pass with
 	// the directional shadow map folded into ATTENUATION.
-	EMISSION = surface_color * (sky_tint * (ambient_sky_level * 0.60) + vec3(0.06 + glow_strength));
+	// Tree trunks (texture_strength > 0.5) get a minimum ambient so shadowed bases
+	// don't read as near-black. The base_color at trunk base is dark, so we add
+	// an unlit term that preserves the bark hue without relying on wrapped light.
+	vec3 trunk_ambient = vec3(0.0);
+	if (texture_strength > 0.5) {
+		// Lift the darkest trunk areas by ~0.12 in linear space; this is enough
+		// to keep the bark readable on the shadowed side without flattening the
+		// canopy which shares the same material.
+		trunk_ambient = base_color * 0.18;
+	}
+	EMISSION = surface_color * (sky_tint * (ambient_sky_level * 0.60) + vec3(0.06 + glow_strength)) + trunk_ambient;
 }
 
 void light() {
