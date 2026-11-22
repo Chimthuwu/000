@@ -61,7 +61,7 @@ func _hit_player() -> void:
 	var caster := player.get_node_or_null("ArcaneCaster") as ArcaneCaster
 	if caster != null:
 		caster.reserve = maxf(0.0, caster.reserve - DRAIN)
-		caster._set_status("TOXIC SPIT — MANA -%d" % int(DRAIN))
+		caster._set_status("TOXIC SPIT — RESERVE -%d" % int(DRAIN))
 	Vfx.burst(get_parent() as Node3D, global_position, Color(0.42, 0.9, 0.14), Vector3.UP, 16, 3.0, 0.05, 0.4, 0.8)
 	queue_free()
 
