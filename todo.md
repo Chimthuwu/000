@@ -188,10 +188,10 @@ are implemented and verified. Phase 1 (overworld art) is partially done, Phase 5
 
 ## 3. Music / ambience verification (Phase 3 & 4 follow-through)
 
-- [ ] Real transition evidence run: walk or teleport across biome borders and depths,
+- [!] Real transition evidence run: walk or teleport across biome borders and depths,
       capture `[Music]` and `[Ambience]` log lines for every category actually reached
       (forest → snow → jungle → desert → underground → cavern → underworld → boss).
-- [ ] Confirm no audible restart when crossing a border back and forth rapidly.
+- [!] Confirm no audible restart when crossing a border back and forth rapidly.
 - [x] **Real biome music.** DONE 2026-11-22. The Terraria soundtrack files the
       user supplied were imported into `res/audio/music/` (18 files, ~37 MB) and
       wired through `data/audio/music_map.tres`, one track per category:
@@ -230,32 +230,32 @@ are implemented and verified. Phase 1 (overworld art) is partially done, Phase 5
       Verified by `debug/music_map_check.gd` on the real audio driver (all seven
       forced categories decode and advance their playback clock) and by
       `debug/music_check.gd` (33 assertions).
-- [ ] Swap `desert.mp3` for the real Terraria Desert theme when it turns up; the
+- [!] Swap `desert.mp3` for the real Terraria Desert theme when it turns up; the
       current file is the Alternate Day overworld track.
 
 ## 4. Verification sweep (Phase 5)
 
-- [ ] Re-run the regression checks after the palette change:
+- [!] Re-run the regression checks after the palette change:
       `world_boot_check`, `biome_visuals_check`, `terrain_atlas_check`,
       `building_extra_check`, `survival_check`, `npc_check`, `menu_click_check`.
       (2026-11-22: `terrain_atlas_check`, `mesher_fixture_check`,
       `biome_visuals_check`, `core_biomes_check`, `world_boot_check`,
       `overworld_check` and `world_contract_check` already PASS for the grass and
       spawn-distance work; the rest of this list is still open.)
-- [ ] Capture a biome screenshot set for the evidence folder:
+- [!] Capture a biome screenshot set for the evidence folder:
       forest, crimson, jungle, underground, underworld.
-- [ ] Re-run `music_check` and `gameplay_integration_check` after the HUD palette and
+- [!] Re-run `music_check` and `gameplay_integration_check` after the HUD palette and
       inventory layout edits.
-- [ ] Update `STATE.md` and `DEVLOG.md` for this session's work.
-- [ ] Re-export `build/Terraria3D.exe`.
+- [!] Update `STATE.md` and `DEVLOG.md` for this session's work.
+- [!] Re-export `build/Terraria3D.exe`.
 
 ## 5. Known bugs, not yet fixed
 
-- [ ] **Initial world streaming stall.** On some launches the world is still streaming
+- [!] **Initial world streaming stall.** On some launches the world is still streaming
       when the player spawns and the player falls through non-collidable chunks. A
       settle guard was added to `debug/capture_terraria_ui.gd` to work around it in
       captures, but the root cause (noted in `STATE.md`) is unaddressed.
-- [ ] Pre-existing, unrelated failures: `streaming_check` (stale chunk y) and four
+- [!] Pre-existing, unrelated failures: `streaming_check` (stale chunk y) and four
       failures in `debug/agent2_gameplay_check.gd`.
 
 ## 6. Housekeeping
