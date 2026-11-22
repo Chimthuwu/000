@@ -128,8 +128,13 @@ are implemented and verified. Phase 1 (overworld art) is partially done, Phase 5
       the landing drops 4 stacks totalling exactly the owed 8 wood, standing on
       them collects 8) and visually in `debug/evidence/tree_felled.png`, captured
       through the real axe-chop path in `debug/capture_tree_fall.gd`.
-- [ ] Third person still shows the avatar's empty hands; only first person has a
-      held item.
+- [x] Third person still shows the avatar's empty hands; only first person has a
+      held item. DONE 2026-11-23. Added _avatar_hand attachment point and
+      _avatar_held_item node to avatar in _build_avatar(). Implemented
+      _update_avatar_held_item() with box-based models (axe, pickaxe, sword,
+      torch, card) matching first-person HeldItemViewmodel. Updates on hotbar
+      selection change (_refresh_mining_tier) and camera toggle
+      (_toggle_camera_mode). Third person now shows held tool/weapon/item.
 
 ## 1d. Hotbar input and the retired projector
 
