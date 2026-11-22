@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="MusicMap" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/audio/music_map.gd" id="1_music_map"]
+
+[resource]
+script = ExtResource("1_music_map")
+tracks = {
+"boss": "res://res/audio/music/boss.mp3",
+"cave": "res://res/audio/music/cave.mp3",
+"corruption": "res://res/audio/music/corruption.mp3",
+"crimson": "res://res/audio/music/crimson.mp3",
+"desert": "res://res/audio/music/desert.mp3",
+"hallow": "res://res/audio/music/hallow.mp3",
+"jungle": "res://res/audio/music/jungle.mp3",
+"mushroom": "res://res/audio/music/mushroom.mp3",
+"ocean": "res://res/audio/music/ocean.mp3",
+"snow": "res://res/audio/music/snow.mp3",
+"space": "res://res/audio/music/space.mp3",
+"surface_day": "res://res/audio/music/surface_day.mp3",
+"surface_night": "res://res/audio/music/surface_night.mp3",
+"underground": "res://res/audio/music/underground.mp3",
+"underground_corruption": "res://res/audio/music/underground_corruption.mp3",
+"underground_crimson": "res://res/audio/music/underground_crimson.mp3",
+"underground_hallow": "res://res/audio/music/underground_hallow.mp3",
+"underground_jungle": "res://res/audio/music/jungle.mp3",
+"underworld": "res://res/audio/music/underworld.mp3"
+}
+ambience = {}
+fade_seconds = 1.5
+switch_hold_seconds = 0.9
