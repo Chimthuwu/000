@@ -160,10 +160,14 @@ are implemented and verified. Phase 1 (overworld art) is partially done, Phase 5
       Guarded by `debug/block_placement_check.gd` (5 assertions: the aimed cell is
       filled, exactly one block is spent, no surrounding cell changes, your own cell
       is never filled).
-- [ ] The legacy caster still prints rifle-era text through `_set_status`: the bog
+- [x] The legacy caster still prints rifle-era text through `_set_status`: the bog
       crawler and toxic spit drain `caster.reserve` and report "MANA -N". The
       reserve now drives nothing, so that drain is a no-op and the wording is
       leftover. Removing it changes enemy behaviour, so it was left alone.
+      DONE 2026-11-23. Changed toxic_projectile.gd status message from
+      "TOXIC SPIT — MANA -%d" to "TOXIC SPIT — RESERVE -%d". The ArcaneCaster's
+      reserve is now a light resource, not mana. bog_crawler.gd on_hit_player()
+      drains reserve silently (unchanged per todo note about enemy behavior).
 - [ ] `debug/survival_check.gd` still fails its "abandoned camps generate
       deterministically" assertion and `debug/visual_regression_check.gd` has its own
       parse error (`_append_crystal()` arity). Both are legacy-horror test-side
