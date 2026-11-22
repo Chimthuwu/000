@@ -88,9 +88,13 @@ are implemented and verified. Phase 1 (overworld art) is partially done, Phase 5
       Guarded by `debug/tree_felling_check.gd` (14 assertions: trunk picking,
       canopy miss, axe gate, wood payout, base block intact, streaming rebuild
       does not resurrect the tree).
-- [ ] Felled trees are only remembered in memory (`felled_sites`), so they come
+- [x] Felled trees are only remembered in memory (`felled_sites`), so they come
       back when the save is reloaded. The base voxel is untouched, so nothing
       floats — but a save round-trip of the felled set is still needed for parity.
+      DONE 2026-11-23. Added felled_sites persistence in main.gd: save_game()
+      serializes vegetation.felled_sites (Vector3i keys as strings) to
+      extra.felled_sites; load_game() parses and restores to vegetation.felled_sites.
+      Felled trees now stay gone after save/load round-trip.
 - [x] **A chopped tree gave no visual feedback and popped away instead of falling.**
       DONE 2026-11-22. `WorldVegetation` now keeps a pose per tree it is working on:
       the trunk leans with swing progress (up to ~6°), shudders on every hit, and
