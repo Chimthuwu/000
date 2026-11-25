@@ -356,18 +356,18 @@ func _avatar_box(size: Vector3, at: Vector3, color: Color) -> void:
 	# canopy shadows instead of turning into a black silhouette.
 	material.emission_enabled = true
 	material.emission = color
-		material.emission_energy_multiplier = 0.22
-		mesh.material = material
-		var part := MeshInstance3D.new()
-		part.mesh = mesh
-		part.position = at
-		part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-		avatar.add_child(part)
+	material.emission_energy_multiplier = 0.22
+	mesh.material = material
+	var part := MeshInstance3D.new()
+	part.mesh = mesh
+	part.position = at
+	part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	avatar.add_child(part)
 
 
-	## Builds/updates the third-person held item model to match the hotbar selection.
-	## Reuses the same box-based construction as the first-person viewmodel.
-	func _update_avatar_held_item() -> void:
+## Builds/updates the third-person held item model to match the hotbar selection.
+## Reuses the same box-based construction as the first-person viewmodel.
+func _update_avatar_held_item() -> void:
 		if _avatar_held_item == null:
 			return
 		# Clear existing model
@@ -396,140 +396,93 @@ func _avatar_box(size: Vector3, at: Vector3, color: Color) -> void:
 			_build_avatar_card(def)
 
 
-	func _build_avatar_axe(def: ItemDef) -> void:
-		var metal := _tier_color(def.tool_tier)
-		# Handle
-		_avatar_held_box(Vector3(0.052, 0.52, 0.052), Vector3(0.0, -0.02, 0.0), Color(0.46, 0.32, 0.20), Vector3(0.0, 0.0, 0.06))
-		_avatar_held_box(Vector3(0.058, 0.10, 0.058), Vector3(-0.014, -0.26, 0.0), Color(0.30, 0.20, 0.12), Vector3(0.0, 0.0, 0.06))
-		# Head
-		_avatar_held_box(Vector3(0.040, 0.150, 0.055), Vector3(0.018, 0.215, -0.055), metal, Vector3(0.10, 0.0, 0.0))
-		_avatar_held_box(Vector3(0.052, 0.190, 0.030), Vector3(0.020, 0.245, -0.140), metal, Vector3(0.24, 0.0, 0.0))
-		_avatar_held_box(Vector3(0.030, 0.200, 0.014), Vector3(0.020, 0.248, -0.163), metal.lightened(0.35), Vector3(0.24, 0.0, 0.0))
-		_avatar_held_box(Vector3(0.050, 0.048, 0.060), Vector3(0.016, 0.200, 0.006), metal.darkened(0.25))
+func _build_avatar_axe(def: ItemDef) -> void:
+	var metal := _tier_color(def.tool_tier)
+	# Handle
+	_avatar_held_box(Vector3(0.052, 0.52, 0.052), Vector3(0.0, -0.02, 0.0), Color(0.46, 0.32, 0.20), Vector3(0.0, 0.0, 0.06))
+	_avatar_held_box(Vector3(0.058, 0.10, 0.058), Vector3(-0.014, -0.26, 0.0), Color(0.30, 0.20, 0.12), Vector3(0.0, 0.0, 0.06))
+	# Head
+	_avatar_held_box(Vector3(0.040, 0.150, 0.055), Vector3(0.018, 0.215, -0.055), metal, Vector3(0.10, 0.0, 0.0))
+	_avatar_held_box(Vector3(0.052, 0.190, 0.030), Vector3(0.020, 0.245, -0.140), metal, Vector3(0.24, 0.0, 0.0))
+	_avatar_held_box(Vector3(0.030, 0.200, 0.014), Vector3(0.020, 0.248, -0.163), metal.lightened(0.35), Vector3(0.24, 0.0, 0.0))
+	_avatar_held_box(Vector3(0.050, 0.048, 0.060), Vector3(0.016, 0.200, 0.006), metal.darkened(0.25))
 
 
-	func _build_avatar_pickaxe(def: ItemDef) -> void:
-		var metal := _tier_color(def.tool_tier)
-		_avatar_held_box(Vector3(0.052, 0.52, 0.052), Vector3(0.0, -0.02, 0.0), Color(0.46, 0.32, 0.20), Vector3(0.0, 0.0, 0.06))
-		_avatar_held_box(Vector3(0.058, 0.10, 0.058), Vector3(-0.014, -0.26, 0.0), Color(0.30, 0.20, 0.12), Vector3(0.0, 0.0, 0.06))
-		_avatar_held_box(Vector3(0.150, 0.046, 0.048), Vector3(0.010, 0.215, 0.0), metal)
-		_avatar_held_box(Vector3(0.120, 0.040, 0.040), Vector3(-0.115, 0.196, 0.0), metal, Vector3(0.0, 0.0, 0.42))
-		_avatar_held_box(Vector3(0.120, 0.040, 0.040), Vector3(0.135, 0.196, 0.0), metal, Vector3(0.0, 0.0, -0.42))
-		_avatar_held_box(Vector3(0.070, 0.026, 0.034), Vector3(-0.175, 0.150, 0.0), metal.lightened(0.30), Vector3(0.0, 0.0, 0.42))
-		_avatar_held_box(Vector3(0.070, 0.026, 0.034), Vector3(0.195, 0.150, 0.0), metal.lightened(0.30), Vector3(0.0, 0.0, -0.42))
+func _build_avatar_pickaxe(def: ItemDef) -> void:
+	var metal := _tier_color(def.tool_tier)
+	_avatar_held_box(Vector3(0.052, 0.52, 0.052), Vector3(0.0, -0.02, 0.0), Color(0.46, 0.32, 0.20), Vector3(0.0, 0.0, 0.06))
+	_avatar_held_box(Vector3(0.058, 0.10, 0.058), Vector3(-0.014, -0.26, 0.0), Color(0.30, 0.20, 0.12), Vector3(0.0, 0.0, 0.06))
+	_avatar_held_box(Vector3(0.150, 0.046, 0.048), Vector3(0.010, 0.215, 0.0), metal)
+	_avatar_held_box(Vector3(0.120, 0.040, 0.040), Vector3(-0.115, 0.196, 0.0), metal, Vector3(0.0, 0.0, 0.42))
+	_avatar_held_box(Vector3(0.120, 0.040, 0.040), Vector3(0.135, 0.196, 0.0), metal, Vector3(0.0, 0.0, -0.42))
+	_avatar_held_box(Vector3(0.070, 0.026, 0.034), Vector3(-0.175, 0.150, 0.0), metal.lightened(0.30), Vector3(0.0, 0.0, 0.42))
+	_avatar_held_box(Vector3(0.070, 0.026, 0.034), Vector3(0.195, 0.150, 0.0), metal.lightened(0.30), Vector3(0.0, 0.0, -0.42))
 
 
-	func _build_avatar_sword(def: ItemDef) -> void:
-		var metal := _tier_color(def.tool_tier) if def.tool_tier > 0 else Color(0.72, 0.76, 0.80)
-		_avatar_held_box(Vector3(0.050, 0.130, 0.048), Vector3(0.0, -0.02, 0.0), Color(0.44, 0.30, 0.18))
-		_avatar_held_box(Vector3(0.055, 0.030, 0.058), Vector3(0.0, 0.050, 0.0), metal.darkened(0.35))
-		_avatar_held_box(Vector3(0.185, 0.030, 0.050), Vector3(0.0, 0.075, 0.0), metal.darkened(0.15))
-		_avatar_held_box(Vector3(0.052, 0.420, 0.016), Vector3(0.0, 0.300, 0.0), metal)
-		_avatar_held_box(Vector3(0.014, 0.400, 0.020), Vector3(0.0, 0.298, -0.002), metal.lightened(0.40))
-		_avatar_held_box(Vector3(0.036, 0.060, 0.016), Vector3(0.0, 0.540, 0.0), metal.lightened(0.20))
+func _build_avatar_sword(def: ItemDef) -> void:
+	var metal := _tier_color(def.tool_tier) if def.tool_tier > 0 else Color(0.72, 0.76, 0.80)
+	_avatar_held_box(Vector3(0.050, 0.130, 0.048), Vector3(0.0, -0.02, 0.0), Color(0.44, 0.30, 0.18))
+	_avatar_held_box(Vector3(0.055, 0.030, 0.058), Vector3(0.0, 0.050, 0.0), metal.darkened(0.35))
+	_avatar_held_box(Vector3(0.185, 0.030, 0.050), Vector3(0.0, 0.075, 0.0), metal.darkened(0.15))
+	_avatar_held_box(Vector3(0.052, 0.420, 0.016), Vector3(0.0, 0.300, 0.0), metal)
+	_avatar_held_box(Vector3(0.014, 0.400, 0.020), Vector3(0.0, 0.298, -0.002), metal.lightened(0.40))
+	_avatar_held_box(Vector3(0.036, 0.060, 0.016), Vector3(0.0, 0.540, 0.0), metal.lightened(0.20))
 
 
-	func _build_avatar_torch() -> void:
-		_avatar_held_box(Vector3(0.038, 0.300, 0.038), Vector3(0.0, -0.04, 0.0), Color(0.42, 0.30, 0.18))
-		_avatar_held_box(Vector3(0.072, 0.090, 0.072), Vector3(0.0, 0.156, 0.0), Color(1.0, 0.68, 0.24).lightened(0.25), Vector3.ZERO, 2.6)
-		_avatar_held_box(Vector3(0.044, 0.060, 0.044), Vector3(0.0, 0.216, 0.0), Color(1.0, 0.68, 0.24), Vector3.ZERO, 3.4)
+func _build_avatar_torch() -> void:
+	_avatar_held_box(Vector3(0.038, 0.300, 0.038), Vector3(0.0, -0.04, 0.0), Color(0.42, 0.30, 0.18))
+	_avatar_held_box(Vector3(0.072, 0.090, 0.072), Vector3(0.0, 0.156, 0.0), Color(1.0, 0.68, 0.24).lightened(0.25), Vector3.ZERO, 2.6)
+	_avatar_held_box(Vector3(0.044, 0.060, 0.044), Vector3(0.0, 0.216, 0.0), Color(1.0, 0.68, 0.24), Vector3.ZERO, 3.4)
 
 
-	func _build_avatar_card(def: ItemDef) -> void:
-		var quad := QuadMesh.new()
-		quad.size = Vector2(0.21, 0.21)
-		var part := MeshInstance3D.new()
-		part.name = "Card"
-		part.mesh = quad
-		# Use unshaded material so icons keep their art colors
-		var mat := StandardMaterial3D.new()
-		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
-		mat.alpha_scissor_threshold = 0.35
-		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-		mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-		mat.albedo_texture = ItemIcons.icon_for(def.item_id)
-		part.material_override = mat
-		part.position = Vector3(0.0, 0.06, 0.0)
-		part.rotation = Vector3(0.0, -0.45, 0.10)
-		part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		_avatar_held_item.add_child(part)
-		# Small plinth under the card
-		_avatar_held_box(Vector3(0.11, 0.026, 0.08), Vector3(0.0, -0.070, 0.008), Color(0.30, 0.20, 0.12))
+func _build_avatar_card(def: ItemDef) -> void:
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.21, 0.21)
+	var part := MeshInstance3D.new()
+	part.name = "Card"
+	part.mesh = quad
+	# Use unshaded material so icons keep their art colors
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+	mat.alpha_scissor_threshold = 0.35
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	mat.albedo_texture = ItemIcons.icon_for(def.item_id)
+	part.material_override = mat
+	part.position = Vector3(0.0, 0.06, 0.0)
+	part.rotation = Vector3(0.0, -0.45, 0.10)
+	part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_avatar_held_item.add_child(part)
+	# Small plinth under the card
+	_avatar_held_box(Vector3(0.11, 0.026, 0.08), Vector3(0.0, -0.070, 0.008), Color(0.30, 0.20, 0.12))
 
 
-	func _avatar_held_box(size: Vector3, at: Vector3, color: Color, box_rotation := Vector3.ZERO, glow := 0.16) -> MeshInstance3D:
-		var mesh := BoxMesh.new()
-		mesh.size = size
-		var material := StandardMaterial3D.new()
-		material.albedo_color = color
-		material.roughness = 0.85
-		material.metallic = 0.0
-		material.emission_enabled = true
-		material.emission = color
-		material.emission_energy_multiplier = glow
-		mesh.material = material
-		var part := MeshInstance3D.new()
-		part.mesh = mesh
-		part.rotation = box_rotation
-		part.position = at
-		part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		_avatar_held_item.add_child(part)
-		return part
+func _avatar_held_box(size: Vector3, at: Vector3, color: Color, box_rotation := Vector3.ZERO, glow := 0.16) -> MeshInstance3D:
+	var mesh := BoxMesh.new()
+	mesh.size = size
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.roughness = 0.85
+	material.metallic = 0.0
+	material.emission_enabled = true
+	material.emission = color
+	material.emission_energy_multiplier = glow
+	mesh.material = material
+	var part := MeshInstance3D.new()
+	part.mesh = mesh
+	part.rotation = box_rotation
+	part.position = at
+	part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_avatar_held_item.add_child(part)
+	return part
 
 
-	func _tier_color(tier: int) -> Color:
-		return ItemIcons._metal_color(tier)
+func _tier_color(tier: int) -> Color:
+	return ItemIcons._metal_color(tier)
 
 
-	func _build_avatar_card(def: ItemDef) -> void:
-		var quad := QuadMesh.new()
-		quad.size = Vector2(0.21, 0.21)
-		var part := MeshInstance3D.new()
-		part.name = "Card"
-		part.mesh = quad
-		# Use unshaded material so icons keep their art colors
-		var mat := StandardMaterial3D.new()
-		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
-		mat.alpha_scissor_threshold = 0.35
-		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-		mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-		mat.albedo_texture = ItemIcons.icon_for(def.item_id)
-		part.material_override = mat
-		part.position = Vector3(0.0, 0.06, 0.0)
-		part.rotation = Vector3(0.0, -0.45, 0.10)
-		part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		_avatar_held_item.add_child(part)
-		# Small plinth under the card
-		_avatar_box(Vector3(0.11, 0.026, 0.08), Vector3(0.0, -0.070, 0.008), Color(0.30, 0.20, 0.12))
-
-
-	func _avatar_box(size: Vector3, at: Vector3, color: Color, box_rotation := Vector3.ZERO, glow := 0.16) -> MeshInstance3D:
-		var mesh := BoxMesh.new()
-		mesh.size = size
-		var material := StandardMaterial3D.new()
-		material.albedo_color = color
-		material.roughness = 0.85
-		material.metallic = 0.0
-		material.emission_enabled = true
-		material.emission = color
-		material.emission_energy_multiplier = glow
-		mesh.material = material
-		var part := MeshInstance3D.new()
-		part.mesh = mesh
-		part.rotation = box_rotation
-		part.position = at
-		part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		_avatar_held_item.add_child(part)
-		return part
-
-
-	func _tier_color(tier: int) -> Color:
-		return ItemIcons._metal_color(tier)
-
-
-	func _toggle_camera_mode() -> void:
+func _toggle_camera_mode() -> void:
 	camera_mode = 1 - camera_mode
 	if avatar != null:
 		avatar.visible = camera_mode == 1

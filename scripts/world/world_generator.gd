@@ -125,52 +125,52 @@ static func generate_chunk(chunk: Vector3i, world_seed: int, block_ids: Dictiona
 			var sub_id := dirt_id
 			var sub_depth := 3
 			match biome:
-					BiomeManager.HUSH:
-				# Jungle floor is bright jungle grass over jungle mudstone,
-				# matching Terraria's vibrant Jungle biome.
-				top_id = jungle_grass_id
-				sub_id = jungle_mudstone_id
+				BiomeManager.HUSH:
+					# Jungle floor is bright jungle grass over jungle mudstone,
+					# matching Terraria's vibrant Jungle biome.
+					top_id = jungle_grass_id
+					sub_id = jungle_mudstone_id
 					sub_depth = 4
 				BiomeManager.FROST:
-				top_id = frost_snow_id
-				sub_id = frost_ice_id
-				sub_depth = 3
+					top_id = frost_snow_id
+					sub_id = frost_ice_id
+					sub_depth = 3
 				BiomeManager.MIRE:
-				# Forest ground is Terraria's bright grass over brown dirt. It
-				# used to be mire_mud here, whose albedo (0.16,0.24,0.13) and
-				# DEEP_MUD tile are the swamp material, which is what made the
-				# forest floor read as near-black moss.
-				top_id = ashen_soil_id
-				sub_id = dirt_id
-				sub_depth = 4
+					# Forest ground is Terraria's bright grass over brown dirt. It
+					# used to be mire_mud here, whose albedo (0.16,0.24,0.13) and
+					# DEEP_MUD tile are the swamp material, which is what made the
+					# forest floor read as near-black moss.
+					top_id = ashen_soil_id
+					sub_id = dirt_id
+					sub_depth = 4
 				BiomeManager.DESERT:
-				top_id = desert_sand_id
-				sub_id = sandstone_id
-				sub_depth = 5
-					BiomeManager.MUSHROOM:
-						top_id = mycelium_id
-						sub_id = mushroom_soil_id
-						sub_depth = 4
-						BiomeManager.JUNGLE:
-				# Jungle floor is bright jungle grass over jungle mudstone,
-				# matching Terraria's vibrant Jungle biome.
-				top_id = jungle_grass_id
-				sub_id = jungle_mudstone_id
-				sub_depth = 5
+					top_id = desert_sand_id
+					sub_id = sandstone_id
+					sub_depth = 5
+				BiomeManager.MUSHROOM:
+					top_id = mycelium_id
+					sub_id = mushroom_soil_id
+					sub_depth = 4
+				BiomeManager.JUNGLE:
+					# Jungle floor is bright jungle grass over jungle mudstone,
+					# matching Terraria's vibrant Jungle biome.
+					top_id = jungle_grass_id
+					sub_id = jungle_mudstone_id
+					sub_depth = 5
 				BiomeManager.CORRUPTION:
-				top_id = corrupted_grass_id
-				sub_id = ebonstone_id
-				sub_depth = 4
+					top_id = corrupted_grass_id
+					sub_id = ebonstone_id
+					sub_depth = 4
 				BiomeManager.CRIMSON:
-				top_id = crimson_grass_id
-				sub_id = crimstone_id
-				sub_depth = 4
+					top_id = crimson_grass_id
+					sub_id = crimstone_id
+					sub_depth = 4
 				BiomeManager.HALLOW:
-				top_id = hallowed_grass_id
-				sub_id = pearlstone_id
-				sub_depth = 4
+					top_id = hallowed_grass_id
+					sub_id = pearlstone_id
+					sub_depth = 4
 				BiomeManager.OCEAN:
-				top_id = ocean_sand_id
+					top_id = ocean_sand_id
 					sub_id = sandstone_id
 					sub_depth = 4
 				_:
