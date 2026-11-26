@@ -68,6 +68,20 @@ var region_center := Vector2i(1 << 30, 1 << 30)
 var region_seed := -1
 var region_radius := 0
 
+# Region rebuilds scan up to ~13k biome-noise cells (tree sites, grass, ground
+# cover, surface details). Doing that on the main thread produced 100-250ms
+# hitches every time the streaming centre moved far enough to trigger one
+# (the same problem water_surface.gd documents and already fixed for its own
+# region scan). The scan now runs on a worker; only the resulting transform
+# arrays are installed here, on the main thread.
+var _queued_seed := -1
+var _queued_center := Vector2i(1 << 30, 1 << 30)
+var _queued_radius := 0
+var _request_id := 0
+var _task_id := -1
+var _result: Dictionary = {}
+var _mutex := Mutex.new()
+
 
 func configure(world_bounds: AABB) -> void:
 	set_process(true)
@@ -151,15 +165,73 @@ func update_region(world_seed: int, center: Vector2i, radius: int) -> void:
 	region_center = center
 	region_radius = radius
 	BiomeManager.configure(world_seed)
+	_queued_seed = world_seed
+	_queued_center = center
+	_queued_radius = radius
+	if _task_id == -1:
+		_start_build()
+
+
+func _start_build() -> void:
+	if _queued_radius <= 0:
+		return
+	_request_id += 1
+	var request := _request_id
+	var world_seed := _queued_seed
+	var center := _queued_center
+	var radius := _queued_radius
+	_task_id = WorkerThreadPool.add_task(Callable(self, "_build_region_task").bind(request, world_seed, center, radius))
+
+
+func _build_region_task(request: int, world_seed: int, center: Vector2i, radius: int) -> void:
 	var sites := WorldGenerator.collect_tree_sites_region(world_seed, center.x - radius, center.y - radius, center.x + radius, center.y + radius)
-	_apply_sites(sites)
-	_build_biome_props(world_seed, center, mini(radius, 72))
-	_build_biome_trees(world_seed, center, mini(radius, 72))
-	_build_region_cover(world_seed, center, mini(radius, 72))
-	_build_surface_details(world_seed, center, mini(radius, 72))
+	var small_radius := mini(radius, 72)
+	var result := {
+		"id": request,
+		"center": center,
+		"radius": radius,
+		"tree_layout": _compute_tree_layout(sites),
+		"props": _compute_biome_props(world_seed, center, small_radius),
+		"biome_trees": _compute_biome_trees(world_seed, center, small_radius),
+		"cover": _compute_region_cover(world_seed, center, small_radius),
+		"details": _compute_surface_details(world_seed, center, small_radius),
+	}
+	_mutex.lock()
+	_result = result
+	_mutex.unlock()
 
 
-func _apply_sites(sites: Array) -> void:
+func _process(delta: float) -> void:
+	_advance_damage(delta)
+	_advance_falls(delta)
+	_poll_region_build()
+
+
+func _poll_region_build() -> void:
+	if _task_id == -1:
+		return
+	if not WorkerThreadPool.is_task_completed(_task_id):
+		return
+	WorkerThreadPool.wait_for_task_completion(_task_id)
+	_task_id = -1
+	_mutex.lock()
+	var result := _result
+	_result = {}
+	_mutex.unlock()
+	if not result.is_empty() and int(result["id"]) == _request_id:
+		_apply_region(result)
+	var built_center: Vector2i = result.get("center", Vector2i(1 << 30, 1 << 30))
+	var built_radius: int = result.get("radius", 0)
+	# The centre may have moved again while the scan was running; rebuild once
+	# for the newest request instead of leaving a stale region installed.
+	if _queued_radius > 0 and (_queued_center != built_center or _queued_radius != built_radius):
+		_start_build()
+
+
+## Pure computation: which tree goes where, and the per-slot bookkeeping
+## `damage_tree`/`fell_tree`/`raycast_tree` need. Safe to run off the main
+## thread since it only reads `felled_sites` and builds plain data.
+func _compute_tree_layout(sites: Array) -> Dictionary:
 	if not felled_sites.is_empty():
 		var live: Array = []
 		for site in sites:
@@ -167,16 +239,9 @@ func _apply_sites(sites: Array) -> void:
 				continue
 			live.append(site)
 		sites = live
-	# Instance indices are rebuilt, so damage recorded against the old batch no
-	# longer refers to the same trees. In-flight tumbles notice through the
-	# generation stamp instead of being cleared here.
-	tree_states.clear()
-	sites_generation += 1
-	tree_sites = sites
 	var per_archetype: Array = []
 	for index in range(ARCHETYPE_COUNT):
 		per_archetype.append([])
-	site_slots.clear()
 	for site in sites:
 		var rng := RandomNumberGenerator.new()
 		rng.seed = int(site["seed"])
@@ -188,6 +253,47 @@ func _apply_sites(sites: Array) -> void:
 		var transform := Transform3D(Basis(Vector3.UP, rotation).scaled(Vector3(scale_value, scale_value * rng.randf_range(0.95, 1.12), scale_value)), position)
 		per_archetype[archetype].append(transform)
 
+	# Site slots are built in the same order as each archetype's transforms so a
+	# mined stump can hide its own tree without touching the rest of the batch.
+	var slots: Dictionary = {}
+	var archetype_cursor := PackedInt32Array()
+	archetype_cursor.resize(ARCHETYPE_COUNT)
+	archetype_cursor.fill(0)
+	var tree_total := 0
+	for site in sites:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = int(site["seed"])
+		var archetype := rng.randi_range(0, ARCHETYPE_COUNT - 1)
+		# Same draws as the transform pass above, so the stored scale is the one
+		# the instance was actually placed with.
+		var landmark := bool(site["landmark"])
+		var scale_value := rng.randf_range(1.5, 1.9) if landmark else rng.randf_range(1.0, 1.32)
+		slots[Vector3i(int(site["x"]), int(site["y"]), int(site["z"]))] = {
+			"archetype": archetype,
+			"index": archetype_cursor[archetype],
+			"scale": scale_value,
+			# Kept so a damaged or falling tree can be posed relative to where it
+			# actually stands; instances may be rebuilt between hits.
+			"transform": per_archetype[archetype][archetype_cursor[archetype]] if archetype_cursor[archetype] < per_archetype[archetype].size() else Transform3D(),
+		}
+		archetype_cursor[archetype] += 1
+		tree_total += 1
+	return {"sites": sites, "per_archetype": per_archetype, "site_slots": slots, "tree_count": tree_total}
+
+
+## Installs one worker-computed region: MultiMesh writes only, so this stays
+## cheap on the main thread regardless of how large the scan behind it was.
+func _apply_region(result: Dictionary) -> void:
+	var tree_layout: Dictionary = result["tree_layout"]
+	# Instance indices are rebuilt, so damage recorded against the old batch no
+	# longer refers to the same trees. In-flight tumbles notice through the
+	# generation stamp instead of being cleared here.
+	tree_states.clear()
+	sites_generation += 1
+	tree_sites = tree_layout["sites"]
+	site_slots = tree_layout["site_slots"]
+	tree_count = int(tree_layout["tree_count"])
+	var per_archetype: Array = tree_layout["per_archetype"]
 	for archetype in range(ARCHETYPE_COUNT):
 		var transforms: Array = per_archetype[archetype]
 		var multimesh := tree_multimeshes[archetype]
@@ -205,30 +311,24 @@ func _apply_sites(sites: Array) -> void:
 			# Untouched trees are untinted.
 			multimesh.set_instance_color(index, Color(1.0, 1.0, 1.0))
 
-	# Site slots are built in the same order as each archetype's transforms so a
-	# mined stump can hide its own tree without touching the rest of the batch.
-	var archetype_cursor := PackedInt32Array()
-	archetype_cursor.resize(ARCHETYPE_COUNT)
-	archetype_cursor.fill(0)
-	tree_count = 0
-	for site in sites:
-		var rng := RandomNumberGenerator.new()
-		rng.seed = int(site["seed"])
-		var archetype := rng.randi_range(0, ARCHETYPE_COUNT - 1)
-		# Same draws as the transform pass above, so the stored scale is the one
-		# the instance was actually placed with.
-		var landmark := bool(site["landmark"])
-		var scale_value := rng.randf_range(1.5, 1.9) if landmark else rng.randf_range(1.0, 1.32)
-		site_slots[Vector3i(int(site["x"]), int(site["y"]), int(site["z"]))] = {
-			"archetype": archetype,
-			"index": archetype_cursor[archetype],
-			"scale": scale_value,
-			# Kept so a damaged or falling tree can be posed relative to where it
-			# actually stands; instances may be rebuilt between hits.
-			"transform": per_archetype[archetype][archetype_cursor[archetype]] if archetype_cursor[archetype] < per_archetype[archetype].size() else Transform3D(),
-		}
-		archetype_cursor[archetype] += 1
-		tree_count += 1
+	var props: Dictionary = result["props"]
+	var hush_per_archetype: Array = props["hush_per_archetype"]
+	for archetype in range(HUSH_ARCHETYPES):
+		_fill_cover_from_multimesh(hush_multimeshes[archetype], hush_per_archetype[archetype])
+	_fill_cover(mushroom_instance, props["mushrooms"])
+	_fill_cover(spire_instance, props["spires"])
+	_fill_cover(root_instance, props["roots"])
+
+	var biome_trees: Dictionary = result["biome_trees"]
+	for style in biome_trees.keys():
+		_fill_cover_from_multimesh(biome_tree_multimeshes[style], biome_trees[style])
+
+	_fill_cover(grass_instance, result["cover"])
+	grass_count = (result["cover"] as Array).size()
+
+	var details: Dictionary = result["details"]
+	_fill_cover(flower_instance, details["flowers"])
+	_fill_cover(bush_instance, details["bushes"])
 
 
 func set_sun(direction: Vector3, color: Color, strength: float) -> void:
@@ -305,11 +405,10 @@ func hide_tree_at(stump_cell: Vector3i) -> void:
 	fell_tree(stump_cell)
 
 
-## Advances tree damage and fallen trees. Every tree here is one MultiMesh
-## instance, so posing it is a single transform write per frame.
-func _process(delta: float) -> void:
-	_advance_damage(delta)
-	_advance_falls(delta)
+func _exit_tree() -> void:
+	if _task_id != -1:
+		WorkerThreadPool.wait_for_task_completion(_task_id)
+		_task_id = -1
 
 
 func _advance_damage(delta: float) -> void:
@@ -865,7 +964,7 @@ func _build_jungle_tree(index: int) -> ArrayMesh:
 
 # --- Biome-specific tree silhouettes ---------------------------------------
 
-func _build_biome_trees(world_seed: int, center: Vector2i, radius: int) -> void:
+func _compute_biome_trees(world_seed: int, center: Vector2i, radius: int) -> Dictionary:
 	var grouped: Dictionary = {}
 	for style in biome_tree_multimeshes.keys():
 		grouped[style] = []
@@ -896,8 +995,7 @@ func _build_biome_trees(world_seed: int, center: Vector2i, radius: int) -> void:
 				Vector3(float(x) + 0.5, float(y) + 1.0, float(z) + 0.5)
 			)
 			grouped[style].append(transform)
-	for style in grouped.keys():
-		_fill_cover_from_multimesh(biome_tree_multimeshes[style], grouped[style])
+	return grouped
 
 
 func _style_for_biome(biome: int) -> String:
@@ -1132,7 +1230,7 @@ func _build_root_mesh() -> ArrayMesh:
 	return st.commit()
 
 
-func _build_biome_props(world_seed: int, center: Vector2i, radius: int) -> void:
+func _compute_biome_props(world_seed: int, center: Vector2i, radius: int) -> Dictionary:
 	var hush_sites := WorldGenerator.collect_hush_sites_region(world_seed, center.x - radius, center.y - radius, center.x + radius, center.y + radius)
 	var per_archetype: Array = []
 	for _i in range(HUSH_ARCHETYPES):
@@ -1155,9 +1253,6 @@ func _build_biome_props(world_seed: int, center: Vector2i, radius: int) -> void:
 			var my := BiomeManager.get_height(mx, mz) + 1
 			var mscale := rng.randf_range(0.7, 1.5)
 			mushrooms.append(Transform3D(Basis(Vector3.UP, rng.randf_range(0.0, TAU)).scaled(Vector3(mscale, mscale, mscale)), Vector3(float(mx) + 0.5, float(my), float(mz) + 0.5)))
-	for archetype in range(HUSH_ARCHETYPES):
-		_fill_cover_from_multimesh(hush_multimeshes[archetype], per_archetype[archetype])
-	_fill_cover(mushroom_instance, mushrooms)
 
 	var frost_sites := WorldGenerator.collect_frost_sites_region(world_seed, center.x - radius, center.y - radius, center.x + radius, center.y + radius)
 	var spires: Array[Transform3D] = []
@@ -1169,7 +1264,6 @@ func _build_biome_props(world_seed: int, center: Vector2i, radius: int) -> void:
 			Basis(Vector3.UP, rng.randf_range(0.0, TAU)).scaled(Vector3(scale_value, scale_value * rng.randf_range(0.8, 1.3), scale_value)),
 			Vector3(float(site["x"]) + 0.5, float(site["y"]) + 1.0, float(site["z"]) + 0.5)
 		))
-	_fill_cover(spire_instance, spires)
 
 	var mire_sites := WorldGenerator.collect_mire_root_sites_region(world_seed, center.x - radius, center.y - radius, center.x + radius, center.y + radius)
 	var roots: Array[Transform3D] = []
@@ -1181,7 +1275,7 @@ func _build_biome_props(world_seed: int, center: Vector2i, radius: int) -> void:
 			Basis(Vector3.UP, rng.randf_range(0.0, TAU)).scaled(Vector3(scale_value, scale_value, scale_value)),
 			Vector3(float(site["x"]) + 0.5, float(site["y"]) + 0.2, float(site["z"]) + 0.5)
 		))
-	_fill_cover(root_instance, roots)
+	return {"hush_per_archetype": per_archetype, "mushrooms": mushrooms, "spires": spires, "roots": roots}
 
 
 func _fill_cover_from_multimesh(multimesh: MultiMesh, transforms: Array) -> void:
@@ -1192,7 +1286,7 @@ func _fill_cover_from_multimesh(multimesh: MultiMesh, transforms: Array) -> void
 
 # --- Ground cover -----------------------------------------------------------
 
-func _build_surface_details(world_seed: int, center: Vector2i, radius: int) -> void:
+func _compute_surface_details(world_seed: int, center: Vector2i, radius: int) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(world_seed) ^ 0x51F7
 	var flowers: Array[Transform3D] = []
@@ -1211,8 +1305,7 @@ func _build_surface_details(world_seed: int, center: Vector2i, radius: int) -> v
 			if rng.randf() < 0.045:
 				var bush_scale := rng.randf_range(0.65, 1.20)
 				bushes.append(Transform3D(Basis(Vector3.UP, rng.randf_range(0.0, TAU)).scaled(Vector3(bush_scale, bush_scale * rng.randf_range(0.8, 1.1), bush_scale)), position))
-	_fill_cover(flower_instance, flowers)
-	_fill_cover(bush_instance, bushes)
+	return {"flowers": flowers, "bushes": bushes}
 
 
 func _build_flower_mesh() -> ArrayMesh:
@@ -1341,7 +1434,7 @@ func _make_material(wind: float) -> ShaderMaterial:
 	return material
 
 
-func _build_region_cover(world_seed: int, center: Vector2i, radius: int) -> void:
+func _compute_region_cover(world_seed: int, center: Vector2i, radius: int) -> Array[Transform3D]:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = world_seed ^ 0x51A5
 	var grass_transforms: Array[Transform3D] = []
@@ -1368,8 +1461,7 @@ func _build_region_cover(world_seed: int, center: Vector2i, radius: int) -> void
 			var rotation := rng.randf_range(0.0, TAU)
 			var basis := Basis(Vector3.UP, rotation).scaled(Vector3(scale_value, scale_value * rng.randf_range(0.8, 1.3), scale_value))
 			grass_transforms.append(Transform3D(basis, position))
-	_fill_cover(grass_instance, grass_transforms)
-	grass_count = grass_transforms.size()
+	return grass_transforms
 
 
 func _fill_cover(instance: MultiMeshInstance3D, transforms: Array[Transform3D]) -> void:
