@@ -19,7 +19,31 @@ const SPAWN_CLEAR := 26.0
 const MIN_DEPTH := 12
 const MAX_DEPTH := 74
 
+# A second, denser grid of small hand-feel "dugout" chambers (reusing the
+# SMALL_RUIN / ANCIENT_CHAMBER templates), independent of the main structure
+# grid above, so the underground is peppered with little rooms to stumble
+# into far more often than the big landmark structures allow for.
+const DUGOUT_CELL := 40
+const DUGOUT_REACH := 14
+const DUGOUT_MIN_DEPTH := 6
+const DUGOUT_MAX_DEPTH := 60
+const DUGOUT_CHANCE := 0.82
+
 enum Kind { MINE_ENTRANCE, SMALL_RUIN, ANCIENT_CHAMBER, TREASURE_VAULT, CRYSTAL_SHRINE, WATCHTOWER, BIOME_LANDMARK }
+
+# Weighted so the underground reads as ruin/chamber/vault "dugouts" most of
+# the time, with mine entrances and watchtowers as rarer surface-linked finds.
+# Biome landmarks are never chosen here; they are handled separately by the
+# early-return biome check in _site() and would otherwise waste ~1/7 of rolls
+# stamping nothing in ordinary biomes.
+const KIND_WEIGHTS := {
+	Kind.SMALL_RUIN: 0.30,
+	Kind.ANCIENT_CHAMBER: 0.22,
+	Kind.TREASURE_VAULT: 0.16,
+	Kind.CRYSTAL_SHRINE: 0.14,
+	Kind.MINE_ENTRANCE: 0.10,
+	Kind.WATCHTOWER: 0.08,
+}
 
 
 static func stamp_chunk(output: PackedByteArray, origin: Vector3i, world_seed: int, block_ids: Dictionary, air_id: int, stone_id: int) -> void:
@@ -33,6 +57,50 @@ static func stamp_chunk(output: PackedByteArray, origin: Vector3i, world_seed: i
 			if site.is_empty():
 				continue
 			_stamp_site(output, origin, site, block_ids, air_id, stone_id)
+	_stamp_dugouts(output, origin, world_seed, block_ids, air_id, stone_id)
+
+
+# --- Dense underground dugouts ----------------------------------------------
+
+static func _stamp_dugouts(output: PackedByteArray, origin: Vector3i, world_seed: int, block_ids: Dictionary, air_id: int, stone_id: int) -> void:
+	var min_gx := floori(float(origin.x - DUGOUT_REACH) / float(DUGOUT_CELL))
+	var max_gx := floori(float(origin.x + 15 + DUGOUT_REACH) / float(DUGOUT_CELL))
+	var min_gz := floori(float(origin.z - DUGOUT_REACH) / float(DUGOUT_CELL))
+	var max_gz := floori(float(origin.z + 15 + DUGOUT_REACH) / float(DUGOUT_CELL))
+	for grid_z in range(min_gz, max_gz + 1):
+		for grid_x in range(min_gx, max_gx + 1):
+			var site := _dugout_site(world_seed, grid_x, grid_z)
+			if site.is_empty():
+				continue
+			_stamp_dugout_site(output, origin, site, block_ids, air_id, stone_id)
+
+
+static func _dugout_site(world_seed: int, grid_x: int, grid_z: int) -> Dictionary:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _seed(world_seed, grid_x, grid_z, 0x44A9)
+	if rng.randf() > DUGOUT_CHANCE:
+		return {}
+	var cx := grid_x * DUGOUT_CELL + rng.randi_range(8, DUGOUT_CELL - 9)
+	var cz := grid_z * DUGOUT_CELL + rng.randi_range(8, DUGOUT_CELL - 9)
+	if Vector2(float(cx - BiomeManager.SPAWN_X), float(cz - BiomeManager.SPAWN_Z)).length() < SPAWN_CLEAR:
+		return {}
+	var surface := BiomeManager.get_height(cx, cz)
+	var depth := rng.randi_range(DUGOUT_MIN_DEPTH, DUGOUT_MAX_DEPTH)
+	depth = mini(depth, maxi(6, surface - 6))
+	var y := surface - depth
+	return {"x": cx, "y": y, "z": cz, "seed": rng.randi(), "big": rng.randf() < 0.28}
+
+
+static func _stamp_dugout_site(output: PackedByteArray, origin: Vector3i, site: Dictionary, block_ids: Dictionary, air_id: int, stone_id: int) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(site["seed"])
+	var x := int(site["x"])
+	var y := int(site["y"])
+	var z := int(site["z"])
+	if bool(site["big"]):
+		_stamp_ancient_chamber(output, origin, rng, x, y, z, block_ids, air_id, stone_id)
+	else:
+		_stamp_ruin(output, origin, rng, x, y, z, block_ids, air_id, stone_id)
 
 
 static func _site(world_seed: int, grid_x: int, grid_z: int) -> Dictionary:
@@ -51,10 +119,7 @@ static func _site(world_seed: int, grid_x: int, grid_z: int) -> Dictionary:
 			or biome == BiomeManager.OCEAN:
 		if rng.randf() < 0.6:
 			return {"kind": Kind.BIOME_LANDMARK, "x": cx, "z": cz, "y": surface, "surface": surface, "seed": rng.randi(), "biome": biome}
-	var roll := rng.randf()
-	var kind := int(roll * float(Kind.size()))
-	if kind >= Kind.size():
-		kind = Kind.SMALL_RUIN
+	var kind := _weighted_kind(rng.randf())
 	if kind == Kind.MINE_ENTRANCE:
 		# Only cut entrances into ground flat enough to walk into.
 		if not _flat(cx, cz):
@@ -66,6 +131,18 @@ static func _site(world_seed: int, grid_x: int, grid_z: int) -> Dictionary:
 	depth = mini(depth, maxi(8, surface - 6))
 	var y := surface - depth
 	return {"kind": kind, "x": cx, "z": cz, "y": y, "surface": surface, "seed": rng.randi()}
+
+
+static func _weighted_kind(roll: float) -> int:
+	var total := 0.0
+	for weight in KIND_WEIGHTS.values():
+		total += float(weight)
+	var remaining := roll * total
+	for kind in KIND_WEIGHTS:
+		remaining -= float(KIND_WEIGHTS[kind])
+		if remaining <= 0.0:
+			return int(kind)
+	return Kind.SMALL_RUIN
 
 
 static func _flat(x: int, z: int) -> bool:
