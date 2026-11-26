@@ -18,6 +18,7 @@
 [ext_resource type="Script" path="res://scripts/audio/ambience_manager.gd" id="17_ambience"]
 [ext_resource type="Script" path="res://scripts/world/critter_director.gd" id="18_critters"]
 [ext_resource type="Script" path="res://scripts/world/falling_star_director.gd" id="19_falling_stars"]
+[ext_resource type="Script" path="res://scripts/world/blood_moon_director.gd" id="20_blood_moon"]
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_main")
@@ -62,6 +63,9 @@ script = ExtResource("6_night")
 
 [node name="EnemyDirector" type="Node" parent="."]
 script = ExtResource("7_enemies")
+
+[node name="BloodMoonDirector" type="Node" parent="."]
+script = ExtResource("20_blood_moon")
 
 [node name="CritterDirector" type="Node" parent="."]
 script = ExtResource("18_critters")

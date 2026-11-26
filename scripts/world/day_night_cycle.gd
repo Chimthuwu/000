@@ -18,6 +18,7 @@ var phase_fraction := 0.0
 var ambient_level := 0.22
 var daylight := 0.0
 var twilight := 0.0
+var blood_moon_factor := 0.0
 
 func _ready() -> void:
 	world = get_parent().get_node("VoxelWorld") as VoxelWorld
@@ -60,6 +61,9 @@ func _update_phase() -> void:
 	daylight = clampf(inverse_lerp(CONFIG.night_sky_level, CONFIG.day_sky_level, ambient_level), 0.0, 1.0)
 	var top_color := CONFIG.night_sky_color.lerp(CONFIG.day_sky_color, daylight)
 	var horizon_color := NIGHT_HORIZON_COLOR.lerp(DAY_HORIZON_COLOR, daylight)
+	if blood_moon_factor > 0.0:
+		top_color = top_color.lerp(Color(0.5, 0.04, 0.05), blood_moon_factor * 0.55)
+		horizon_color = horizon_color.lerp(Color(0.78, 0.07, 0.07), blood_moon_factor * 0.7)
 	var star_energy := 1.0 - smoothstep(STARS_FULL_AT, STARS_GONE_AT, daylight)
 
 	if sky_material != null:

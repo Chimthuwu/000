@@ -26,6 +26,7 @@ const LOOT_ZOMBIE: LootTable = preload("res://data/loot/zombie.tres")
 var world: VoxelWorld
 var night: NightManager
 var player: VoxelPlayer
+var blood_moon: BloodMoonDirector
 var spawn_timer := 0.0
 var rng := RandomNumberGenerator.new()
 var chunk_cooldowns: Dictionary = {}
@@ -39,6 +40,7 @@ func _ready() -> void:
 	world = get_parent().get_node("VoxelWorld") as VoxelWorld
 	night = get_parent().get_node("NightManager") as NightManager
 	player = get_parent().get_node("Player") as VoxelPlayer
+	blood_moon = get_parent().get_node_or_null("BloodMoonDirector") as BloodMoonDirector
 	rng.randomize()
 	boss_director = BossDirector.new()
 	boss_director.bosses = [WARDEN_BOSS]
@@ -55,14 +57,20 @@ func _process(delta: float) -> void:
 	spawn_timer += delta
 	for key in chunk_cooldowns.keys():
 		chunk_cooldowns[key] = maxf(0.0, float(chunk_cooldowns[key]) - delta)
-	if spawn_timer < CONFIG.spawn_tick_seconds:
+	var tick_seconds := CONFIG.spawn_tick_seconds
+	if blood_moon != null and blood_moon.is_active:
+		tick_seconds *= blood_moon.CONFIG.spawn_tick_scale
+	if spawn_timer < tick_seconds:
 		return
 	spawn_timer = 0.0
 	_spawn_from_night()
 
 func _spawn_from_night() -> void:
 	var enemies := get_tree().get_nodes_in_group("enemies")
-	if enemies.size() >= CONFIG.max_active_enemies:
+	var max_active := CONFIG.max_active_enemies
+	if blood_moon != null and blood_moon.is_active:
+		max_active = int(float(max_active) * blood_moon.CONFIG.max_active_scale)
+	if enemies.size() >= max_active:
 		return
 	# Candidate pool: night-dark chunks that are fully ready (generated, lit
 	# and meshed), so a spawn never lands in frontier terrain.
@@ -92,12 +100,16 @@ func _spawn_from_night() -> void:
 			if existing is Hollow:
 				hollow_count += 1
 		var kind := CONFIG.roll_kind_identity(identity, rng.randf())
+		if blood_moon != null and blood_moon.is_active and kind != EnemyConfig.KIND_HOLLOW and rng.randf() < blood_moon.CONFIG.zombie_bias:
+			# Terraria's Blood Moon skews the night's population hard toward
+			# zombies; Hollow encounters stay as rolled rather than piled on.
+			kind = EnemyConfig.KIND_ZOMBIE
 		if kind == EnemyConfig.KIND_HOLLOW and hollow_count >= CONFIG.max_active_hollows:
 			# Cap reached: fall back to the identity's small game instead of
 			# re-rolling, keeping the table deterministic per Terraria biome.
 			kind = EnemyConfig.KIND_FROST_STALKER if identity == GameplayBiome.Identity.SNOW else EnemyConfig.KIND_NIGHTLING
 		var pack_kind := kind == EnemyConfig.KIND_NIGHTLING or kind == EnemyConfig.KIND_FROST_STALKER
-		var count := mini(CONFIG.nightling_group_size, CONFIG.max_active_enemies - enemies.size()) if pack_kind else 1
+		var count := mini(CONFIG.nightling_group_size, max_active - enemies.size()) if pack_kind else 1
 		for index in range(count):
 			var enemy: NightEnemy
 			match kind:
@@ -128,7 +140,10 @@ func _spawn_from_night() -> void:
 			enemy.position = position + jitter
 			_finalize_enemy(enemy)
 			get_parent().add_child(enemy)
-		chunk_cooldowns[chunk_index] = CONFIG.spawn_cooldown_seconds
+		var cooldown := CONFIG.spawn_cooldown_seconds
+		if blood_moon != null and blood_moon.is_active:
+			cooldown *= blood_moon.CONFIG.cooldown_scale
+		chunk_cooldowns[chunk_index] = cooldown
 		return
 
 func _find_spawn_position(chunk_index: Vector3i) -> Vector3:

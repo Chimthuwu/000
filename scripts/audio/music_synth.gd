@@ -17,7 +17,7 @@ const CATEGORIES := [
 	"surface_day", "surface_night", "underground", "cave", "jungle",
 	"underground_jungle", "desert", "snow", "ocean", "mushroom", "hallow",
 	"corruption", "crimson", "underground_corruption", "underground_crimson",
-	"underground_hallow", "underworld", "space", "boss",
+	"underground_hallow", "underworld", "space", "boss", "blood_moon",
 ]
 
 # Waveforms for _osc(): 0 sine, 1 square, 2 triangle, 3 saw.
@@ -74,6 +74,8 @@ static func profile_for(category: String) -> Dictionary:
 			return _profile(54.0, 72, PENTATONIC, [0, 2, 3, 1], SINE, 0.20, 0.35, 0.10, 0.30, 0.00)
 		"boss":
 			return _profile(150.0, 46, HARMONIC, [0, 1, 0, 4], SQUARE, 0.34, 0.50, 0.26, 0.14, 0.40)
+		"blood_moon":
+			return _profile(138.0, 43, HARMONIC, [0, 4, 1, 5], SAW, 0.30, 0.52, 0.28, 0.12, 0.42)
 		_:
 			return _profile(100.0, 60, MAJOR, [0, 5, 3, 4], SQUARE, 0.32, 0.40, 0.18, 0.16, 0.12)
 

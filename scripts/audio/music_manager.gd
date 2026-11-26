@@ -17,6 +17,7 @@ const BASE_DB := -4.0
 var world: VoxelWorld
 var player: VoxelPlayer
 var cycle: DayNightCycle
+var blood_moon: BloodMoonDirector
 
 var players: Array[AudioStreamPlayer] = []
 var active_index := 0
@@ -46,6 +47,7 @@ func _ready() -> void:
 	world = get_parent().get_node_or_null("VoxelWorld") as VoxelWorld
 	player = get_parent().get_node_or_null("Player") as VoxelPlayer
 	cycle = get_parent().get_node_or_null("DayNightCycle") as DayNightCycle
+	blood_moon = get_parent().get_node_or_null("BloodMoonDirector") as BloodMoonDirector
 	_ensure_buses()
 	fade_duration = maxf(MAP.fade_seconds, 0.1)
 	for _i in range(2):
@@ -158,6 +160,9 @@ func category_for(state: Dictionary) -> String:
 	if _boss_present():
 		last_reason = "boss alive"
 		return "boss"
+	if blood_moon != null and blood_moon.is_active and state.get("night", false):
+		last_reason = "blood moon"
+		return "blood_moon"
 	var depth: int = int(state["depth"])
 	var identity: int = int(state["identity"])
 	if depth >= WorldLayers.UNDERWORLD_DEPTH:
