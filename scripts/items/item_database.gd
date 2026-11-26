@@ -91,7 +91,10 @@ static func _reload() -> void:
 		push_error("ITEMDB: cannot open %s" % ITEM_DIR)
 		return
 	for file_name in dir.get_files():
-		if not file_name.ends_with(".tres"):
+		# Godot's export pipeline can convert text resources (.tres) to binary
+		# (.res) when packing, so a plain ".tres" filter sees zero files in an
+		# exported build even though the same .tres loads fine from source.
+		if not (file_name.ends_with(".tres") or file_name.ends_with(".res")):
 			continue
 		var path := ITEM_DIR.path_join(file_name)
 		var resource := load(path)
@@ -100,7 +103,7 @@ static func _reload() -> void:
 			continue
 		var def := resource as ItemDef
 		if def.item_id == &"":
-			def.item_id = StringName(file_name.trim_suffix(".tres"))
+			def.item_id = StringName(file_name.get_basename())
 		if _items.has(def.item_id):
 			push_error("ITEMDB: duplicate item id %s" % String(def.item_id))
 			continue

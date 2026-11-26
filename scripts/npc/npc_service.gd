@@ -24,7 +24,7 @@ func _init(inv: InventoryModel, prog: ProgressionSystem) -> void:
 	var dir := DirAccess.open("res://data/npc")
 	if dir != null:
 		for file_name in dir.get_files():
-			if not file_name.ends_with(".tres"):
+			if not (file_name.ends_with(".tres") or file_name.ends_with(".res")):
 				continue
 			var resource := load("res://data/npc/".path_join(file_name))
 			if resource is NpcProfile:
