@@ -16,6 +16,7 @@ var stats: Dictionary = {
 	"bosses_defeated": 0,
 	"distance_walked": 0.0,
 	"deaths": 0,
+	"mana_crystals_used": 0,
 }
 
 
@@ -71,6 +72,10 @@ func add_stat(key: StringName, amount: float) -> void:
 
 func set_stat(key: StringName, value: float) -> void:
 	stats[key] = value
+
+
+func get_stat(key: StringName) -> float:
+	return float(stats.get(key, 0.0))
 
 
 func serialize() -> Dictionary:

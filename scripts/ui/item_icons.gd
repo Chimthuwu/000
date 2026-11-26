@@ -51,6 +51,10 @@ static func _build(item_id: StringName) -> Texture2D:
 			return art
 	if item_id == &"torch":
 		return _torch_icon()
+	if item_id == &"fallen_star":
+		return _star_icon(Color(1.0, 0.95, 0.55))
+	if item_id == &"mana_crystal":
+		return _star_icon(Color(0.42, 0.62, 1.0))
 	if def.place_block != &"":
 		var block_path := "res://data/blocks/%s.tres" % String(def.place_block)
 		if ResourceLoader.exists(block_path):

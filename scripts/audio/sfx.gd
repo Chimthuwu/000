@@ -15,7 +15,7 @@ static var _cache: Dictionary = {}
 static func play(parent: Node, at: Vector3, name: StringName, volume_db := 0.0, pitch := 1.0) -> void:
 	if parent == null or not parent.is_inside_tree():
 		return
-	var stream := _get(name)
+	var stream := _synthesize(name)
 	if stream == null:
 		return
 	var audio := AudioStreamPlayer3D.new()
@@ -56,7 +56,7 @@ static func swing(parent: Node, at: Vector3) -> void:
 
 # --- Synthesis ---------------------------------------------------------------
 
-static func _get(name: StringName) -> AudioStreamWAV:
+static func _synthesize(name: StringName) -> AudioStreamWAV:
 	if _cache.has(name):
 		return _cache[name]
 	var stream: AudioStreamWAV = null

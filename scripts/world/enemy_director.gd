@@ -8,6 +8,8 @@ const LampEaterScript = preload("res://scripts/enemies/lamp_eater.gd")
 const HollowScript = preload("res://scripts/enemies/hollow.gd")
 const FrostStalkerScript = preload("res://scripts/enemies/frost_stalker.gd")
 const BogCrawlerScript = preload("res://scripts/enemies/bog_crawler.gd")
+const SlimeScript = preload("res://scripts/enemies/slime.gd")
+const ZombieScript = preload("res://scripts/enemies/zombie.gd")
 const WardenScript = preload("res://scripts/enemies/hollow_warden.gd")
 const WARDEN_BOSS: BossDef = preload("res://data/bosses/hollow_warden.tres")
 const KIND_WARDEN := 99
@@ -18,6 +20,8 @@ const LOOT_LAMP_EATER: LootTable = preload("res://data/loot/lamp_eater.tres")
 const LOOT_HOLLOW: LootTable = preload("res://data/loot/hollow.tres")
 const LOOT_FROST_STALKER: LootTable = preload("res://data/loot/frost_stalker.tres")
 const LOOT_BOG_CRAWLER: LootTable = preload("res://data/loot/bog_crawler.tres")
+const LOOT_SLIME: LootTable = preload("res://data/loot/slime.tres")
+const LOOT_ZOMBIE: LootTable = preload("res://data/loot/zombie.tres")
 
 var world: VoxelWorld
 var night: NightManager
@@ -109,6 +113,12 @@ func _spawn_from_night() -> void:
 				EnemyConfig.KIND_BOG_CRAWLER:
 					enemy = BogCrawlerScript.new()
 					_configure_bog_crawler(enemy)
+				EnemyConfig.KIND_SLIME:
+					enemy = SlimeScript.new()
+					_configure_slime(enemy, identity)
+				EnemyConfig.KIND_ZOMBIE:
+					enemy = ZombieScript.new()
+					_configure_zombie(enemy)
 				_:
 					enemy = NightlingScript.new()
 					_configure_nightling(enemy)
@@ -191,6 +201,12 @@ func debug_spawn_frost_stalker() -> void:
 func debug_spawn_bog_crawler() -> void:
 	_debug_spawn(EnemyConfig.KIND_BOG_CRAWLER, 1)
 
+func debug_spawn_slime(count: int = 1) -> void:
+	_debug_spawn(EnemyConfig.KIND_SLIME, count)
+
+func debug_spawn_zombie(count: int = 1) -> void:
+	_debug_spawn(EnemyConfig.KIND_ZOMBIE, count)
+
 
 # Console endpoint: spawn one configured enemy on the ground in front of the
 # player's current view, reusing the same factory the natural spawner uses.
@@ -202,6 +218,8 @@ func spawn_named(name: String) -> bool:
 		"hollow": kind = EnemyConfig.KIND_HOLLOW
 		"frost_stalker": kind = EnemyConfig.KIND_FROST_STALKER
 		"bog_crawler": kind = EnemyConfig.KIND_BOG_CRAWLER
+		"slime": kind = EnemyConfig.KIND_SLIME
+		"zombie": kind = EnemyConfig.KIND_ZOMBIE
 	if kind < 0 or not world.is_generated or not player.spawned:
 		return false
 	var source := world.player_camera if is_instance_valid(world.player_camera) else player.camera
@@ -277,6 +295,12 @@ func _make_enemy(kind: int) -> NightEnemy:
 		EnemyConfig.KIND_BOG_CRAWLER:
 			enemy = BogCrawlerScript.new()
 			_configure_bog_crawler(enemy)
+		EnemyConfig.KIND_SLIME:
+			enemy = SlimeScript.new()
+			_configure_slime(enemy)
+		EnemyConfig.KIND_ZOMBIE:
+			enemy = ZombieScript.new()
+			_configure_zombie(enemy)
 		_:
 			enemy = NightlingScript.new()
 			_configure_nightling(enemy)
@@ -338,6 +362,39 @@ func _configure_bog_crawler(enemy: NightEnemy) -> void:
 		enemy.extinguish_seconds = CONFIG.bog_crawler_extinguish_seconds
 		enemy.target_radius = CONFIG.bog_crawler_target_radius
 		enemy.target_blocks = CONFIG.lamp_eater_target_blocks
+
+
+## Slime is not a nocturnal creature: leaving dissolve_light_level at its
+## NightEnemy default (never dissolves) means it keeps hopping around after
+## sunrise, unlike the dissolve-in-light enemies above.
+func _configure_slime(enemy: NightEnemy, identity := -1) -> void:
+	enemy.move_speed = CONFIG.slime_speed
+	enemy.max_health = CONFIG.slime_health
+	enemy.touch_damage = CONFIG.slime_damage
+	enemy.attack_range = CONFIG.slime_attack_range
+	enemy.loot_table = LOOT_SLIME
+	if enemy is Slime:
+		enemy.configure_skin(_slime_skin_for(identity))
+
+
+func _slime_skin_for(identity: int) -> int:
+	match identity:
+		GameplayBiome.Identity.CORRUPTION:
+			return Slime.SKIN_PURPLE
+		GameplayBiome.Identity.SNOW, GameplayBiome.Identity.OCEAN:
+			return Slime.SKIN_BLUE
+		GameplayBiome.Identity.DESERT, GameplayBiome.Identity.HALLOW:
+			return Slime.SKIN_GOLD
+		_:
+			return Slime.SKIN_GREEN
+
+
+func _configure_zombie(enemy: NightEnemy) -> void:
+	enemy.move_speed = CONFIG.zombie_speed
+	enemy.max_health = CONFIG.zombie_health
+	enemy.touch_damage = CONFIG.zombie_damage
+	enemy.attack_range = CONFIG.zombie_attack_range
+	enemy.loot_table = LOOT_ZOMBIE
 
 
 ## Agent 2 / Agent 4 encounter API. `room_id` is reserved for AdventureContent;

@@ -827,6 +827,9 @@ func _use_consumable(def: ItemDef) -> void:
 		health = minf(max_health, health + def.heal_amount)
 	if def.mana_restore > 0.0 and weapons != null:
 		weapons.mana = minf(weapons.max_mana, weapons.mana + def.mana_restore)
+	if def.item_id == &"mana_crystal" and weapons != null:
+		progression.add_stat(&"mana_crystals_used", 1.0)
+		weapons.apply_mana_crystal_bonus(int(progression.get_stat(&"mana_crystals_used")))
 	if def.applies_status != &"":
 		statuses.apply(def.applies_status, def.status_duration)
 	set_status("USED %s" % def.display_name.to_upper())
@@ -959,6 +962,8 @@ func deserialize_gameplay_state(data: Dictionary) -> void:
 		inventory.deserialize(data["inventory"])
 	if data.has("progression"):
 		progression.deserialize(data["progression"])
+		if weapons != null:
+			weapons.apply_mana_crystal_bonus(int(progression.get_stat(&"mana_crystals_used")))
 	if data.has("containers"):
 		var stored: Variant = data["containers"]
 		if stored is Dictionary:

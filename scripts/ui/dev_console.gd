@@ -56,7 +56,7 @@ func _build() -> void:
 	input = LineEdit.new()
 	input.position = Vector2(12, 262)
 	input.size = Vector2(824, 28)
-	input.placeholder_text = "god | spawn <nightling|hollow|lamp_eater|frost_stalker|bog_crawler> | tp <ashen|hush|frost|mire> | time <0-24> | heal | help"
+	input.placeholder_text = "god | spawn <nightling|hollow|lamp_eater|frost_stalker|bog_crawler|slime|zombie> | tp <ashen|hush|frost|mire> | time <0-24> | heal | help"
 	input.add_theme_font_size_override("font_size", 11)
 	input.text_submitted.connect(_on_text_submitted)
 	panel.add_child(input)
@@ -127,7 +127,7 @@ func _execute(command: String) -> void:
 			_print_line("health restored to %d" % int(player.health))
 		"spawn":
 			if arg.is_empty():
-				_print_line("usage: spawn <nightling|hollow|lamp_eater|frost_stalker|bog_crawler>", Color(0.98, 0.72, 0.4))
+				_print_line("usage: spawn <nightling|hollow|lamp_eater|frost_stalker|bog_crawler|slime|zombie>", Color(0.98, 0.72, 0.4))
 				return
 			var spawned := director.spawn_named(arg)
 			_print_line("spawned %s" % arg if spawned else "unknown enemy or unloaded ground: %s" % arg, Color(0.5, 0.9, 0.7) if spawned else Color(0.98, 0.45, 0.4))

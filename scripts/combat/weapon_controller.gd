@@ -8,12 +8,24 @@ class_name WeaponController
 signal attacked(attack_id: StringName)
 signal mana_changed(current: float, maximum: float)
 
+const BASE_MANA := 100.0
+const MANA_PER_CRYSTAL := 20.0
+
 var player: Node3D
 var inventory: InventoryModel
 var gateway: WorldGateway
 var cooldown := 0.0
 var mana := 100.0
 var max_mana := 100.0
+
+
+## Mana Crystals (crafted from 5 Fallen Stars, per the Terraria wiki) raise
+## max mana permanently; `crystals_used` is ProgressionSystem's own persisted
+## count, so this just recomputes the total rather than storing its own state.
+func apply_mana_crystal_bonus(crystals_used: int) -> void:
+	max_mana = BASE_MANA + float(crystals_used) * MANA_PER_CRYSTAL
+	mana = minf(mana, max_mana)
+	mana_changed.emit(mana, max_mana)
 
 
 func _ready() -> void:

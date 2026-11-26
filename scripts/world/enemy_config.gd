@@ -4,14 +4,16 @@ class_name EnemyConfig
 # Biome spawn tables. Index order matches the world biome ids:
 # 0 = Forest, 1 = Jungle, 2 = Snow, 3 = Forest,
 # 4 = The Desert, 5 = Mushroom.
-# Weights are per kind: [nightling, lamp_eater, hollow, frost_stalker, bog_crawler].
+# Weights are per kind: [nightling, lamp_eater, hollow, frost_stalker, bog_crawler, slime, zombie].
 
 const KIND_NIGHTLING := 0
 const KIND_LAMP_EATER := 1
 const KIND_HOLLOW := 2
 const KIND_FROST_STALKER := 3
 const KIND_BOG_CRAWLER := 4
-const KIND_COUNT := 5
+const KIND_SLIME := 5
+const KIND_ZOMBIE := 6
+const KIND_COUNT := 7
 
 @export_range(1, 300.0, 1.0) var spawn_tick_seconds := 5.0
 @export_range(1, 128, 1) var max_active_enemies := 16
@@ -21,23 +23,23 @@ const KIND_COUNT := 5
 @export_range(5.0, 128.0, 1.0) var max_spawn_distance := 28.0
 @export_range(1.0, 30.0, 1.0) var spawn_cooldown_seconds := 18.0
 
-@export var ashen_weights: Array[float] = [0.68, 0.32, 0.0, 0.0, 0.0]
-@export var hush_weights: Array[float] = [0.75, 0.0, 0.25, 0.0, 0.0]
-@export var frost_weights: Array[float] = [0.25, 0.0, 0.0, 0.75, 0.0]
-@export var mire_weights: Array[float] = [0.0, 0.28, 0.0, 0.0, 0.72]
-@export var desert_weights: Array[float] = [0.55, 0.15, 0.30, 0.0, 0.0]
-@export var mushroom_weights: Array[float] = [0.62, 0.10, 0.28, 0.0, 0.0]
+@export var ashen_weights: Array[float] = [0.68, 0.32, 0.0, 0.0, 0.0, 0.45, 0.30]
+@export var hush_weights: Array[float] = [0.75, 0.0, 0.25, 0.0, 0.0, 0.35, 0.20]
+@export var frost_weights: Array[float] = [0.25, 0.0, 0.0, 0.75, 0.0, 0.30, 0.15]
+@export var mire_weights: Array[float] = [0.0, 0.28, 0.0, 0.0, 0.72, 0.25, 0.20]
+@export var desert_weights: Array[float] = [0.55, 0.15, 0.30, 0.0, 0.0, 0.35, 0.20]
+@export var mushroom_weights: Array[float] = [0.62, 0.10, 0.28, 0.0, 0.0, 0.35, 0.15]
 
 # Terraria-style identity tables. Current ids map onto the legacy tables above;
 # the newer identities degrade to a sensible mix of the existing enemy kinds
 # until Agent 1 generates their biome ids (and Agent 2 adds their enemies).
-@export var forest_weights: Array[float] = [0.68, 0.32, 0.0, 0.0, 0.0]
-@export var jungle_weights: Array[float] = [0.75, 0.0, 0.25, 0.0, 0.0]
-@export var snow_weights: Array[float] = [0.25, 0.0, 0.0, 0.75, 0.0]
-@export var corruption_weights: Array[float] = [0.55, 0.0, 0.45, 0.0, 0.0]
-@export var crimson_weights: Array[float] = [0.45, 0.35, 0.20, 0.0, 0.0]
-@export var hallow_weights: Array[float] = [0.30, 0.40, 0.30, 0.0, 0.0]
-@export var ocean_weights: Array[float] = [0.50, 0.50, 0.0, 0.0, 0.0]
+@export var forest_weights: Array[float] = [0.68, 0.32, 0.0, 0.0, 0.0, 0.45, 0.30]
+@export var jungle_weights: Array[float] = [0.75, 0.0, 0.25, 0.0, 0.0, 0.35, 0.20]
+@export var snow_weights: Array[float] = [0.25, 0.0, 0.0, 0.75, 0.0, 0.30, 0.15]
+@export var corruption_weights: Array[float] = [0.55, 0.0, 0.45, 0.0, 0.0, 0.30, 0.35]
+@export var crimson_weights: Array[float] = [0.45, 0.35, 0.20, 0.0, 0.0, 0.25, 0.35]
+@export var hallow_weights: Array[float] = [0.30, 0.40, 0.30, 0.0, 0.0, 0.45, 0.10]
+@export var ocean_weights: Array[float] = [0.50, 0.50, 0.0, 0.0, 0.0, 0.30, 0.20]
 
 @export var nightling_speed := 2.7
 @export var nightling_health := 16.0
@@ -70,6 +72,14 @@ const KIND_COUNT := 5
 @export var bog_crawler_extinguish_distance := 1.25
 @export var bog_crawler_extinguish_seconds := 14.0
 @export_range(1.0, 64.0, 1.0) var bog_crawler_target_radius := 20.0
+@export var slime_speed := 2.2
+@export var slime_health := 9.0
+@export var slime_damage := 3.0
+@export var slime_attack_range := 1.25
+@export var zombie_speed := 1.9
+@export var zombie_health := 28.0
+@export var zombie_damage := 6.0
+@export var zombie_attack_range := 1.35
 
 
 func weights_for(biome: int) -> Array[float]:
