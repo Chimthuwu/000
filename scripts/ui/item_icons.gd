@@ -8,6 +8,24 @@ class_name ItemIcons
 
 const SIZE := 16
 
+## Hand-picked art for items where a drawn sprite reads far better than a
+## generated glyph (free third-party icon packs under Z:/GITHUB/_ASSETS,
+## copied into art/item_icons/). Anything not listed here keeps its
+## procedural icon — most tools and armour already read fine as glyphs.
+const ART_ICONS := {
+	&"wooden_sword": "res://art/item_icons/wooden_sword.png",
+	&"copper_sword": "res://art/item_icons/copper_sword.png",
+	&"iron_sword": "res://art/item_icons/iron_sword.png",
+	&"wooden_bow": "res://art/item_icons/wooden_bow.png",
+	&"life_charm": "res://art/item_icons/life_charm.png",
+	&"miners_pendant": "res://art/item_icons/miners_pendant.png",
+	&"coin": "res://art/item_icons/coin.png",
+	&"chest": "res://art/item_icons/chest.png",
+	&"healing_salve": "res://art/item_icons/healing_salve.png",
+	&"mana_draught": "res://art/item_icons/mana_draught.png",
+	&"gold_bar": "res://art/item_icons/gold_bar.png",
+}
+
 static var _cache: Dictionary = {}
 
 
@@ -27,6 +45,10 @@ static func _build(item_id: StringName) -> Texture2D:
 	var def := ItemDatabase.get_item(item_id)
 	if def == null:
 		return _placeholder(Color(0.6, 0.6, 0.6))
+	if ART_ICONS.has(item_id):
+		var art: Texture2D = load(ART_ICONS[item_id])
+		if art != null:
+			return art
 	if item_id == &"torch":
 		return _torch_icon()
 	if def.place_block != &"":
