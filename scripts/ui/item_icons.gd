@@ -27,6 +27,8 @@ static func _build(item_id: StringName) -> Texture2D:
 	var def := ItemDatabase.get_item(item_id)
 	if def == null:
 		return _placeholder(Color(0.6, 0.6, 0.6))
+	if item_id == &"torch":
+		return _torch_icon()
 	if def.place_block != &"":
 		var block_path := "res://data/blocks/%s.tres" % String(def.place_block)
 		if ResourceLoader.exists(block_path):
@@ -46,6 +48,30 @@ static func _build(item_id: StringName) -> Texture2D:
 			return _star_icon(Color(1.0, 0.82, 0.28))
 		_:
 			return _material_icon(def)
+
+
+## A torch is furniture, not terrain, so it gets its own glyph instead of the
+## generic tinted block tile (which just reads as an orange plank).
+static func _torch_icon() -> Texture2D:
+	var image := _blank(Color(0.10, 0.09, 0.10))
+	for y in range(8, 15):
+		for x in range(7, 9):
+			image.set_pixel(x, y, Color(0.42, 0.30, 0.18))
+	var flame := Color(1.0, 0.62, 0.18)
+	var flame_core := Color(1.0, 0.86, 0.42)
+	for x in range(5, 11):
+		for y in range(2, 9):
+			var dx := absf(float(x) - 7.5)
+			var dy := float(y) - 5.0
+			if dx + absf(dy) * 0.55 < 2.6:
+				image.set_pixel(x, y, flame)
+	for x in range(6, 10):
+		for y in range(3, 8):
+			var dx := absf(float(x) - 7.5)
+			var dy := float(y) - 5.0
+			if dx + absf(dy) * 0.55 < 1.4:
+				image.set_pixel(x, y, flame_core)
+	return ImageTexture.create_from_image(image)
 
 
 static func _block_icon(block_id: StringName, albedo: Color) -> Texture2D:

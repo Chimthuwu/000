@@ -3,7 +3,9 @@ class_name ItemEntity
 
 ## A dropped item in the world. Self-contained: drifts toward the player, then
 ## deposits itself into the player's inventory. Spawned by mining, loot and
-## inventory drops. Purely gameplay logic; the visual is a tiny coloured cube.
+## inventory drops. The visual is a pair of crossed, icon-textured quads (the
+## same art as the hotbar), so a pile of logs on the ground actually reads as
+## logs instead of an anonymous tinted cube.
 
 const GROUP := "item_drops"
 const PICKUP_DELAY := 0.45
@@ -38,31 +40,23 @@ func _ready() -> void:
 func _apply_visual() -> void:
 	if _visual == null:
 		return
-	var def := ItemDatabase.get_item(item_id)
-	var tint := Color(0.85, 0.85, 0.85)
-	var block_tinted := false
-	if def != null and def.place_block != &"":
-		# Blocks drop in their own colour, so a pile of logs reads as wood instead
-		# of another anonymous white cube.
-		var block_path := "res://data/blocks/%s.tres" % String(def.place_block)
-		if ResourceLoader.exists(block_path):
-			var block := load(block_path) as BlockLightDef
-			if block != null:
-				tint = block.albedo
-				block_tinted = true
-	if def != null and not block_tinted:
-		var rarities := [
-			Color(0.86, 0.87, 0.84), Color(0.42, 0.86, 0.46), Color(0.36, 0.62, 1.0),
-			Color(0.78, 0.42, 0.96), Color(1.0, 0.72, 0.24)
-		]
-		tint = rarities[clampi(def.rarity, 0, rarities.size() - 1)]
+	_visual.mesh = null
 	var material := StandardMaterial3D.new()
-	material.albedo_color = tint
-	material.emission_enabled = true
-	material.emission = tint
-	material.emission_energy_multiplier = 0.3 if block_tinted else 0.7
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_visual.material_override = material
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+	material.alpha_scissor_threshold = 0.35
+	material.albedo_texture = ItemIcons.icon_for(item_id)
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.34, 0.34)
+	for angle in [0.0, PI * 0.5]:
+		var part := MeshInstance3D.new()
+		part.mesh = quad
+		part.material_override = material
+		part.rotation.y = angle
+		part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_visual.add_child(part)
 
 
 func _process(delta: float) -> void:
@@ -90,6 +84,7 @@ func _collect() -> void:
 		return
 	var leftover := inventory.add_item(item_id, amount)
 	if leftover <= 0:
+		Sfx.pickup(get_parent(), global_position)
 		queue_free()
 	else:
 		amount = leftover

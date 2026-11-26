@@ -8,3 +8,7 @@ block_id = &"torch"
 attenuation = 1
 albedo = Color(1.0, 0.46, 0.16, 1)
 emitted_light = 15
+display_name = "Torch"
+hardness = 0.05
+mining_tier = 0
+passable = true

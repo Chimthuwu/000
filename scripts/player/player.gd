@@ -63,6 +63,9 @@ var mining_target := Vector3i(-1, -1, -1)
 var mining_progress := 0.0
 ## Which quarter of a tree chop was last shown, so chips fly once per stage.
 var tree_damage_stage := 0
+## Elapsed time on the current mining target, so a tap sound plays on a
+## steady beat instead of once per frame.
+var _mine_tick_clock := 0.0
 var camera_mode := 1  # 0 = first person, 1 = third person (default)
 var avatar: Node3D
 var viewmodel: HeldItemViewmodel
@@ -540,6 +543,7 @@ func _update_item_use(delta: float) -> void:
 func _reset_mining() -> void:
 	mining_target = Vector3i(-1, -1, -1)
 	tree_damage_stage = 0
+	_mine_tick_clock = 0.0
 	if mining_progress > 0.0:
 		mining_progress = 0.0
 		mining_progress_changed.emit(0.0, mining_target)
@@ -585,6 +589,11 @@ func _update_mining(delta: float, def: ItemDef) -> void:
 	mining_progress_changed.emit(clampf(mining_progress, 0.0, 1.0), cell)
 	if mining_progress >= 1.0:
 		_complete_mining(cell)
+		return
+	_mine_tick_clock -= delta
+	if _mine_tick_clock <= 0.0:
+		_mine_tick_clock = 0.22
+		Sfx.mine(world, Vector3(cell) + Vector3(0.5, 0.5, 0.5))
 
 
 ## Chopping a trunk needs an axe, the way Terraria does, and fells the whole
@@ -619,6 +628,7 @@ func _chop_tree(delta: float, def: ItemDef, tree: Dictionary) -> void:
 		tree_damage_stage = stage
 		Vfx.burst(world, Vector3(cell) + Vector3(0.5, 1.2, 0.5), Color(0.55, 0.37, 0.29),
 			Vector3.UP, 8, 3.2, 0.05, 0.45)
+		Sfx.chop(world, Vector3(cell) + Vector3(0.5, 1.2, 0.5))
 	if mining_progress < 1.0:
 		return
 	var wood := maxi(3, roundi(2.0 + float(tree.get("height", 5.0))))
@@ -636,6 +646,7 @@ func _chop_tree(delta: float, def: ItemDef, tree: Dictionary) -> void:
 	progression.add_stat(&"trees_felled", 1.0)
 	gateway.emit_noise(Vector3(cell), 4.0)
 	Vfx.burst(world, Vector3(cell) + Vector3(0.5, 1.4, 0.5), Color(0.55, 0.37, 0.29), Vector3.UP, 14, 3.0, 0.06, 0.4)
+	Sfx.fell(world, Vector3(cell) + Vector3(0.5, 1.4, 0.5))
 	set_status("TREE FELLING")
 	_reset_mining()
 
@@ -728,6 +739,7 @@ func _complete_mining(cell: Vector3i) -> void:
 	progression.add_stat(&"blocks_mined", 1.0)
 	gateway.emit_noise(Vector3(cell), 3.0)
 	Vfx.burst(world, Vector3(cell) + Vector3(0.5, 0.5, 0.5), Color(0.92, 0.72, 0.42), Vector3.UP, 10, 3.5, 0.05, 0.3)
+	Sfx.mine(world, Vector3(cell) + Vector3(0.5, 0.5, 0.5))
 	set_status("MINED %s" % target_block_name.to_upper())
 	mining_progress = 0.0
 	mining_progress_changed.emit(0.0, cell)
@@ -786,6 +798,7 @@ func _try_place_block(def: ItemDef) -> void:
 	# Agent 1 owns placement validation as well.
 	if MiningSystem.place_block(world, cell, _placement_block(def)):
 		inventory.consume(def.item_id, 1)
+		Sfx.place(world, Vector3(cell) + Vector3(0.5, 0.5, 0.5))
 	else:
 		set_status("CANNOT PLACE THERE")
 

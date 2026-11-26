@@ -41,6 +41,8 @@ func try_attack() -> bool:
 	cooldown = attack.cooldown
 	mana -= attack.mana_cost
 	mana_changed.emit(mana, max_mana)
+	if player != null:
+		Sfx.swing(player, player.global_position)
 	match attack.kind:
 		"melee":
 			_melee(attack)
