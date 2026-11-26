@@ -131,6 +131,11 @@ var craft_detail_label: Label
 var craft_station_label: Label
 var selected_recipe: CraftingRecipe = null
 var tooltip_label: Label
+var shop_panel: Panel
+var shop_list: VBoxContainer
+var shop_detail_label: Label
+var shop_coin_label: Label
+var shop_visible := false
 
 
 func _ready() -> void:
@@ -165,6 +170,7 @@ func _ready() -> void:
 	_build_chest_panel()
 	_build_crafting_panel()
 	_build_guide_panel()
+	_build_shop_panel()
 	_build_tooltip()
 	_setup_mining_audio()
 	if world != null and world.has_signal("block_edited"):
@@ -886,9 +892,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			_toggle_guide()
 			get_viewport().set_input_as_handled()
 			return
+		if event.keycode == KEY_B:
+			_toggle_shop()
+			get_viewport().set_input_as_handled()
+			return
 		# Terraria's ESC opens and closes the inventory over the running world.
 		# It does not pause the game and does not open a pause menu.
-		if (inventory_visible or crafting_visible or guide_visible) and event.keycode == KEY_ESCAPE:
+		if (inventory_visible or crafting_visible or guide_visible or shop_visible) and event.keycode == KEY_ESCAPE:
 			close_panels()
 			get_viewport().set_input_as_handled()
 			return
@@ -1606,11 +1616,171 @@ func _toggle_guide() -> void:
 	if guide_visible:
 		inventory_visible = false
 		crafting_visible = false
+		shop_visible = false
 		if inventory_panel != null:
 			inventory_panel.visible = false
 		if crafting_panel != null:
 			crafting_panel.visible = false
+		if shop_panel != null:
+			shop_panel.visible = false
 		_refresh_guide_list()
+		_set_mouse_captured(false)
+	else:
+		_set_mouse_captured(true)
+
+
+## --- Shop -------------------------------------------------------------------
+## A resident merchant's buy list, a sell button for the held hotbar stack, and
+## whatever quest they're offering. Always reachable with B, same as the Guide
+## panel is always reachable with G - the dialogue line just points you at it.
+func _build_shop_panel() -> void:
+	shop_panel = _panel(Rect2(120, 90, 640, 400), _style(PANEL_BG, PANEL_BORDER, 2, 4))
+	shop_panel.name = "ShopPanel"
+	shop_panel.visible = false
+	var title := _label("SHOP", 13, Color(0.98, 0.86, 0.52))
+	title.position = Vector2(12, 8)
+	title.size = Vector2(200, 18)
+	shop_panel.add_child(title)
+	shop_coin_label = _label("", 10, Color(0.98, 0.86, 0.38), HORIZONTAL_ALIGNMENT_RIGHT)
+	shop_coin_label.position = Vector2(420, 10)
+	shop_coin_label.size = Vector2(208, 16)
+	shop_panel.add_child(shop_coin_label)
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(12, 40)
+	scroll.size = Vector2(300, 300)
+	shop_panel.add_child(scroll)
+	shop_list = VBoxContainer.new()
+	shop_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(shop_list)
+	shop_detail_label = _label("Collect some coins - a merchant should turn up nearby.", 10, TEXT_PALE)
+	shop_detail_label.position = Vector2(326, 40)
+	shop_detail_label.size = Vector2(300, 260)
+	shop_detail_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	shop_panel.add_child(shop_detail_label)
+	var sell_btn := Button.new()
+	sell_btn.text = "Sell held stack"
+	sell_btn.position = Vector2(326, 310)
+	sell_btn.size = Vector2(150, 28)
+	sell_btn.pressed.connect(_on_sell_held_pressed)
+	shop_panel.add_child(sell_btn)
+	var quest_btn := Button.new()
+	quest_btn.text = "Turn in quest"
+	quest_btn.position = Vector2(484, 310)
+	quest_btn.size = Vector2(144, 28)
+	quest_btn.pressed.connect(_on_quest_turn_in_pressed)
+	shop_panel.add_child(quest_btn)
+	var hint := _label("B to close.", 8, TEXT_DIM)
+	hint.position = Vector2(12, 378)
+	hint.size = Vector2(616, 12)
+	shop_panel.add_child(hint)
+
+
+func _merchant_npc() -> NpcBase:
+	if player == null or player.npc_service == null:
+		return null
+	for node in get_tree().get_nodes_in_group("npcs"):
+		if node is NpcBase:
+			var npc := node as NpcBase
+			var profile := player.npc_service.profile_for(npc)
+			if profile != null and profile.role == "merchant":
+				return npc
+	return null
+
+
+func _refresh_shop_panel() -> void:
+	if shop_list == null or player == null or player.get("inventory") == null or player.npc_service == null:
+		return
+	for child in shop_list.get_children():
+		child.queue_free()
+	var coins := player.inventory.count(&"coin")
+	if shop_coin_label != null:
+		shop_coin_label.text = "Coins: %d" % coins
+	var merchant := _merchant_npc()
+	if merchant == null:
+		shop_detail_label.text = "No merchant has arrived yet. Collect some coins - they should turn up nearby."
+		return
+	if not player.npc_service.is_resident(merchant):
+		shop_detail_label.text = "%s is nearby but hasn't moved in yet. Build a sealed, lit room with a door, a chair and a workbench, then stay close while it finishes." % merchant.display_name
+		return
+	for raw_id in merchant.shop_items:
+		var item_id := StringName(raw_id)
+		var cost := player.npc_service.price(item_id)
+		var btn := Button.new()
+		btn.text = "%s  -  %d coin%s" % [_item_name(item_id), cost, "" if cost == 1 else "s"]
+		btn.modulate = Color(1.0, 0.95, 0.80) if coins >= cost else Color(0.6, 0.62, 0.68)
+		btn.pressed.connect(func(): _on_buy_pressed(item_id))
+		shop_list.add_child(btn)
+	var lines: Array[String] = ["%s has moved in." % merchant.display_name, ""]
+	var quest := player.npc_service.available_quest(merchant)
+	if quest != null:
+		lines.append("QUEST - %s" % quest.display_name)
+		for key in quest.required_items.keys():
+			var iid := StringName(String(key))
+			var need := int(quest.required_items[key])
+			var have := player.inventory.count(iid)
+			lines.append("  %s  %d/%d" % [_item_name(iid), mini(have, need), need])
+		lines.append("")
+		lines.append("Ready to turn in!" if player.npc_service.can_complete(merchant) else "Bring the rest, then press Turn in quest.")
+	else:
+		lines.append("No quest offered right now.")
+	shop_detail_label.text = "\n".join(lines)
+
+
+func _on_buy_pressed(item_id: StringName) -> void:
+	var merchant := _merchant_npc()
+	if merchant == null or player == null or player.npc_service == null:
+		return
+	if player.npc_service.buy(merchant, item_id):
+		_show_toast("Bought %s." % _item_name(item_id))
+	else:
+		_show_toast("Not enough coins.")
+	_refresh_shop_panel()
+
+
+func _on_sell_held_pressed() -> void:
+	var merchant := _merchant_npc()
+	if merchant == null or player == null or player.npc_service == null or not player.npc_service.is_resident(merchant):
+		_show_toast("No merchant to sell to.")
+		return
+	var stack: Dictionary = player.inventory.get_slot("hotbar", int(player.inventory.selected))
+	var id := StringName(stack.get("id", &""))
+	var amount := int(stack.get("amount", 0))
+	if id == &"" or amount <= 0:
+		_show_toast("Nothing selected to sell.")
+		return
+	if player.npc_service.sell(id, amount):
+		_show_toast("Sold %d %s." % [amount, _item_name(id)])
+	else:
+		_show_toast("Could not sell that.")
+	_refresh_shop_panel()
+
+
+func _on_quest_turn_in_pressed() -> void:
+	var merchant := _merchant_npc()
+	if merchant == null or player == null or player.npc_service == null:
+		return
+	if player.npc_service.complete_quest(merchant):
+		_show_toast("Quest complete!")
+	else:
+		_show_toast("Can't turn that in yet.")
+	_refresh_shop_panel()
+
+
+func _toggle_shop() -> void:
+	shop_visible = not shop_visible
+	if shop_panel != null:
+		shop_panel.visible = shop_visible
+	if shop_visible:
+		inventory_visible = false
+		crafting_visible = false
+		guide_visible = false
+		if inventory_panel != null:
+			inventory_panel.visible = false
+		if crafting_panel != null:
+			crafting_panel.visible = false
+		if guide_panel != null:
+			guide_panel.visible = false
+		_refresh_shop_panel()
 		_set_mouse_captured(false)
 	else:
 		_set_mouse_captured(true)
@@ -2123,10 +2293,13 @@ func _toggle_inventory() -> void:
 	if inventory_visible:
 		crafting_visible = false
 		guide_visible = false
+		shop_visible = false
 		if crafting_panel != null:
 			crafting_panel.visible = false
 		if guide_panel != null:
 			guide_panel.visible = false
+		if shop_panel != null:
+			shop_panel.visible = false
 		if held_label != null:
 			held_label.visible = false
 		_refresh_inventory_panel()
@@ -2145,9 +2318,11 @@ func close_panels() -> void:
 	inventory_visible = false
 	crafting_visible = false
 	guide_visible = false
+	shop_visible = false
 	if inventory_panel != null: inventory_panel.visible = false
 	if crafting_panel != null: crafting_panel.visible = false
 	if guide_panel != null: guide_panel.visible = false
+	if shop_panel != null: shop_panel.visible = false
 	if tooltip_label != null: tooltip_label.visible = false
 	if hotbar_panel != null: hotbar_panel.visible = true
 	if held_label != null: held_label.visible = true
@@ -2167,8 +2342,11 @@ func _toggle_crafting() -> void:
 		crafting_panel.visible = crafting_visible
 	if crafting_visible:
 		inventory_visible = false
+		shop_visible = false
 		if inventory_panel != null:
 			inventory_panel.visible = false
+		if shop_panel != null:
+			shop_panel.visible = false
 		_refresh_crafting_list()
 		_set_mouse_captured(false)
 	else:

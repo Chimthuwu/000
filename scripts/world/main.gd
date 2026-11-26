@@ -1,6 +1,9 @@
 extends Node3D
 
 const SaveSystem = preload("res://scripts/save/save_manager.gd")
+# Terraria's Merchant shows up once you're carrying 50 silver; this world's
+# currency is flat "coin", so a flat threshold stands in for that.
+const MERCHANT_COIN_THRESHOLD := 50
 
 @onready var world: VoxelWorld = $VoxelWorld
 @onready var player: VoxelPlayer = $Player
@@ -20,6 +23,7 @@ var last_clue_site := ""
 var _auto_continue := false
 var _hallow_checked := false
 var _guide: NpcBase = null
+var _merchant: NpcBase = null
 var _house_timer := 0.0
 
 func _ready() -> void:
@@ -59,6 +63,8 @@ func _process(delta: float) -> void:
 	if world.is_generated and player.spawned:
 		if _guide == null:
 			_spawn_guide()
+		if _merchant == null and player.get("inventory") != null and player.inventory.count(&"coin") >= MERCHANT_COIN_THRESHOLD:
+			_spawn_merchant()
 		_update_environmental_clues(delta)
 		_update_housing(delta)
 		if Input.is_action_just_pressed("debug_spawn_nightlings"):
@@ -116,6 +122,48 @@ func _spawn_guide() -> void:
 	add_child(guide)
 	guide.global_position = Vector3(float(gx) + 0.5, float(gy) + 1.0, float(gz) + 0.5)
 	_guide = guide
+
+
+## Once the player is carrying enough coin, a Merchant turns up wandering near
+## them - unhoused, same as the Guide would be if he had to earn his spot. The
+## existing _update_housing() flow is what actually moves them into a house;
+## this just puts them in the world so there is someone for it to find.
+func _spawn_merchant() -> void:
+	var px := floori(player.global_position.x)
+	var pz := floori(player.global_position.z)
+	var offsets := [Vector2i(5, 3), Vector2i(-5, 4), Vector2i(4, -5), Vector2i(-4, -4), Vector2i(6, 0)]
+	var gx := px + 5
+	var gz := pz + 3
+	for offset in offsets:
+		var point: Vector2i = offset
+		var cx: int = px + point.x
+		var cz: int = pz + point.y
+		if world.is_chunk_loaded_at(Vector3i(cx, world.get_surface_height(cx, cz), cz)):
+			gx = cx
+			gz = cz
+			break
+	var gy := world.get_surface_height(gx, gz)
+	if gy <= 0:
+		gy = floori(player.global_position.y)
+	var merchant := NpcBase.new()
+	merchant.name = "Merchant"
+	merchant.npc_name = "Merchant"
+	merchant.display_name = "Merchant"
+	var profile: NpcProfile = player.npc_service.profiles.get(&"merchant")
+	if profile != null:
+		merchant.shop_items = profile.shop_items.duplicate()
+	merchant.quest_id = &"ore_delivery"
+	merchant.dialogue_lines = PackedStringArray([
+		"Well now, a customer! I've got torches, salves and tools for sale.",
+		"Build me a proper house - sealed, lit, a chair and a workbench - and I'll set up shop for good.",
+		"Press B any time to see what I'm selling, once I've moved in.",
+		"The Watch could use copper ore. Bring six and I'll make it worth your while.",
+	])
+	merchant.interaction_radius = 3.0
+	add_child(merchant)
+	merchant.global_position = Vector3(float(gx) + 0.5, float(gy) + 1.0, float(gz) + 0.5)
+	_merchant = merchant
+	hud.show_world_hint("A MERCHANT HAS ARRIVED NEARBY.", 4.0)
 
 
 ## Terraria house rules, adapted: the room the player is standing in must be
