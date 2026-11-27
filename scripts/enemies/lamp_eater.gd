@@ -10,6 +10,14 @@ var extinguish_seconds := 12.0
 var target_radius := 24.0
 var target_blocks: Array[StringName] = [&"torch"]
 
+
+## A creature of the night like the others (BogCrawler included, which
+## extends this class): without this it never leaves once spawned, so it
+## would still be standing around hunting lights in broad daylight.
+func _should_dissolve(cell: Vector3i) -> bool:
+	return world.get_light_level(cell) >= dissolve_light_level or world.get_flashlight_level_at(position + Vector3.UP * 0.5) >= 0.65
+
+
 func _update_behavior(delta: float) -> void:
 	flare_timer = maxf(0.0, flare_timer - delta)
 	if flare_timer <= 0.0 and lantern_core != null:

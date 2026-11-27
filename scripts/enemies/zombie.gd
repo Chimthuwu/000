@@ -24,6 +24,13 @@ func _init() -> void:
 	attack_range = 1.35
 
 
+## A creature of the night like the others: without this it never leaves once
+## spawned, so a zombie that wandered up overnight would still be standing
+## around in broad daylight the next day.
+func _should_dissolve(cell: Vector3i) -> bool:
+	return world.get_light_level(cell) >= dissolve_light_level or world.get_flashlight_level_at(position + Vector3.UP * 0.5) >= 0.65
+
+
 ## The source mesh is one rigid T-pose with no skeleton, so there is no real
 ## leg-cycle to play. This fakes a shamble instead: a forward lean while
 ## chasing, plus an exaggerated side-to-side stagger and lurching bob, so the

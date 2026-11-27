@@ -407,7 +407,7 @@ func _slime_skin_for(identity: int) -> int:
 		GameplayBiome.Identity.DESERT, GameplayBiome.Identity.HALLOW:
 			return Slime.SKIN_GOLD
 		_:
-			return Slime.SKIN_GREEN
+			return Slime.SKIN_BLUE
 
 
 func _configure_zombie(enemy: NightEnemy) -> void:
