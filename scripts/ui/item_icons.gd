@@ -51,6 +51,8 @@ static func _build(item_id: StringName) -> Texture2D:
 			return art
 	if item_id == &"torch":
 		return _torch_icon()
+	if item_id == &"gel":
+		return _gel_icon()
 	if item_id == &"fallen_star":
 		return _star_icon(Color(1.0, 0.95, 0.55))
 	if item_id == &"mana_crystal":
@@ -97,6 +99,25 @@ static func _torch_icon() -> Texture2D:
 			var dy := float(y) - 5.0
 			if dx + absf(dy) * 0.55 < 1.4:
 				image.set_pixel(x, y, flame_core)
+	return ImageTexture.create_from_image(image)
+
+
+## A translucent-looking blue blob, the way slime gel always reads blue
+## regardless of the slime's own skin colour.
+static func _gel_icon() -> Texture2D:
+	var image := _blank(Color(0.10, 0.10, 0.13))
+	var gel := Color(0.32, 0.56, 0.92)
+	var highlight := Color(0.62, 0.80, 0.98)
+	for x in range(SIZE):
+		for y in range(SIZE):
+			var dx := float(x) - 7.5
+			var dy := float(y) - 8.5
+			var radius := sqrt(dx * dx + dy * dy * 1.15)
+			if radius < 5.4:
+				image.set_pixel(x, y, gel.darkened(0.3) if radius > 4.4 else gel)
+	for x in range(5, 8):
+		for y in range(5, 8):
+			image.set_pixel(x, y, highlight)
 	return ImageTexture.create_from_image(image)
 
 

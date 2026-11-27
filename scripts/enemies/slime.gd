@@ -31,6 +31,13 @@ var hop_interval := 0.82
 var hop_cooldown := 0.0
 var wobble_time := 0.0
 
+## Unlike the other night monsters, a slime does not home in on the player from
+## across the map — it mostly just wanders and hops into whatever is nearby,
+## the way Terraria's slimes are more a hazard underfoot than a hunter.
+const AGGRO_RADIUS := 7.0
+var wander_direction := Vector3.ZERO
+var wander_cooldown := 0.0
+
 
 func _init() -> void:
 	body_half_extents = Vector3(0.38, 0.40, 0.38)
@@ -58,9 +65,24 @@ func _process(delta: float) -> void:
 
 func _update_behavior(delta: float) -> void:
 	hop_cooldown = maxf(0.0, hop_cooldown - delta)
-	super._update_behavior(delta)
-	# The vertical hop is the slime's signature. It still chases continuously in
-	# the air, so the hop changes the silhouette rather than stopping the pursuit.
+	var to_player := player.position - position
+	to_player.y = 0.0
+	var distance := to_player.length()
+	if distance <= AGGRO_RADIUS and distance > 0.01:
+		wish_direction = to_player.normalized()
+		look_at(Vector3(player.position.x, position.y, player.position.z), Vector3.UP)
+	else:
+		wander_cooldown -= delta
+		if wander_cooldown <= 0.0 or wander_direction == Vector3.ZERO:
+			var angle := randf_range(0.0, TAU)
+			wander_direction = Vector3(cos(angle), 0.0, sin(angle))
+			wander_cooldown = randf_range(1.0, 2.5)
+		wish_direction = wander_direction
+		if wish_direction.length_squared() > 0.0001:
+			look_at(position - wish_direction, Vector3.UP)
+	# The vertical hop is the slime's signature. It still hops continuously in
+	# the air, whether it is wandering or closing in, so the hop changes the
+	# silhouette rather than stopping the motion.
 	if on_floor and hop_cooldown <= 0.0 and velocity.y <= 0.1:
 		velocity.y = hop_impulse
 		hop_cooldown = hop_interval

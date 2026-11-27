@@ -613,7 +613,9 @@ func _chop_tree(delta: float, def: ItemDef, tree: Dictionary) -> void:
 		mining_progress_changed.emit(0.0, cell)
 		set_status("AXE REQUIRED TO FELL A TREE")
 		return
-	var rate := 0.30 + def.mining_speed * 0.16
+	# A starting axe used to fell a tree in a single swing or two; this keeps the
+	# base pace slow and lets a better axe's mining_speed matter proportionally more.
+	var rate := 0.10 + def.mining_speed * 0.08
 	mining_progress += rate * delta
 	mining_progress_changed.emit(clampf(mining_progress, 0.0, 1.0), cell)
 	# The tree leans a little further with every swing and shakes on each hit, so
