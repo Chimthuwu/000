@@ -24,9 +24,16 @@ func _init(inv: InventoryModel, prog: ProgressionSystem) -> void:
 	var dir := DirAccess.open("res://data/npc")
 	if dir != null:
 		for file_name in dir.get_files():
-			if not (file_name.ends_with(".tres") or file_name.ends_with(".res")):
+			# In an exported build Godot keeps data/npc/foo.tres as a binary
+			# resource but lists the directory entry as "foo.tres.remap"; the
+			# original "foo.tres" path still has to be the one passed to load()
+			# so the engine's remap table can redirect it to the packed data.
+			var resource_name := file_name
+			if resource_name.ends_with(".remap"):
+				resource_name = resource_name.substr(0, resource_name.length() - len(".remap"))
+			if not (resource_name.ends_with(".tres") or resource_name.ends_with(".res")):
 				continue
-			var resource := load("res://data/npc/".path_join(file_name))
+			var resource := load("res://data/npc/".path_join(resource_name))
 			if resource is NpcProfile:
 				var profile := resource as NpcProfile
 				profiles[profile.npc_id] = profile

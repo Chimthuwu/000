@@ -37,18 +37,22 @@ static func _reload() -> void:
 	names.assign(dir.get_files())
 	names.sort()
 	for file_name in names:
-		# Godot's export pipeline can convert text resources (.tres) to binary
-		# (.res) when packing, so a plain ".tres" filter sees zero files in an
-		# exported build even though the same .tres loads fine from source.
-		if not (file_name.ends_with(".tres") or file_name.ends_with(".res")):
+		# In an exported build Godot keeps data/recipes/foo.tres as a binary
+		# resource but lists the directory entry as "foo.tres.remap"; the
+		# original "foo.tres" path still has to be the one passed to load()
+		# so the engine's remap table can redirect it to the packed data.
+		var resource_name := file_name
+		if resource_name.ends_with(".remap"):
+			resource_name = resource_name.substr(0, resource_name.length() - len(".remap"))
+		if not (resource_name.ends_with(".tres") or resource_name.ends_with(".res")):
 			continue
-		var path := RECIPE_DIR.path_join(file_name)
+		var path := RECIPE_DIR.path_join(resource_name)
 		var resource := load(path)
 		if not resource is CraftingRecipe:
 			push_error("RECIPEDB: %s is not a CraftingRecipe" % path)
 			continue
 		var recipe := resource as CraftingRecipe
 		if recipe.recipe_id == &"":
-			recipe.recipe_id = StringName(file_name.get_basename())
+			recipe.recipe_id = StringName(resource_name.get_basename())
 		_recipes.append(recipe)
 	print("RECIPEDB: loaded %d recipes" % _recipes.size())
