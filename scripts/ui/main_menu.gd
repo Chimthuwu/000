@@ -2,6 +2,7 @@ extends Control
 class_name MainMenu
 
 const WORLD_SCENE := "res://scenes/world/main.tscn"
+const MenuFlyoverScript := preload("res://scripts/ui/menu_flyover.gd")
 
 @onready var title: Label = $Title
 
@@ -23,8 +24,32 @@ func _ready() -> void:
 	if has_node("QuitButton"):
 		get_node("QuitButton").visible = false
 
+	_build_flyover_background()
 	_build_layout()
 	_refresh_world_list()
+
+
+## A slowly orbiting diorama rendered behind the menu buttons, instead of the
+## flat colour fill. The background ColorRect stays, dimmed, as a readability
+## vignette over the 3D scene rather than disappearing outright.
+func _build_flyover_background() -> void:
+	var container := SubViewportContainer.new()
+	container.name = "FlyoverContainer"
+	container.stretch = true
+	container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(container)
+	move_child(container, 0)
+	var viewport := SubViewport.new()
+	viewport.name = "FlyoverViewport"
+	viewport.size = Vector2i(1280, 720)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	container.add_child(viewport)
+	viewport.add_child(MenuFlyoverScript.new())
+	var background := get_node_or_null("Background")
+	if background is ColorRect:
+		background.color.a = 0.45
+
 
 func _build_layout() -> void:
 	# Title styling
@@ -292,7 +317,7 @@ func _build_controls_panel() -> Control:
 	var lbl := Label.new()
 	lbl.position = Vector2(20, 20)
 	lbl.size = Vector2(720, 440)
-	lbl.text = "CONTROLS\n\nWASD - Move\nMouse - Look\nSpace - Jump\nShift - Sprint\nLMB - Mine / Attack\nRMB - Place block\nWheel - Hotbar selection\n1-9,0 - Hotbar slots\nI - Inventory\nC - Crafting\nE - Interact / Talk\nF - Torch / light\nV - Camera mode (third person default)\nK/J - Save/Load\n~ - Dev console\nESC - Pause"
+	lbl.text = "CONTROLS\n\nWASD - Move\nMouse - Look\nSpace - Jump\nShift - Sprint\nLMB - Mine / Attack\nRMB - Place block\nWheel - Hotbar selection\n1-9,0 - Hotbar slots\nI - Inventory\nC - Crafting\nE - Interact / Talk\nF - Torch / light\nV - Camera mode (third person default)\nF1 / F12 - Menu (save/load/quit)\n~ - Dev console\nESC - Inventory / close panel"
 	lbl.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	panel.add_child(lbl)

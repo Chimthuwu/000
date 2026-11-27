@@ -551,7 +551,7 @@ func _build_pause() -> void:
 	panel.add_child(header)
 
 	var left_controls := ["WASD      Move", "SHIFT     Sprint", "SPACE     Jump", "LMB       Mine / Attack", "RMB       Place block", "F         Torch / light"]
-	var right_controls := ["1–9, 0   Hotbar slots", "I         Inventory", "C         Crafting", "E         Interact / Talk", "V         Camera mode", "K / J     Save / Load"]
+	var right_controls := ["1–9, 0   Hotbar slots", "I         Inventory", "C         Crafting", "E         Interact / Talk", "V         Camera mode", "F1 / F12  Menu"]
 	for index in range(left_controls.size()):
 		var left := _label(left_controls[index], 10, TEXT_DIM)
 		left.position = Vector2(24, 92 + index * 18)
@@ -907,7 +907,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			resume_game()
 			get_viewport().set_input_as_handled()
 			return
-		if event.keycode == KEY_F1:
+		if event.keycode == KEY_F1 or event.keycode == KEY_F12:
 			if paused:
 				resume_game()
 			else:
@@ -1431,7 +1431,7 @@ func _build_inventory_panel() -> void:
 	inv_hover_label.size = Vector2(panel_w - eq_x - pad, 14)
 	inventory_panel.add_child(inv_hover_label)
 
-	var hint := _label("ESC closes  ·  click two slots to move or swap  ·  F1 save/load/quit", 9, TEXT_DIM)
+	var hint := _label("ESC closes  ·  click two slots to move or swap  ·  F1/F12 save/load/quit", 9, TEXT_DIM)
 	hint.position = Vector2(pad, panel_h - 20.0)
 	hint.size = Vector2(panel_w - pad * 2.0, 12)
 	inventory_panel.add_child(hint)
