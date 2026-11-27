@@ -195,6 +195,11 @@ var air_id := 0
 var attenuation := PackedByteArray()
 var emitted_light := PackedByteArray()
 var static_light_sources: Array[Dictionary] = []
+# cell -> its index in static_light_sources, kept in sync with every append/
+# swap-remove below so unloading a chunk's sources is O(1) per cell instead of
+# an O(n) scan of the whole (world-wide, ever-growing) array. Unload used to
+# cost tens to hundreds of milliseconds once enough of the world was explored.
+var _light_source_index: Dictionary = {}
 var extinguished_sources: Dictionary = {}
 var night_manager: NightManager
 var ambient_sky_level := 0.0
@@ -460,6 +465,7 @@ func _update_streaming(force: bool) -> void:
 		return
 	stream_center = center
 	stream_vertical = window
+	var disk_start := Time.get_ticks_usec()
 	for offset_z in range(-STREAM_RADIUS, STREAM_RADIUS + 1):
 		for offset_x in range(-STREAM_RADIUS, STREAM_RADIUS + 1):
 			if offset_x * offset_x + offset_z * offset_z > STREAM_RADIUS * STREAM_RADIUS:
@@ -469,9 +475,11 @@ func _update_streaming(force: bool) -> void:
 				var coords := Vector3i(column.x, chunk_y, column.y)
 				if not chunk_records.has(coords) and not generation_set.has(coords):
 					_queue_generation(coords)
+	perf_usec["stream_disk"] = Time.get_ticks_usec() - disk_start
 	# Bow wave: when the buggy drags the focus away from the camera, make sure
 	# the columns around the focus are queued even if the camera disk has not
 	# grown to cover them yet.
+	var focus_start := Time.get_ticks_usec()
 	if _focus_is_fresh():
 		var focus_column := Vector2i(floori(float(generation_focus_cell.x) / CHUNK_SIZE), floori(float(generation_focus_cell.z) / CHUNK_SIZE))
 		for offset_z in range(-FOCUS_DISK_RADIUS, FOCUS_DISK_RADIUS + 1):
@@ -483,7 +491,10 @@ func _update_streaming(force: bool) -> void:
 					var coords := Vector3i(column.x, chunk_y, column.y)
 					if not chunk_records.has(coords) and not generation_set.has(coords):
 						_queue_generation(coords)
+	perf_usec["stream_focus"] = Time.get_ticks_usec() - focus_start
+	var unload_start := Time.get_ticks_usec()
 	_unload_far_chunks(center)
+	perf_usec["stream_unload"] = Time.get_ticks_usec() - unload_start
 	var veg_start := Time.get_ticks_usec()
 	vegetation.update_region(world_seed, center * CHUNK_SIZE, 96)
 	perf_usec["vegetation"] = Time.get_ticks_usec() - veg_start
@@ -900,14 +911,26 @@ func _collect_chunk_sources(coords: Vector3i) -> void:
 		if extinguished_sources.has(cell):
 			continue
 		sources.append(cell)
-		static_light_sources.append({"cell": cell, "level": level, "cool": block_id == int(block_ids[&"lumen_crystal"])})
+		_append_static_light_source(cell, level, block_id == int(block_ids[&"lumen_crystal"]))
 	record["sources"] = sources
 
 
+func _append_static_light_source(cell: Vector3i, level: int, cool: bool) -> void:
+	_light_source_index[cell] = static_light_sources.size()
+	static_light_sources.append({"cell": cell, "level": level, "cool": cool})
+
+
 func _remove_static_light_source(cell: Vector3i) -> void:
-	for index in range(static_light_sources.size() - 1, -1, -1):
-		if static_light_sources[index]["cell"] == cell:
-			static_light_sources.remove_at(index)
+	var index = _light_source_index.get(cell)
+	if index == null:
+		return
+	var last_index := static_light_sources.size() - 1
+	if index != last_index:
+		var moved: Dictionary = static_light_sources[last_index]
+		static_light_sources[index] = moved
+		_light_source_index[moved["cell"]] = index
+	static_light_sources.remove_at(last_index)
+	_light_source_index.erase(cell)
 
 
 func _update_static_light_source(cell: Vector3i, new_block_id: int) -> void:
@@ -916,7 +939,7 @@ func _update_static_light_source(cell: Vector3i, new_block_id: int) -> void:
 		return
 	var level := int(emitted_light[new_block_id])
 	if level > 0:
-		static_light_sources.append({"cell": cell, "level": level, "cool": new_block_id == int(block_ids[&"lumen_crystal"])})
+		_append_static_light_source(cell, level, new_block_id == int(block_ids[&"lumen_crystal"]))
 		var coords := _chunk_of(cell)
 		var record: Dictionary = chunk_records.get(coords, {})
 		if not record.is_empty():
@@ -1065,11 +1088,12 @@ func _fill_mesh_workers() -> void:
 		var sources_start := Time.get_ticks_usec()
 		var chunk_sources := _light_sources_for_chunk(coords)
 		perf_usec["sources"] = Time.get_ticks_usec() - sources_start
-		mesh_task_ids[slot] = WorkerThreadPool.add_task(Callable(self, "_mesh_chunk_task").bind(coords, revision, snapshot["blocks"], snapshot["light"], snapshot["sky"], chunk_sources))
+		mesh_task_ids[slot] = WorkerThreadPool.add_task(Callable(self, "_mesh_chunk_task").bind(coords, revision, snapshot["blocks"], snapshot["light"], chunk_sources))
 		dispatched += 1
 
 
-func _mesh_chunk_task(coords: Vector3i, revision: int, block_snapshot: PackedByteArray, light_snapshot: PackedByteArray, sky_snapshot: PackedByteArray, light_sources: Array) -> void:
+func _mesh_chunk_task(coords: Vector3i, revision: int, block_snapshot: PackedByteArray, light_snapshot: PackedByteArray, light_sources: Array) -> void:
+	var sky_snapshot := _build_sky_snapshot(coords * CHUNK_SIZE, block_snapshot)
 	var mesh_data := Mesher.build(block_snapshot, light_snapshot, sky_snapshot, palette, air_id, fixture_ids, emissive_ids, light_sources, terrain_tiles)
 	worker_mutex.lock()
 	mesh_results[coords] = {"revision": revision, "mesh": mesh_data}
@@ -1143,13 +1167,10 @@ func _make_mesh_snapshot(coords: Vector3i) -> Dictionary:
 	var limit := 18
 	var block_snapshot := PackedByteArray()
 	var light_snapshot := PackedByteArray()
-	var sky_snapshot := PackedByteArray()
 	block_snapshot.resize(limit * limit * limit)
 	light_snapshot.resize(limit * limit * limit)
-	sky_snapshot.resize(limit * limit * limit)
 	block_snapshot.fill(int(block_ids[&"stone"]))
 	light_snapshot.fill(0)
-	sky_snapshot.fill(0)
 	# Copy the 18^3 halo straight out of the neighbouring chunk rows instead of
 	# looking up every cell individually. Unloaded space keeps the stone fill,
 	# so the frontier never exposes the underside of the world.
@@ -1182,9 +1203,19 @@ func _make_mesh_snapshot(coords: Vector3i) -> Dictionary:
 							block_snapshot[target_start + offset_x] = source_blocks[source_start + offset_x]
 							if light_ready:
 								light_snapshot[target_start + offset_x] = source_light[source_start + offset_x]
-	# Sky fill: only the dominant biome is needed, and the vertical run comes
-	# straight from the copied block snapshot. This avoids 324 full height-blend
-	# evaluations (the old column_info call) on the main thread per snapshot.
+	return {"blocks": block_snapshot, "light": light_snapshot}
+
+
+# Sky fill: only the dominant biome is needed, and the vertical run comes
+# straight from the block snapshot. Runs on the mesh worker thread (BiomeManager's
+# noise queries are read-only and safe there, same as the vegetation/water
+# workers) instead of the main thread — the 324 sky_mode() calls per chunk were
+# showing up as several milliseconds of main-thread cost during streaming.
+func _build_sky_snapshot(origin: Vector3i, block_snapshot: PackedByteArray) -> PackedByteArray:
+	var limit := 18
+	var sky_snapshot := PackedByteArray()
+	sky_snapshot.resize(limit * limit * limit)
+	sky_snapshot.fill(0)
 	for z in range(-1, CHUNK_SIZE + 1):
 		for x in range(-1, CHUNK_SIZE + 1):
 			var sky_value := BiomeManager.sky_mode(origin.x + x, origin.z + z)
@@ -1199,7 +1230,7 @@ func _make_mesh_snapshot(coords: Vector3i) -> Dictionary:
 				if world_y >= 0 and world_y < WORLD_Y:
 					sky_snapshot[snapshot_index] = sky_value
 				y -= 1
-	return {"blocks": block_snapshot, "light": light_snapshot, "sky": sky_snapshot}
+	return sky_snapshot
 
 
 func _local_index(cell: Vector3i, coords: Vector3i) -> int:
@@ -1546,6 +1577,7 @@ func restore_save(save_data: Dictionary) -> bool:
 	mesh_results.clear()
 	worker_mutex.unlock()
 	static_light_sources.clear()
+	_light_source_index.clear()
 	has_active_light = false
 	active_light_coords = INVALID_CHUNK
 	active_light_state.clear()

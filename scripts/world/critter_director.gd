@@ -7,10 +7,13 @@ class_name CritterDirector
 
 const BunnyScript = preload("res://scripts/enemies/bunny.gd")
 
-const SPAWN_TICK_SECONDS := 4.0
-const MAX_ACTIVE := 5
-const MIN_SPAWN_DISTANCE := 8.0
-const MAX_SPAWN_DISTANCE := 22.0
+const SPAWN_TICK_SECONDS := 2.5
+const MAX_ACTIVE := 10
+# A 22-unit max let bunnies spawn behind trees/hills with no sightline to the
+# player, so they existed but were practically never seen. Narrowing the band
+# keeps spawns close enough to land in or near view in typical terrain.
+const MIN_SPAWN_DISTANCE := 6.0
+const MAX_SPAWN_DISTANCE := 14.0
 
 var world: VoxelWorld
 var player: VoxelPlayer
