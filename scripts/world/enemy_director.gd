@@ -72,14 +72,15 @@ func _spawn_from_night() -> void:
 		max_active = int(float(max_active) * blood_moon.CONFIG.max_active_scale)
 	if enemies.size() >= max_active:
 		return
-	# Candidate pool: night-dark chunks that are fully ready (generated, lit
-	# and meshed), so a spawn never lands in frontier terrain.
+	# Candidate pool: any fully-ready chunk (generated, lit and meshed) not on
+	# cooldown, so a spawn never lands in frontier terrain. Dark chunks (night
+	# surface, or caves at any hour — night.levels tracks light exposure, not
+	# the clock) draw the full roster below; lit daylight surface draws from
+	# slimes only, the one monster Terraria lets wander around in the sun.
 	var candidates: Array[Vector3i] = []
 	for key in world.chunk_records.keys():
 		var chunk_index: Vector3i = key
 		if not world.is_chunk_ready(chunk_index):
-			continue
-		if float(night.levels.get(chunk_index, 0.0)) < NIGHT_CONFIG.spawn_threshold:
 			continue
 		if float(chunk_cooldowns.get(chunk_index, 0.0)) > 0.0:
 			continue
@@ -88,6 +89,7 @@ func _spawn_from_night() -> void:
 		return
 	candidates.shuffle()
 	for chunk_index in candidates:
+		var is_dark := float(night.levels.get(chunk_index, 0.0)) >= NIGHT_CONFIG.spawn_threshold
 		var position := _find_spawn_position(chunk_index)
 		if position == Vector3(-1.0, -1.0, -1.0):
 			continue
@@ -95,19 +97,23 @@ func _spawn_from_night() -> void:
 		# not the player's biome, so border fights spawn the local wildlife.
 		var biome := world.get_biome_at(Vector3i(floori(position.x), 0, floori(position.z)))
 		var identity := GameplayBiome.identity_for(biome)
-		var hollow_count := 0
-		for existing in enemies:
-			if existing is Hollow:
-				hollow_count += 1
-		var kind := CONFIG.roll_kind_identity(identity, rng.randf())
-		if blood_moon != null and blood_moon.is_active and kind != EnemyConfig.KIND_HOLLOW and rng.randf() < blood_moon.CONFIG.zombie_bias:
-			# Terraria's Blood Moon skews the night's population hard toward
-			# zombies; Hollow encounters stay as rolled rather than piled on.
-			kind = EnemyConfig.KIND_ZOMBIE
-		if kind == EnemyConfig.KIND_HOLLOW and hollow_count >= CONFIG.max_active_hollows:
-			# Cap reached: fall back to the identity's small game instead of
-			# re-rolling, keeping the table deterministic per Terraria biome.
-			kind = EnemyConfig.KIND_FROST_STALKER if identity == GameplayBiome.Identity.SNOW else EnemyConfig.KIND_NIGHTLING
+		var kind: int
+		if is_dark:
+			var hollow_count := 0
+			for existing in enemies:
+				if existing is Hollow:
+					hollow_count += 1
+			kind = CONFIG.roll_kind_identity(identity, rng.randf())
+			if blood_moon != null and blood_moon.is_active and kind != EnemyConfig.KIND_HOLLOW and rng.randf() < blood_moon.CONFIG.zombie_bias:
+				# Terraria's Blood Moon skews the night's population hard toward
+				# zombies; Hollow encounters stay as rolled rather than piled on.
+				kind = EnemyConfig.KIND_ZOMBIE
+			if kind == EnemyConfig.KIND_HOLLOW and hollow_count >= CONFIG.max_active_hollows:
+				# Cap reached: fall back to the identity's small game instead of
+				# re-rolling, keeping the table deterministic per Terraria biome.
+				kind = EnemyConfig.KIND_FROST_STALKER if identity == GameplayBiome.Identity.SNOW else EnemyConfig.KIND_NIGHTLING
+		else:
+			kind = EnemyConfig.KIND_SLIME
 		var pack_kind := kind == EnemyConfig.KIND_NIGHTLING or kind == EnemyConfig.KIND_FROST_STALKER
 		var count := mini(CONFIG.nightling_group_size, max_active - enemies.size()) if pack_kind else 1
 		for index in range(count):
