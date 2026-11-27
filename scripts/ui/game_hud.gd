@@ -48,7 +48,7 @@ var held_label: Label
 var held_time := 0.0
 var _held_shown := &""
 var inv_hover_label: Label
-var inv_craft_list: VBoxContainer
+var inv_craft_list: GridContainer
 var status_label: Label
 var hint_panel: Panel
 var hint_label: Label
@@ -126,7 +126,7 @@ var crafting_visible := false
 var inv_selected: Dictionary = {}  # {area, index}
 var inv_slot_panels: Array[Dictionary] = []  # {panel, label, count, area, index}
 var equip_slot_panels: Dictionary = {}
-var craft_list: VBoxContainer
+var craft_list: GridContainer
 var craft_detail_label: Label
 var craft_station_label: Label
 var selected_recipe: CraftingRecipe = null
@@ -1417,8 +1417,11 @@ func _build_inventory_panel() -> void:
 	scroll.size = Vector2(float(grid_cols) * slot, panel_h - craft_top - 58.0)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	inventory_panel.add_child(scroll)
-	inv_craft_list = VBoxContainer.new()
+	inv_craft_list = GridContainer.new()
+	inv_craft_list.columns = 10
 	inv_craft_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inv_craft_list.add_theme_constant_override("h_separation", 3)
+	inv_craft_list.add_theme_constant_override("v_separation", 3)
 	scroll.add_child(inv_craft_list)
 
 	# Terraria shows the hovered item's name under the grid.
@@ -1482,8 +1485,11 @@ func _build_crafting_panel() -> void:
 	scroll.position = Vector2(12, 42)
 	scroll.size = Vector2(300, 336)
 	crafting_panel.add_child(scroll)
-	craft_list = VBoxContainer.new()
+	craft_list = GridContainer.new()
+	craft_list.columns = 7
 	craft_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	craft_list.add_theme_constant_override("h_separation", 3)
+	craft_list.add_theme_constant_override("v_separation", 3)
 	scroll.add_child(craft_list)
 	craft_station_label = _label("", 9, Color(0.74, 0.84, 0.94))
 	craft_station_label.position = Vector2(12, 27)
@@ -1903,27 +1909,72 @@ func _refresh_inventory_panel(_arg: Variant = null) -> void:
 				label.text = _item_name(id).substr(0, 7)
 
 
+const RECIPE_ICON_SIZE := 36.0
+
 ## The recipe list shared by the C panel (select, then Craft) and the expanded
-## inventory (Terraria crafts on click).
-func _fill_recipe_list(container: VBoxContainer, craft_on_click: bool) -> void:
+## inventory (Terraria crafts on click). Terraria shows recipes as a grid of
+## item icons, not a scrolling text list, so each recipe is its own icon slot:
+## bright and clickable when craftable, dimmed when it is not, with the full
+## breakdown on hover instead of inline.
+func _fill_recipe_list(container: GridContainer, craft_on_click: bool) -> void:
 	for child in container.get_children():
 		child.queue_free()
 	if player == null or player.get("crafting") == null:
 		return
 	var cs = player.crafting
 	for recipe in cs.all_recipes():
-		var btn := Button.new()
-		var can := cs.can_craft(recipe)
-		btn.text = "%s%s" % [recipe.display_name, "" if can else "  ·  " + _craft_suffix(cs.reason(recipe))]
-		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		btn.disabled = not can
-		btn.clip_text = true
-		btn.add_theme_font_size_override("font_size", 11)
-		if craft_on_click:
-			btn.pressed.connect(func(): _craft_recipe_now(recipe))
-		else:
-			btn.pressed.connect(func(): _select_recipe(recipe))
-		container.add_child(btn)
+		_add_recipe_icon(container, recipe, cs, craft_on_click)
+
+
+## One recipe icon: the output item's own icon in a slot, dimmed when the
+## ingredients or station are missing, with a hover tooltip giving the full
+## ingredient have/need breakdown Terraria shows under the cursor.
+func _add_recipe_icon(container: GridContainer, recipe: CraftingRecipe, cs, craft_on_click: bool) -> void:
+	var can := bool(cs.can_craft(recipe))
+	var p := Panel.new()
+	p.custom_minimum_size = Vector2(RECIPE_ICON_SIZE, RECIPE_ICON_SIZE)
+	p.add_theme_stylebox_override("panel", _style(SLOT_BG, SLOT_BORDER, 2, 2))
+	p.modulate = Color(1.0, 1.0, 1.0, 1.0) if can else Color(0.55, 0.55, 0.55, 0.6)
+	p.mouse_filter = Control.MOUSE_FILTER_STOP
+	p.tooltip_text = _recipe_tooltip(recipe, cs, can)
+	p.gui_input.connect(func(ev: InputEvent):
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			if craft_on_click:
+				_craft_recipe_now(recipe)
+			else:
+				_select_recipe(recipe))
+	container.add_child(p)
+	var picon := TextureRect.new()
+	picon.position = Vector2(3, 3)
+	picon.size = Vector2(RECIPE_ICON_SIZE - 6.0, RECIPE_ICON_SIZE - 6.0)
+	picon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	picon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	picon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	picon.texture = ItemIcons.icon_for(recipe.output_id())
+	picon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(picon)
+	if recipe.output_amount() > 1:
+		var cnt := _label(str(recipe.output_amount()), 9, Color(1.0, 0.97, 0.86), HORIZONTAL_ALIGNMENT_RIGHT)
+		cnt.position = Vector2(2, RECIPE_ICON_SIZE - 13.0)
+		cnt.size = Vector2(RECIPE_ICON_SIZE - 6.0, 12)
+		cnt.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.06, 1.0))
+		cnt.add_theme_constant_override("outline_size", 2)
+		cnt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		p.add_child(cnt)
+
+
+func _recipe_tooltip(r: CraftingRecipe, cs, can: bool) -> String:
+	var lines: Array[String] = [r.display_name]
+	lines.append("Station: " + (r.station if r.station != "none" else "hand"))
+	for k in r.ingredients.keys():
+		var have := 0
+		if player.get("inventory") != null:
+			have = player.inventory.count(StringName(k))
+		var need := int(r.ingredients[k])
+		lines.append("%s %d/%d" % [_item_name(StringName(k)), have, need])
+	if not can:
+		lines.append(_craft_suffix(cs.reason(r)))
+	return "\n".join(lines)
 
 
 func _refresh_inv_craft_list() -> void:
