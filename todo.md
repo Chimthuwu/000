@@ -235,17 +235,24 @@ are implemented and verified. Phase 1 (overworld art) is partially done, Phase 5
 
 ## 4. Verification sweep (Phase 5)
 
-- [!] Re-run the regression checks after the palette change:
+- [x] Re-run the regression checks after the palette change:
       `world_boot_check`, `biome_visuals_check`, `terrain_atlas_check`,
       `building_extra_check`, `survival_check`, `npc_check`, `menu_click_check`.
-      (2026-11-22: `terrain_atlas_check`, `mesher_fixture_check`,
-      `biome_visuals_check`, `core_biomes_check`, `world_boot_check`,
-      `overworld_check` and `world_contract_check` already PASS for the grass and
-      spawn-distance work; the rest of this list is still open.)
+      DONE 2026-11-29. All seven PASS headless. Fixes made along the way:
+      `biome_visuals_check` updated to the region-build API (the old
+      `_build_biome_props` call no longer exists), a real regression fixed in
+      `main.gd load_game` (the felled-sites commit had indented the whole
+      restore block under an early `return`, so saves never restored anything),
+      and the survival_check camp scan widened because the spawn Forest bias
+      removed ASHEN columns from the old 4x4 grid. Also added
+      `debug/spawn_settle_check.gd` (spawn streaming/settle contract, PASS).
 - [!] Capture a biome screenshot set for the evidence folder:
       forest, crimson, jungle, underground, underworld.
-- [!] Re-run `music_check` and `gameplay_integration_check` after the HUD palette and
+- [x] Re-run `music_check` and `gameplay_integration_check` after the HUD palette and
       inventory layout edits.
+      DONE 2026-11-29. `music_check` 33/33 PASS after mapping the `blood_moon`
+      category to `surface_night.mp3` in `music_map.tres` (Terraria keeps the
+      night theme during a Blood Moon); `gameplay_integration_check` PASS.
 - [!] Update `STATE.md` and `DEVLOG.md` for this session's work.
 - [!] Re-export `build/Terraria3D.exe`.
 
