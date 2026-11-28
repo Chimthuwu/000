@@ -357,6 +357,21 @@ are implemented and verified. Phase 1 (overworld art) is partially done, Phase 5
   Hints: scripts/world/world.gd around line 831.
   DONE 2026-11-29: branch removed; world_boot_check PASS (ready in 569 frames).
 
+- [ ] **Light queue selection is O(n) per pop** [P3] [performance] [size:M]
+  Why: `_pop_light` scans the whole `light_queue` and computes a distance per entry for every pop; a full fill cycle over ~300 chunks is O(n²) distance evaluations on the main thread.
+  Done when: a benchmark or profile shows the light pop cost; replace with a binary heap keyed by distance to `_priority_position()` (re-heapify on focus moves) or a cheap coarse bucket.
+  Hints: scripts/world/world.gd `_pop_light`, `light_queue`, perf_usec["light"].
+
+- [ ] **game_hud.gd is a 2,400-line god file (109 functions)** [P3] [code audit] [size:L]
+  Why: `scripts/ui/game_hud.gd` mixes hotbar, vitals, inventory panel, crafting list, dialogue, boss bar and debug readout in one script; every UI change risks unrelated regressions (this session's UI contract check helps, but the file is still the largest in the repo).
+  Done when: hotbar/vitals/inventory/crafting split into child scripts or at least clearly separated sections with the public GameHUD API unchanged and `ui_contract_check` + `gameplay_integration_check` PASS.
+  Hints: scripts/ui/game_hud.gd; ui_contract_check.gd and gameplay_integration_check.gd as the guard rails.
+
+- [ ] **Unused desert.mp3 asset** [P3] [docs] [size:S]
+  Why: After the desert-music decision the `desert` category maps to `surface_day.mp3`; `res/audio/music/desert.mp3` (the Alternate Day stand-in) is referenced by no code or map entry and just weighs on the pack.
+  Done when: file removed (or kept deliberately with a README note) and `music_map_check`/`music_check` still PASS.
+  Hints: data/audio/music_map.tres no longer lists it; removal is an asset deletion — owner may prefer keeping it.
+
 - [ ] **Mushroom biome grass too dark** [P2] [art] [size:S]
   Why: Mushroom biome uses mycelium (0.30,0.14,0.42) which reads as dark purple. Terraria's Glowing Mushroom biome has bright teal grass.
   Done when: Create mushroom_grass block with teal albedo (~0.3,0.7,0.6) and update world_generator.gd MUSHROOM biome to use it.
