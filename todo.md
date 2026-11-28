@@ -288,8 +288,19 @@ are implemented and verified. Phase 1 (overworld art) is partially done, Phase 5
       when the player spawns and the player falls through non-collidable chunks. A
       settle guard was added to `debug/capture_terraria_ui.gd` to work around it in
       captures, but the root cause (noted in `STATE.md`) is unaddressed.
-- [!] Pre-existing, unrelated failures: `streaming_check` (stale chunk y) and four
-      failures in `debug/agent2_gameplay_check.gd`.
+- [x] Pre-existing, unrelated failures: `streaming_check` (stale chunk y) and four
+      failures in `debug/agent2_gameplay_check.gd`. DONE 2026-11-29. All four
+      failures were stale test contracts, not game bugs: streaming_check
+      hardcoded spawn chunk `Vector3i(4, 1, 4)` from before the lifted surface
+      (real spawn chunk is `(4, 11, 4)`), returned the player at y=45 which is
+      below the vertical streaming window so the surface chunks never
+      re-streamed, and compared an empty record for the byte-identical/edit
+      assertions. agent2_gameplay_check expected mined blocks to spawn
+      ItemEntities (mining now auto-collects into `collected_blocks`, drained
+      the next `_process` frame), assumed the camera defaulted to first person
+      (default is third person now), and built a hand-made nightling without a
+      loot table. Both checks now PASS headless: streaming_check 18/18,
+      agent2_gameplay_check 64/64. Commit b79cfac.
 
 ## 6. Housekeeping
 
