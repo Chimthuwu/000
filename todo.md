@@ -193,8 +193,14 @@ are implemented and verified. Phase 1 (overworld art) is partially done, Phase 5
   - [x] click-to-move an item between hotbar and inventory grid
   - [x] equipment swap into the armour column updates `player` stats
   - [x] crafting list click actually consumes materials and grants the item
-- [!] Inventory panel still crowds its footer hint; verify the crafted-list scroll
-      height fix after the next capture. Requires live game testing.
+- [x] Inventory panel still crowds its footer hint; verify the crafted-list scroll
+      height fix after the next capture. DONE 2026-11-29. Fresh windowed capture
+      (`debug/evidence/hud_inventory.png`, refreshed via
+      `debug/capture_terraria_ui.gd`) inspected: the crafting grid ends well above
+      the footer, leaving a clear empty margin; the footer hint
+      ("ESC closes · click two slots to move or swap · F1/F12 save/load/quit") is
+      fully readable and unobstructed, and the crafting scrollbar stays inside the
+      crafting area. Crowding is fixed.
 
 ## 3. Music / ambience verification (Phase 3 & 4 follow-through)
 
