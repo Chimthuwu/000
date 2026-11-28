@@ -104,9 +104,13 @@ func _run() -> void:
 	player.position = home
 
 	# --- Environmental clues ------------------------------------------------
+	# Camps need an ASHEN-dominant column (a Forest regional variant) and are
+	# kept >=24 blocks from spawn, so the old 4x4 grid near the origin — which
+	# the spawn Forest bias now covers — no longer holds one. Scan the wider
+	# neighbourhood instead; the site is teleported to either way.
 	var found_site := {}
-	for gx in range(-4, 5):
-		for gz in range(-4, 5):
+	for gx in range(-20, 21):
+		for gz in range(-20, 21):
 			var site := WorldGenerator._derelict_site(world.world_seed, gx, gz)
 			if not site.is_empty():
 				found_site = site

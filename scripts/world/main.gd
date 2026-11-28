@@ -333,32 +333,32 @@ func load_game() -> void:
 				caster.show_context_hint(SaveSystem.FORMAT_CHANGED_MESSAGE, 3.0)
 		return
 	# restore_save wiped the world's modified_chunks; re-seed the live journal
-		# from the loaded edits so subsequent saves keep old edits.
-		edit_journal.seed_from_edits(save_data.get("edited_cells", {}))
-		var metadata: Dictionary = save_data["metadata"]
-		var saved_position: Array = metadata.get("player_position", [])
-		var m4_data: Dictionary = metadata.get("m4", {})
-		if saved_position.size() == 3:
-			player.position = Vector3(saved_position[0], saved_position[1], saved_position[2])
-		cycle.restore_time(float(m4_data.get("day_night_elapsed", 0.0)))
-		night.restore_from_array(m4_data.get("night_levels", []))
-		_restore_survival_state(metadata, m4_data)
-		# Restore felled tree sites so they stay gone after save/load
-		var vegetation: WorldVegetation = world.vegetation
-		if vegetation != null and m4_data.has("felled_sites"):
-			var felled_data: Dictionary = m4_data["felled_sites"]
-			for cell_str: String in felled_data.keys():
-				# Parse "Vector3i(x, y, z)" string back to Vector3i
-				var parts := cell_str.trim_prefix("Vector3i(").trim_suffix(")").split(", ")
-				if parts.size() == 3:
-					var cell := Vector3i(int(parts[0]), int(parts[1]), int(parts[2]))
-					vegetation.felled_sites[cell] = true
-		# Agent 2: restore the real gameplay state from the same nested key.
-		if m4_data.has("gameplay"):
-			player.deserialize_gameplay_state(m4_data["gameplay"])
-		# A loaded save may already have defeated the Warden; Hallow applies to newly
-		# streamed terrain from that point on.
-		_refresh_hallow()
+	# from the loaded edits so subsequent saves keep old edits.
+	edit_journal.seed_from_edits(save_data.get("edited_cells", {}))
+	var metadata: Dictionary = save_data["metadata"]
+	var saved_position: Array = metadata.get("player_position", [])
+	var m4_data: Dictionary = metadata.get("m4", {})
+	if saved_position.size() == 3:
+		player.position = Vector3(saved_position[0], saved_position[1], saved_position[2])
+	cycle.restore_time(float(m4_data.get("day_night_elapsed", 0.0)))
+	night.restore_from_array(m4_data.get("night_levels", []))
+	_restore_survival_state(metadata, m4_data)
+	# Restore felled tree sites so they stay gone after save/load
+	var vegetation: WorldVegetation = world.vegetation
+	if vegetation != null and m4_data.has("felled_sites"):
+		var felled_data: Dictionary = m4_data["felled_sites"]
+		for cell_str: String in felled_data.keys():
+			# Parse "Vector3i(x, y, z)" string back to Vector3i
+			var parts := cell_str.trim_prefix("Vector3i(").trim_suffix(")").split(", ")
+			if parts.size() == 3:
+				var cell := Vector3i(int(parts[0]), int(parts[1]), int(parts[2]))
+				vegetation.felled_sites[cell] = true
+	# Agent 2: restore the real gameplay state from the same nested key.
+	if m4_data.has("gameplay"):
+		player.deserialize_gameplay_state(m4_data["gameplay"])
+	# A loaded save may already have defeated the Warden; Hallow applies to newly
+	# streamed terrain from that point on.
+	_refresh_hallow()
 
 
 func _restore_survival_state(metadata: Dictionary, m4_data: Dictionary) -> void:
