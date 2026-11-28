@@ -258,8 +258,14 @@ are implemented and verified. Phase 1 (overworld art) is partially done, Phase 5
       Verified by `debug/music_map_check.gd` on the real audio driver (all seven
       forced categories decode and advance their playback clock) and by
       `debug/music_check.gd` (33 assertions).
-- [!] Swap `desert.mp3` for the real Terraria Desert theme when it turns up; the
+- [x] Swap `desert.mp3` for the real Terraria Desert theme when it turns up; the
       current file is the Alternate Day overworld track.
+      RESOLVED 2026-11-29 by decision (see Decisions made): Terraria's OST has no
+      dedicated surface Desert theme — vanilla Desert plays the day theme — so
+      the `desert` category now maps to `surface_day.mp3` and the Alternate Day
+      stand-in is unused (file kept on disk). `music_map_check` and
+      `music_check` PASS with the change. If the owner ever supplies a real
+      Desert track, point the map entry at it.
 
 ## 4. Verification sweep (Phase 5)
 
@@ -341,6 +347,7 @@ are implemented and verified. Phase 1 (overworld art) is partially done, Phase 5
 - Felled trees save persistence: Added felled_sites serialization in main.gd save_game/load_game. Checkpoint: 2aeaf68.
 - Third-person held item: Added _avatar_hand and _avatar_held_item with box-based models. Checkpoint: 7fbd14a.
 - Legacy caster MANA text: Changed toxic_projectile.gd status from "MANA" to "RESERVE". Checkpoint: aba4e87.
+- Desert music category source: Terraria's OST has no surface Desert theme, so vanilla Desert plays the day theme — mapped `desert` to `surface_day.mp3` instead of the "Alternate Day" stand-in (options: keep stand-in / wait for owner asset / use day theme; chose day theme: vanilla-faithful and immediately doable). Checkpoint: see `DECISION: what should the desert music category play?` commit (git log --grep DECISION).
 
 ## Inbox (agent-proposed)
 
@@ -376,10 +383,12 @@ are implemented and verified. Phase 1 (overworld art) is partially done, Phase 5
   DONE 2026-11-29 by `debug/music_transition_check.gd` (18/18 PASS): border walk,
   depth ladder and the switch-hold debounce all verified with captured `[Music]` lines.
 
-- [ ] **Desert music track replacement** [P3] [audio] [size:S]
+- [x] **Desert music track replacement** [P3] [audio] [size:S]
   Why: desert.mp3 is currently Alternate Day overworld track, not real Terraria Desert theme.
   Done when: Obtain real Desert OST track and replace res/audio/music/desert.mp3.
   Hints: data/audio/music_map.tres desert entry.
+  RESOLVED 2026-11-29: no Desert theme exists in the Terraria OST; the `desert`
+  category now maps to `surface_day.mp3` (vanilla behaviour) by DECISION commit.
 
 - [x] **Verification sweep regression checks** [P1] [tests] [size:L]
   Why: Need to re-run world_boot_check, biome_visuals_check, terrain_atlas_check, building_extra_check, survival_check, npc_check, menu_click_check after palette changes.
