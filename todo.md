@@ -418,3 +418,19 @@ are implemented and verified. Phase 1 (overworld art) is partially done, Phase 5
   DONE 2026-11-29. Exported with the bundled Godot 4.7.2 and smoke-ran headless
   (exit 0, no script errors); see the ticked Section 4 item.
   Hints: Godot export templates, project export settings.
+
+- [ ] **Inventory footer hint label rect overflows the panel by 3px** [P3] [ui] [size:S]
+  Why: Measured 2026-11-29 (headless probe): the hint Label at position (8,450)
+  with size.y 23 bottoms out at 473 while `InventoryPanel` is 470 tall — the text
+  itself (~12px) fits, so nothing is visibly clipped, but the label box sticks out.
+  Done when: Set the hint's size.y to 12 (or move it up 3px) and re-measure
+  hint_bottom <= panel_h in `ui_contract_check.gd`.
+  Hints: `game_hud.gd _build_inventory_panel` hint Label; `debug/ui_contract_check.gd`.
+
+- [ ] **Boot time-to-spawn instrumentation** [P2] [perf] [size:M]
+  Why: Headless boots needed 560-690 frames before `is_generated` (2026-11-29 sweep
+  logs), and the old "stalled launch" reports have no trace to compare against.
+  Done when: A `debug/boot_timing_check.gd` (or a boot log line per phase: generation
+  done, light queue drained, first mesh install, spawn-ready) prints per-phase frame
+  counts and warns above a threshold, so slow launches leave comparable evidence.
+  Hints: `world.gd _check_spawn_ready`, `WORLD spawn ready` print, `spawn_settle_check.gd`.
