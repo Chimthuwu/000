@@ -828,8 +828,6 @@ func _process_light_updates() -> void:
 		if not was_initialized:
 			initialized_light_chunks += 1
 			light_updates_last_frame += 1
-		if not light_completion_logged and initialized_light_chunks > 0 and is_generated:
-			pass
 	var frame_work_usec := Time.get_ticks_usec() - frame_start_usec
 	if frame_work_usec > 0:
 		light_work_frames += 1

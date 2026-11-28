@@ -351,6 +351,12 @@ are implemented and verified. Phase 1 (overworld art) is partially done, Phase 5
 
 ## Inbox (agent-proposed)
 
+- [x] **Dead light-completion branch in world.gd** [P3] [lint] [size:S]
+  Why: `_process_light_updates` ended with `if not light_completion_logged and ... is_generated: pass` — an empty branch guarded by a flag that is only ever used for the first-unload log; pure dead code.
+  Done when: branch removed, `world_boot_check` still PASS.
+  Hints: scripts/world/world.gd around line 831.
+  DONE 2026-11-29: branch removed; world_boot_check PASS (ready in 569 frames).
+
 - [ ] **Mushroom biome grass too dark** [P2] [art] [size:S]
   Why: Mushroom biome uses mycelium (0.30,0.14,0.42) which reads as dark purple. Terraria's Glowing Mushroom biome has bright teal grass.
   Done when: Create mushroom_grass block with teal albedo (~0.3,0.7,0.6) and update world_generator.gd MUSHROOM biome to use it.
