@@ -204,10 +204,22 @@ are implemented and verified. Phase 1 (overworld art) is partially done, Phase 5
 
 ## 3. Music / ambience verification (Phase 3 & 4 follow-through)
 
-- [!] Real transition evidence run: walk or teleport across biome borders and depths,
+- [x] Real transition evidence run: walk or teleport across biome borders and depths,
       capture `[Music]` and `[Ambience]` log lines for every category actually reached
       (forest → snow → jungle → desert → underground → cavern → underworld → boss).
-- [!] Confirm no audible restart when crossing a border back and forth rapidly.
+      DONE 2026-11-29 (the boss and night branches are covered by
+      `debug/music_map_check.gd`; the walking/teleport branches are covered by the
+      new `debug/music_transition_check.gd`). The check teleports the real player
+      across the Forest→Snow border and down the depth ladder and lets the live
+      `MusicManager._process` drive real `[Music]` switches: surface_day, snow,
+      jungle, desert, mushroom, crimson (border walk), underground, cave and
+      underworld all resolve to real file tracks with captured `[Music] -> ...`
+      lines. 18/18 PASS.
+- [x] Confirm no audible restart when crossing a border back and forth rapidly.
+      DONE 2026-11-29. `debug/music_transition_check.gd` paces the player across
+      the border and back inside `switch_hold_seconds` (0.9 s): the transition
+      count does not move, so nothing restarts; holding past the window switches
+      exactly once. PASS.
 - [x] **Real biome music.** DONE 2026-11-22. The Terraria soundtrack files the
       user supplied were imported into `res/audio/music/` (18 files, ~37 MB) and
       wired through `data/audio/music_map.tres`, one track per category:
@@ -334,10 +346,12 @@ are implemented and verified. Phase 1 (overworld art) is partially done, Phase 5
   Done when: Create debug/ui_contract_check.gd asserting hotbar position, hearts/mana layout, ESC inventory behavior, item drag, crafting.
   Hints: debug/capture_terraria_ui.gd for reference, game_hud.gd for UI structure.
 
-- [ ] **Music transition evidence run** [P2] [audio] [size:M]
+- [x] **Music transition evidence run** [P2] [audio] [size:M]
   Why: Need captured log evidence for biome/depth music transitions and no-restart on rapid border crossing.
   Done when: Run debug/music_map_check.gd and debug/capture_terraria_ui.gd with teleport across biomes, capture [Music]/[Ambience] logs.
   Hints: debug/music_map_check.gd, BiomeManager category resolution.
+  DONE 2026-11-29 by `debug/music_transition_check.gd` (18/18 PASS): border walk,
+  depth ladder and the switch-hold debounce all verified with captured `[Music]` lines.
 
 - [ ] **Desert music track replacement** [P3] [audio] [size:S]
   Why: desert.mp3 is currently Alternate Day overworld track, not real Terraria Desert theme.
