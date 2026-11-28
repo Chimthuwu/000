@@ -455,3 +455,13 @@ are implemented and verified. Phase 1 (overworld art) is partially done, Phase 5
   done, light queue drained, first mesh install, spawn-ready) prints per-phase frame
   counts and warns above a threshold, so slow launches leave comparable evidence.
   Hints: `world.gd _check_spawn_ready`, `WORLD spawn ready` print, `spawn_settle_check.gd`.
+
+- [ ] **Progressive mining crack overlay on the targeted block** [P3] [ui] [size:M]
+  Why: Research (2026-11-29): VoxelCraft (DimitrisMilios, MIT) shows a 10-stage
+  progressive crack texture on the block being mined — reads exactly like
+  Terraria's mining cracks and makes the new per-block mining progress legible.
+  Done when: A decal/overlay quad on the targeted cell shows N crack stages driven
+  by the existing `mining_progress_changed` signal.
+  Hints: `player.gd _update_mining` + `mining_progress_changed.emit`, `Vfx.burst`
+  call site already knows the targeted cell.
+  Source: https://github.com/DimitrisMilios/VoxelCraft (MIT licence; idea only).
