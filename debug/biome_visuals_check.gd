@@ -41,7 +41,13 @@ func _run() -> void:
 	_check(frost_sites.size() > 5, "Snow ice spire sites", "sites=%d" % frost_sites.size())
 	_check(root_sites.size() > 5, "Mire root sites", "sites=%d" % root_sites.size())
 
-	vegetation._build_biome_props(world.world_seed, hush, 72)
+	# Biome props moved from a private builder to a pure compute + fill pair
+	# (_compute_biome_props / _fill_cover, applied by _apply_region); drive
+	# both halves exactly like _apply_region does.
+	var hush_props: Dictionary = vegetation._compute_biome_props(world.world_seed, hush, 72)
+	for archetype in range(WorldVegetation.HUSH_ARCHETYPES):
+		vegetation._fill_cover_from_multimesh(vegetation.hush_multimeshes[archetype], hush_props["hush_per_archetype"][archetype])
+	vegetation._fill_cover(vegetation.mushroom_instance, hush_props["mushrooms"])
 	var hush_instances := 0
 	for multimesh in vegetation.hush_multimeshes:
 		hush_instances += multimesh.instance_count
@@ -53,9 +59,11 @@ func _run() -> void:
 		if color.g > color.r * 1.4 and color.g > 0.15:
 			green_vertices += 1
 	_check(green_vertices > 0, "Jungle archetypes are leafy green", "green_vertices=%d" % green_vertices)
-	vegetation._build_biome_props(world.world_seed, frost, 72)
+	var frost_props: Dictionary = vegetation._compute_biome_props(world.world_seed, frost, 72)
+	vegetation._fill_cover(vegetation.spire_instance, frost_props["spires"])
 	_check(vegetation.spire_instance.multimesh.instance_count > 0, "ice spires populate")
-	vegetation._build_biome_props(world.world_seed, mire, 72)
+	var mire_props: Dictionary = vegetation._compute_biome_props(world.world_seed, mire, 72)
+	vegetation._fill_cover(vegetation.root_instance, mire_props["roots"])
 	_check(vegetation.root_instance.multimesh.instance_count > 0, "swamp roots populate")
 
 	_check(VoxelWorld.BIOME_FOG_SCALE[BiomeManager.HUSH] >= 3.0, "Jungle fog is claustrophobic")
