@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_music_map")
 tracks = {
+"blood_moon": "res://res/audio/music/surface_night.mp3",
 "boss": "res://res/audio/music/boss.mp3",
 "cave": "res://res/audio/music/cave.mp3",
 "corruption": "res://res/audio/music/corruption.mp3",
