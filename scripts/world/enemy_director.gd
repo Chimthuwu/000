@@ -103,7 +103,20 @@ func _spawn_from_night() -> void:
 			for existing in enemies:
 				if existing is Hollow:
 					hollow_count += 1
-			kind = CONFIG.roll_kind_identity(identity, rng.randf())
+			# Deep sub-biomes (Fungal Grotto, Volcanic Depths, Crystal Caverns,
+			# Frozen Underlayer, the Ancient Abyss, the Underworld) already have
+			# their own stone/ore/ambient-light identity; give them their own
+			# monster mix too instead of always drawing from the surface biome
+			# overhead. Biomes that already read the same below ground as above
+			# (jungle, corruption, crimson, hallow, ocean) keep using the surface
+			# table via the empty-array fallback.
+			var underground_cell := Vector3i(floori(position.x), floori(position.y), floori(position.z))
+			var underground_tag := WorldBiomes.enemy_tag(world.get_underground_biome(underground_cell))
+			var underground_weights := CONFIG.weights_for_underground_tag(underground_tag)
+			if not underground_weights.is_empty():
+				kind = CONFIG.roll_kind_weights(underground_weights, rng.randf())
+			else:
+				kind = CONFIG.roll_kind_identity(identity, rng.randf())
 			if blood_moon != null and blood_moon.is_active and kind != EnemyConfig.KIND_HOLLOW and rng.randf() < blood_moon.CONFIG.zombie_bias:
 				# Terraria's Blood Moon skews the night's population hard toward
 				# zombies; Hollow encounters stay as rolled rather than piled on.

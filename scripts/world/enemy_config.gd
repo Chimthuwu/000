@@ -41,6 +41,23 @@ const KIND_COUNT := 7
 @export var hallow_weights: Array[float] = [0.30, 0.40, 0.30, 0.0, 0.0, 0.45, 0.10]
 @export var ocean_weights: Array[float] = [0.50, 0.50, 0.0, 0.0, 0.0, 0.30, 0.20]
 
+# WorldBiomes.Underground tables. These are the sub-biomes a cavern can carve
+# into regardless of what grows on the surface above (Fungal Grotto, Volcanic
+# Depths, Crystal Caverns, Frozen Underlayer, the Ancient Abyss, The
+# Underworld) — terrain/ore/stone already give each of these its own identity,
+# but until this table existed every one of them spawned from the plain
+# surface-identity roster, so the deep world read as cosmetically different
+# but never actually dangerous or distinct. An empty/missing tag here (the
+# shallow default "underground", or a tag that mirrors a surface biome like
+# jungle/corruption/crimson/hallow/ocean) still falls back to the surface
+# identity table, which is already correct for those.
+@export var fungal_weights: Array[float] = [0.0, 0.30, 0.10, 0.0, 0.60, 0.30, 0.15]
+@export var volcanic_weights: Array[float] = [0.30, 0.20, 0.45, 0.0, 0.0, 0.20, 0.45]
+@export var crystal_weights: Array[float] = [0.40, 0.35, 0.35, 0.0, 0.0, 0.35, 0.10]
+@export var frozen_weights: Array[float] = [0.20, 0.0, 0.10, 0.85, 0.0, 0.25, 0.10]
+@export var ancient_weights: Array[float] = [0.30, 0.25, 0.60, 0.0, 0.0, 0.15, 0.40]
+@export var underworld_weights: Array[float] = [0.20, 0.30, 0.55, 0.0, 0.0, 0.0, 0.55]
+
 @export var nightling_speed := 2.7
 @export var nightling_health := 16.0
 @export var nightling_damage := 4.0
@@ -127,7 +144,31 @@ func weights_for_identity(identity: int) -> Array[float]:
 
 
 func roll_kind_identity(identity: int, value: float) -> int:
-	var weights := weights_for_identity(identity)
+	return roll_kind_weights(weights_for_identity(identity), value)
+
+
+# WorldBiomes.enemy_tag() -> the dedicated table for that underground
+# sub-biome, or [] when it has none (the caller should fall back to the
+# surface identity table in that case).
+func weights_for_underground_tag(tag: StringName) -> Array[float]:
+	match tag:
+		&"fungal":
+			return fungal_weights
+		&"volcanic":
+			return volcanic_weights
+		&"crystal":
+			return crystal_weights
+		&"frozen":
+			return frozen_weights
+		&"ancient":
+			return ancient_weights
+		&"underworld":
+			return underworld_weights
+		_:
+			return []
+
+
+func roll_kind_weights(weights: Array[float], value: float) -> int:
 	var total := 0.0
 	for index in range(KIND_COUNT):
 		total += float(weights[index]) if index < weights.size() else 0.0
