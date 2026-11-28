@@ -1,5 +1,14 @@
 # STATE
 
+## VERIFICATION SWEEP, SAVE/LOAD REGRESSION FIX, SPAWN GUARD (2026-11-29)
+
+- Re-ran the full regression sweep headless and it now passes: `world_boot_check`, `biome_visuals_check`, `terrain_atlas_check`, `building_extra_check`, `survival_check` (33-assertion COMPLETE), `npc_check`, `menu_click_check`, `music_check` (33/33) and `gameplay_integration_check`.
+- Real regression fixed in `main.gd load_game`: the felled-tree-sites commit had left the entire post-`restore_save` restore block indented inside the `if ... return` guard, making it unreachable — saves never restored health, inventory, god mode, night levels or felled sites. The block is dedented and `survival_check` now passes its save/load assertions.
+- `debug/biome_visuals_check.gd` repaired for the region-build vegetation API (pure `_compute_biome_props` + `_fill_cover`/`_fill_cover_from_multimesh` instead of the removed `_build_biome_props`).
+- `debug/survival_check.gd` camp scan widened to ±20 grid cells: the spawn Forest bias removed ASHEN-dominant columns from the old 4x4 grid near the origin, so the deterministic-camps assertion found no site.
+- `music_map.tres` now maps `blood_moon` to `surface_night.mp3` (Terraria keeps the night theme during a Blood Moon); all 20 synth categories are file-mapped.
+- New `debug/spawn_settle_check.gd` locks the launch contract: `is_generated` within 2400 frames, the block at `spawn_height()` is solid, the cell above it is air, and the player settles at `spawn_height + 1` without sinking while streaming continues. PASS. The windowed uncapped-fps streaming symptom from 2026-11-21 is not reproducible headless; the settle contract is now guarded so it cannot regress silently.
+
 ## HARVEST FOLLOW-UP — JUNGLE FOLIAGE, LAYERED SKY ISLANDS, EXPORT (2026-11-21)
 
 - Jungle surface trees are now original broadleaf trees rather than pale claw-trees: thick leaning trunks, buttress fins, branch crowns, wide green canopies and short hanging vines (`WorldVegetation._build_jungle_tree`). The old `HUSH_PALE` archetypes remain only as legacy material names, not as visible Jungle silhouettes.

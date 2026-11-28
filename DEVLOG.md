@@ -1,5 +1,13 @@
 # DEVLOG
 
+## 2026-11-29 — Verification sweep, save/load regression fix, spawn settle guard
+
+- Re-ran the full regression sweep headless: `world_boot_check`, `biome_visuals_check`, `terrain_atlas_check`, `building_extra_check`, `survival_check`, `npc_check`, `menu_click_check`, `music_check` (33/33) and `gameplay_integration_check` all PASS.
+- Fixed a real save/load regression: the felled-tree-sites commit had indented `load_game`'s entire restore block under an early `return`, so nothing was ever restored (health, inventory, god mode, night levels, felled sites). Dedented; `survival_check` save/load assertions pass again.
+- Updated `biome_visuals_check` to the region-build vegetation API and widened the `survival_check` abandoned-camp scan (spawn Forest bias removed ASHEN columns near the origin).
+- Mapped the `blood_moon` music category to `surface_night.mp3`; 20/20 categories now have real files.
+- Added `debug/spawn_settle_check.gd` guarding the launch contract (spawn-ready within budget, solid ground at `spawn_height`, player settles without falling).
+
 ## 2026-11-21 — Jungle broadleaf trees, layered sky islands, Windows export
 
 - Replaced the pale Jungle claw-tree archetypes with broadleaf trees: thick trunks, buttress fins, branch crowns, layered green canopies and hanging vines. The biome-visual check now asserts that the Jungle mesh contains leafy green vertices.
