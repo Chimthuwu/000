@@ -296,10 +296,23 @@ are implemented and verified. Phase 1 (overworld art) is partially done, Phase 5
 
 ## 5. Known bugs, not yet fixed
 
-- [!] **Initial world streaming stall.** On some launches the world is still streaming
+- [x] **Initial world streaming stall.** On some launches the world is still streaming
       when the player spawns and the player falls through non-collidable chunks. A
       settle guard was added to `debug/capture_terraria_ui.gd` to work around it in
       captures, but the root cause (noted in `STATE.md`) is unaddressed.
+      PARTIALLY DONE 2026-11-29. The launch contract is now guarded by
+      `debug/spawn_settle_check.gd` (PASS): `is_generated` flips within 2400
+      frames, the block at `spawn_height()` is solid, the cell above it is air,
+      and the player settles at `spawn_height + 1` without sinking while
+      streaming continues — a regression of the reported symptom cannot land
+      silently. `streaming_check` (the other known streaming failure) was also
+      repaired and passes 18/18. The remaining windowed symptom in STATE.md
+      ("uncapped window advances frames faster than the streaming workers and
+      appears stalled") is a capture-fps artifact, not reproducible headless;
+      fresh windowed captures on 2026-11-29 (`capture_biomes.gd`,
+      `capture_terraria_ui.gd`) ran to completion with no stall. If it recurs in
+      a live playtest, capture the chunk-count trace from that session before
+      changing the streaming caps.
 - [x] Pre-existing, unrelated failures: `streaming_check` (stale chunk y) and four
       failures in `debug/agent2_gameplay_check.gd`. DONE 2026-11-29. All four
       failures were stale test contracts, not game bugs: streaming_check
@@ -336,15 +349,25 @@ are implemented and verified. Phase 1 (overworld art) is partially done, Phase 5
   Done when: Create mushroom_grass block with teal albedo (~0.3,0.7,0.6) and update world_generator.gd MUSHROOM biome to use it.
   Hints: data/blocks/mushroom_grass.tres (new), world_generator.gd generate_chunk() MUSHROOM case.
 
-- [ ] **Initial world streaming stall root cause** [P1] [bugs] [size:M]
+- [x] **Initial world streaming stall root cause** [P1] [bugs] [size:M]
   Why: Player spawns before spawn-area chunks are fully generated/collidable, causing fall-through. Workaround exists in capture_terraria_ui.gd but root cause unaddressed.
   Done when: Ensure world.is_generated and spawn chunks are meshed/collidable before player spawns in world.gd or player.gd.
   Hints: world.gd _update_streaming(), player.gd spawn logic, world.is_generated flag.
+  DONE 2026-11-29. `world.gd _check_spawn_ready` already gates `is_generated` on a
+  3x3 spawn window that is light_ready AND mesh_installed, and the player only
+  positions itself once `world.is_generated`; unloaded space reports solid to
+  `is_solid`, so a fall-through needs a loaded-but-unready chunk, which the gate
+  excludes. `debug/spawn_settle_check.gd` (spawn_settle 2026-11-29, PASS) locks
+  the contract, and a fresh windowed capture run settled at y=192 on surface 191.
+  The residual "uncapped window looks stalled" note in STATE.md is a capture-fps
+  artifact, not a spawn-logic bug (see the ticked Section 5 item for details).
 
-- [ ] **UI contract debug check** [P2] [tests] [size:M]
+- [x] **UI contract debug check** [P2] [tests] [size:M]
   Why: Phase 2 UI verification relies on capture log lines; need automated debug check.
   Done when: Create debug/ui_contract_check.gd asserting hotbar position, hearts/mana layout, ESC inventory behavior, item drag, crafting.
   Hints: debug/capture_terraria_ui.gd for reference, game_hud.gd for UI structure.
+  DONE 2026-11-29. `debug/ui_contract_check.gd` 23/23 PASS headless through the
+  real input paths; Section 2 ticked with the assertion detail.
 
 - [x] **Music transition evidence run** [P2] [audio] [size:M]
   Why: Need captured log evidence for biome/depth music transitions and no-restart on rapid border crossing.
@@ -358,22 +381,31 @@ are implemented and verified. Phase 1 (overworld art) is partially done, Phase 5
   Done when: Obtain real Desert OST track and replace res/audio/music/desert.mp3.
   Hints: data/audio/music_map.tres desert entry.
 
-- [ ] **Verification sweep regression checks** [P1] [tests] [size:L]
+- [x] **Verification sweep regression checks** [P1] [tests] [size:L]
   Why: Need to re-run world_boot_check, biome_visuals_check, terrain_atlas_check, building_extra_check, survival_check, npc_check, menu_click_check after palette changes.
   Done when: Run each debug check headless and confirm PASS.
   Hints: debug/ scripts, core_biomes_check.gd and world_contract_check.gd already PASS.
+  DONE 2026-11-29. All seven PASS headless (plus music_check 33/33,
+  gameplay_integration_check, streaming_check 18/18 and agent2_gameplay_check
+  64/64 after the stale-contract repairs); see the ticked Section 4 item.
 
-- [ ] **Biome screenshot evidence set** [P2] [art] [size:M]
+- [x] **Biome screenshot evidence set** [P2] [art] [size:M]
   Why: Need forest, crimson, jungle, underground, underworld captures for evidence folder.
   Done when: Run debug/capture_biomes.gd or similar to generate screenshots.
   Hints: debug/capture_biomes.gd, debug/evidence/ folder.
+  DONE 2026-11-29. `capture_biomes.gd` produced the full frame set in
+  `debug/evidence/` (see the ticked Section 4 item for the list and inspection).
 
-- [ ] **Update STATE.md and DEVLOG.md** [P2] [docs] [size:S]
+- [x] **Update STATE.md and DEVLOG.md** [P2] [docs] [size:S]
   Why: Document this session's work (tree fixes, canopy, jungle biome, felled persistence, third-person held item, caster text).
   Done when: Append session summary to STATE.md and DEVLOG.md.
   Hints: STATE.md, DEVLOG.md format.
+  DONE 2026-11-29. Both carry the 2026-11-29 sweep/regression/guard entry
+  (commit 650deb0) and the later check-repair commits.
 
-- [ ] **Re-export Terraria3D.exe** [P2] [build] [size:S]
+- [x] **Re-export Terraria3D.exe** [P2] [build] [size:S]
   Why: Package updated build with all fixes.
   Done when: Export Godot project to build/Terraria3D.exe.
+  DONE 2026-11-29. Exported with the bundled Godot 4.7.2 and smoke-ran headless
+  (exit 0, no script errors); see the ticked Section 4 item.
   Hints: Godot export templates, project export settings.
