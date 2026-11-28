@@ -176,13 +176,23 @@ are implemented and verified. Phase 1 (overworld art) is partially done, Phase 5
 
 ## 2. UI verification (Phase 2 follow-through)
 
-- [!] Add a `debug/` check that asserts the Terraria UI contract instead of relying on
-      capture log lines. Requires live game testing for visual verification.
-  - [!] hotbar anchored top-left, hearts top-right, mana stars directly under hearts
-  - [!] ESC opens the inventory **without** pausing the world
-  - [!] click-to-move an item between hotbar and inventory grid
-  - [!] equipment swap into the armour column updates `player` stats
-  - [!] crafting list click actually consumes materials and grants the item
+- [x] Add a `debug/` check that asserts the Terraria UI contract instead of relying on
+      capture log lines. DONE 2026-11-29. `debug/ui_contract_check.gd` boots the real
+      game headless and asserts all five contract points through the real code paths
+      (synthetic ESC through `GameHUD._unhandled_input`, synthetic slot clicks through
+      `_on_inv_slot_input`, crafting through `_craft_recipe_now`): hotbar anchored
+      top-left (12,12); hearts top-right with mana stars directly beneath
+      (y=37 = hearts bottom + 2); ESC opens/closes the inventory with
+      `paused == false` and `get_tree().paused == false` and no pause overlay;
+      click-to-move a hotbar stack into main slot 5 and back; a life_charm click into
+      the accessory column raises `player.max_health` 100 -> 120; a workbench craft
+      spends exactly 10 wood and grants the item; the inventory crafting list
+      populates 84 clickable recipe icons. 23/23 assertions PASS, exit 0.
+  - [x] hotbar anchored top-left, hearts top-right, mana stars directly under hearts
+  - [x] ESC opens the inventory **without** pausing the world
+  - [x] click-to-move an item between hotbar and inventory grid
+  - [x] equipment swap into the armour column updates `player` stats
+  - [x] crafting list click actually consumes materials and grants the item
 - [!] Inventory panel still crowds its footer hint; verify the crafted-list scroll
       height fix after the next capture. Requires live game testing.
 
