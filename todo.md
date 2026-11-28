@@ -262,15 +262,25 @@ are implemented and verified. Phase 1 (overworld art) is partially done, Phase 5
       and the survival_check camp scan widened because the spawn Forest bias
       removed ASHEN columns from the old 4x4 grid. Also added
       `debug/spawn_settle_check.gd` (spawn streaming/settle contract, PASS).
-- [!] Capture a biome screenshot set for the evidence folder:
+- [x] Capture a biome screenshot set for the evidence folder:
       forest, crimson, jungle, underground, underworld.
+      DONE 2026-11-29. Fresh `debug/evidence/biome_*.png` set captured from
+      `capture_biomes.gd` (11 frames: forest, desert, jungle, snow, mushroom,
+      crimson, hallow, two sky-island views, underground, underworld). Forest and
+      underworld frames visually inspected — forest reads cleanly; the underworld
+      still shows the known fog/haze problem (separate open issue).
 - [x] Re-run `music_check` and `gameplay_integration_check` after the HUD palette and
       inventory layout edits.
       DONE 2026-11-29. `music_check` 33/33 PASS after mapping the `blood_moon`
       category to `surface_night.mp3` in `music_map.tres` (Terraria keeps the
       night theme during a Blood Moon); `gameplay_integration_check` PASS.
-- [!] Update `STATE.md` and `DEVLOG.md` for this session's work.
-- [!] Re-export `build/Terraria3D.exe`.
+- [x] Update `STATE.md` and `DEVLOG.md` for this session's work.
+      DONE 2026-11-29. Both updated with the 2026-11-29 sweep/regression/guard entry.
+- [x] Re-export `build/Terraria3D.exe`.
+      DONE 2026-11-29. Exported with the bundled Godot 4.7.2
+      (`--export-debug "Windows Desktop"`, 146,423,048 bytes) and smoke-ran
+      `build/Terraria3D.console.exe --headless --quit-after 90` — exit 0, no
+      script errors.
 
 ## 5. Known bugs, not yet fixed
 
