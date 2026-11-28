@@ -34,7 +34,10 @@ func _run() -> void:
 		quit(1)
 		return
 
-	var spawn_coords := Vector3i(4, 1, 4)
+	# Derive the spawn chunk from the player's feet cell; the old hardcoded
+	# Vector3i(4, 1, 4) predates the lifted surface (surface ~191, chunk y 11).
+	var feet_cell := Vector3i(int(floor(main.player.position.x)), int(floor(main.player.position.y)) - 1, int(floor(main.player.position.z)))
+	var spawn_coords: Vector3i = world._chunk_of(feet_cell)
 	var spawn_record: Dictionary = world.chunk_records.get(spawn_coords, {})
 	_check(not spawn_record.is_empty() and bool(spawn_record["mesh_installed"]), "spawn chunk is lit and meshed")
 	var original_blocks: PackedByteArray = spawn_record["blocks"].duplicate() if not spawn_record.is_empty() else PackedByteArray()
@@ -65,7 +68,9 @@ func _run() -> void:
 	_check(not world.chunk_records.has(spawn_coords), "old chunks unload while travelling", "loaded=%d frames=%d" % [world.chunk_records.size(), travel_frames])
 
 	# Return and confirm the terrain regenerates the same blocks plus the edit.
-	main.player.position = Vector3(64.5, 45.0, 64.5)
+	# The vertical streaming window follows the player, so return at the surface
+	# height; y=45 is underground and never re-streams the y-11/12 spawn chunks.
+	main.player.position = Vector3(64.5, float(world.get_surface_height(64, 64)) + 2.0, 64.5)
 	var return_frames := 0
 	while return_frames < 1200:
 		await process_frame
@@ -73,7 +78,17 @@ func _run() -> void:
 		var record: Dictionary = world.chunk_records.get(spawn_coords, {})
 		if not record.is_empty() and bool(record["light_ready"]):
 			break
-	var reloaded: Dictionary = world.chunk_records.get(spawn_coords, {})
+	var reloaded: Dictionary = {}
+	# Both the spawn chunk and the edited chunk must stream back before their
+	# contents can be compared; the old check compared an empty record.
+	while return_frames < 1200:
+		await process_frame
+		return_frames += 1
+		reloaded = world.chunk_records.get(spawn_coords, {})
+		var edit_back: Dictionary = world.chunk_records.get(edit_coords, {})
+		if not reloaded.is_empty() and bool(reloaded["light_ready"]) \
+				and not edit_back.is_empty() and bool(edit_back["light_ready"]):
+			break
 	_check(not reloaded.is_empty(), "unloaded chunk regenerates on return", "frames=%d" % return_frames)
 	if not reloaded.is_empty():
 		_check(reloaded["blocks"] == original_blocks, "regenerated terrain is byte-identical")

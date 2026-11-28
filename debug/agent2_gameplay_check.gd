@@ -150,8 +150,15 @@ func _run() -> void:
 			mined = true
 			break
 	_check(mined and block_before != gw.get_air_id(), "tool mining breaks a real voxel")
+	# Mining parks the drop in collected_blocks; _drain_collected_blocks moves
+	# it into the inventory on the next _process frame.
+	await _wait_frames(2)
+	# Mining auto-collects into the inventory now; only overflow spills out as
+	# an ItemEntity. Accept either path as the drop reaching the player.
+	var drop_id: StringName = StringName(info.get("drop", ""))
 	var drops: Array = get_nodes_in_group("item_drops")
-	_check(drops.size() > 0, "mining spawns an item entity", "drops=%d" % drops.size())
+	var drop_reached: bool = (drop_id != &"" and player.inventory.count(drop_id) > 0) or drops.size() > 0
+	_check(drop_reached, "mined block reaches the player", "drop=%s inv=%d entities=%d" % [String(drop_id), player.inventory.count(drop_id) if drop_id != &"" else -1, drops.size()])
 
 	# --- 6. Melee combat, knockback, loot -------------------------------------
 	player.camera.rotation.x = 0.0
@@ -165,6 +172,9 @@ func _run() -> void:
 	main.add_child(enemy)
 	enemy.position = player.position + Vector3(0.0, 0.0, -1.6)
 	enemy.health = 60.0
+	# A hand-built enemy has no director-assigned loot table; give it the real
+	# nightling one so death loot is exercised exactly as in the game.
+	enemy.loot_table = load("res://data/loot/nightling.tres")
 	await _wait_frames(3)
 	player.weapons.cooldown = 0.0
 	_check(player.weapons.try_attack(), "melee attack fires")
@@ -214,6 +224,11 @@ func _run() -> void:
 	_check(player.statuses.has(&"slow"), "status effect applies")
 
 	# --- 9. Third-person camera -----------------------------------------------
+	# The game defaults to third person; normalise to first person first so the
+	# toggle directions are deterministic.
+	if player.camera_mode != 0:
+		player._toggle_camera_mode()
+	_check(player.camera_mode == 0, "camera starts first-person in this test")
 	player._toggle_camera_mode()
 	_check(player.camera_mode == 1, "third-person camera toggles")
 	player._toggle_camera_mode()
