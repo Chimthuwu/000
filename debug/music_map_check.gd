@@ -68,7 +68,7 @@ func _initialize() -> void:
 			["underground_corruption", "underground_corruption.mp3"],
 			["underground_crimson", "underground_crimson.mp3"],
 			["underground_hallow", "underground_hallow.mp3"],
-			["desert", "desert.mp3"], ["underworld", "underworld.mp3"]]:
+			["desert", "surface_day.mp3"], ["underworld", "underworld.mp3"]]:
 		music.force_category(entry[0])
 		for _settle in range(120):
 			await process_frame

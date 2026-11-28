@@ -10,7 +10,7 @@ tracks = {
 "cave": "res://res/audio/music/cave.mp3",
 "corruption": "res://res/audio/music/corruption.mp3",
 "crimson": "res://res/audio/music/crimson.mp3",
-"desert": "res://res/audio/music/desert.mp3",
+"desert": "res://res/audio/music/surface_day.mp3",
 "hallow": "res://res/audio/music/hallow.mp3",
 "jungle": "res://res/audio/music/jungle.mp3",
 "mushroom": "res://res/audio/music/mushroom.mp3",
